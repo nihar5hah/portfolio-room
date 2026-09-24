@@ -1,3 +1,15 @@
+# V17 — layout experiment, mobile, weather, Good night, TV, lighter music
+
+September 25, 2026 (Asia/Kolkata).
+
+- **Layout (experiment, commit `22ffd22`).** The desk, chair, MacBook, desk props, Begu's corner and walk, and the desk/monitor camera stops move together by `DESK_Z` in `World/Layout.ts` so the desk stands under the flag. The sofa lounge faces the TV in the middle of the room over the Graduation rug, with the bean bags either side. Setting `DESK_Z = 0` and `SOFA_MOVE` to zero, or reverting that commit, restores the island layout. Before/after renders: `.agent-artifacts/layout-2026-09-24/`.
+- **Mobile.** Touch devices enter in orbit mode: one finger turns the room, two fingers pinch to zoom, and a slow drift runs until the first touch. Portrait screens keep the landscape horizontal field of view and start at standing eye height. Room objects and Begu act on a tap without movement (drags never open anything); on touch the first tap shows the label, the second opens it. The "Look around" toggle is hidden on touch, and the lock screen and overlay are sized for phones. Checked in the T3 browser at 430 × 932 with touch simulated; not yet on a physical phone.
+- **Weather.** `/api/weather` reads Ahmedabad (home) and Bengaluru (internship) from Open-Meteo in one request, cached 15 minutes, keeping the last reading if the provider fails. Shown on the lock screen and in the Mac menu bar.
+- **Good night.** Clicking the bed turns off the lamp and flag lights and lowers the room exposure; clicking again wakes it.
+- **TV.** Clicking the TV opens a full-screen view of the live score/table board. `MATCH_STREAM_URL` in `src/Application/config.ts` is the slot for a live stream; it is used only while a match is in progress.
+- **Music.** `scripts/compress-audio.py` re-encoded all 114 tracks to 96 kbps AAC with faststart: 444 MB → 338 MB (24% smaller), each checked for duration. Originals are in `../portfolio-audio-originals/`. Audio and hashed build files are served with a 30-day immutable cache; HTML and the playlist revalidate. Tracks still load only after Enter, one at a time.
+- **Checks.** 32/32 tests, both type-checks and the build pass. Three re-encoded tracks played in the browser.
+
 # V16 — room interactions, Messages-style Begu, desktop window model
 
 Current state, September 24, 2026 (Asia/Kolkata). Earlier sections below are historical records and describe superseded counts (for example the 31-track library).

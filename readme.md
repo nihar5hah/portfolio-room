@@ -38,6 +38,10 @@ Objects open things: the turntable opens Music, the bookshelf opens Notes, the M
 
 Begu’s chat uses the original Gemini model and falls back to `gemini-2.5-flash` when Google reports the primary overloaded or rate limited (`MODELS` in `server/index.mjs`).
 
+## Mobile, weather and extras
+
+Touch devices explore the room with drag and pinch; objects open on a second tap. The lock screen and Mac menu bar show the weather in Ahmedabad and Bengaluru. The bed toggles Good night. The TV opens full screen; paste a live stream link into `MATCH_STREAM_URL` in `src/Application/config.ts` to show it during matches. Room staging lives in `src/Application/World/Layout.ts`.
+
 ## Editing map
 
 - `src/Application/World/Computer.ts`: imported MacBook assembly, calibrated hinge, approach animation and live-display anchor.
@@ -57,7 +61,7 @@ Begu’s chat uses the original Gemini model and falls back to `gemini-2.5-flash
 
 Look Around offers a full orbit with a wider lens, constrained inside all four walls and below the ceiling. A night window and bench, media console, entry door and display cabinet furnish the other views.
 
-The original room assets remain on disk for provenance; the CRT and old desk/plant are no longer rendered. The imported MacBook and husky use the installed GLTFLoader and Meshopt decoder. The husky is a free, stylized rigged model with smooth shading and its original geometry, not a fur simulation. Remaining objects use installed Three.js geometry/materials and real shadows, with no new modeling or rendering dependency. Sound waits for Enter, then starts the shuffled music library at 6% volume alongside soft ambience. Music contains 114 tracks across 19 albums; see [audio behavior](docs/ALBUM-AUDIO.md). Direct desktop entry waits for Play in Music. Reduced-motion preferences suppress camera drift, transition duration, steam/noise animation and Begu’s movement; the chat stays accessible. The desktop uses the system font and glass styling informed by Apple’s current macOS reference, with the Catalina Night wallpaper. Narrow-screen Mac and Begu entries open the readable standalone desktop. Portfolio content adapts to its own resizable window width.
+The original room assets remain on disk for provenance; the CRT and old desk/plant are no longer rendered. The imported MacBook and husky use the installed GLTFLoader and Meshopt decoder. The husky is a free, stylized rigged model with smooth shading and its original geometry, not a fur simulation. Remaining objects use installed Three.js geometry/materials and real shadows, with no new modeling or rendering dependency. Sound waits for Enter, then starts the shuffled music library at 6% volume alongside soft ambience. Music contains 114 tracks across 19 albums, stored as 96 kbps AAC (`scripts/compress-audio.py`); see [audio behavior](docs/ALBUM-AUDIO.md). Direct desktop entry waits for Play in Music. Reduced-motion preferences suppress camera drift, transition duration, steam/noise animation and Begu’s movement; the chat stays accessible. The desktop uses the system font and glass styling informed by Apple’s current macOS reference, with the Catalina Night wallpaper. Narrow-screen Mac and Begu entries open the readable standalone desktop. Portfolio content adapts to its own resizable window width.
 
 ## Provenance
 

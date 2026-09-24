@@ -262,10 +262,15 @@ export function createPortfolioServer({
                     types[extname(path)] || 'application/octet-stream',
                 'Content-Length': end - start + 1,
                 'Accept-Ranges': 'bytes',
+                // Hashed build files and album tracks never change under the
+                // same name, so returning visitors reuse them; HTML and the
+                // playlist always revalidate.
                 'Cache-Control':
-                    extname(path) === '.html'
+                    extname(path) === '.html' || path.endsWith('playlist.json')
                         ? 'no-cache'
-                        : 'public, max-age=3600',
+                        : /\.[0-9a-f]{16,}\.|[\\/]audio[\\/]/.test(path)
+                          ? 'public, max-age=2592000, immutable'
+                          : 'public, max-age=3600',
             });
             if (req.method === 'HEAD' || !info.size) return res.end();
             const stream = createReadStream(path, { start, end });
