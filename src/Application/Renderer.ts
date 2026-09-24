@@ -111,9 +111,15 @@ export default class Renderer {
 
         // Dim the room (not the CSS3D screen) while the visitor is on the Mac.
         UIEventBus.on('enterMonitor', () => (this.targetExposure = 0.42));
-        UIEventBus.on('leftMonitor', () => (this.targetExposure = 0.85));
+        UIEventBus.on('leftMonitor', () => (this.targetExposure = this.roomExposure));
+        // Good night (tap the bed): the room drops to a low night level.
+        UIEventBus.on('goodNight', (asleep: boolean) => {
+            this.roomExposure = asleep ? 0.45 : 0.85;
+            this.targetExposure = this.roomExposure;
+        });
     }
 
+    roomExposure = 0.85;
     targetExposure = 0.85;
 
     resize() {

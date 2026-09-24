@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Application from '../../Application';
 import eventBus from '../EventBus';
+import useWeather from '../useWeather';
 
 // Boot (black screen + thin bar) → lock screen laid over the live room.
 export default function LoadingScreen() {
@@ -8,6 +9,7 @@ export default function LoadingScreen() {
     const [started, setStarted] = useState(false);
     const [failed, setFailed] = useState(false);
     const [now, setNow] = useState(() => new Date());
+    const weather = useWeather();
     useEffect(() => {
         const id = setInterval(() => setNow(new Date()), 10_000);
         return () => clearInterval(id);
@@ -63,6 +65,15 @@ export default function LoadingScreen() {
                             })
                             .replace(/\s?[AP]M$/i, '')}
                     </time>
+                    {weather.length > 0 && (
+                        <p className="login-weather">
+                            {weather.map((c) => (
+                                <span key={c.id}>
+                                    {c.name} {c.temp}° · {c.condition}
+                                </span>
+                            ))}
+                        </p>
+                    )}
                 </div>
                 <div className="login-user">
                     <h1>Nihar Shah</h1>

@@ -797,6 +797,12 @@ export default class Environment {
         this.flagLights = flagLights;
         bus.on('enterMonitor', () => (this.flagLightTarget = 0.25));
         bus.on('leftMonitor', () => (this.flagLightTarget = 1));
+        // Good night: the lamp and flag lights go out; only the bedside glow,
+        // TV and the window stay on.
+        bus.on('goodNight', (asleep: boolean) => {
+            this.flagLightTarget = asleep ? 0.05 : 1;
+            if (this.lamp) this.lamp.visible = !asleep;
+        });
 
         // A night window and reading bench give the left wall a purpose.
         const window = new THREE.Group();

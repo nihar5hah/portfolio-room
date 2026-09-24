@@ -22,6 +22,7 @@ export default class Interactables {
         JSON.parse(localStorage.getItem(FOUND_KEY) || '[]') as string[],
     );
     sleeves = 0;
+    asleep = false;
 
     constructor(room: THREE.Object3D) {
         const openApp = (app: string, route?: string) => () =>
@@ -42,6 +43,19 @@ export default class Interactables {
                 this.add(object, () => ({
                     label: 'About Nihar',
                     run: openApp('showcase', '/about'),
+                }));
+            else if (name === 'Match night media wall')
+                this.add(object, () => ({
+                    label: 'Match night',
+                    run: () => bus.dispatch('openTv', {}),
+                }));
+            else if (name === 'Bed and walnut headboard')
+                this.add(object, () => ({
+                    label: this.asleep ? 'Wake up' : 'Good night',
+                    run: () => {
+                        this.asleep = !this.asleep;
+                        bus.dispatch('goodNight', this.asleep);
+                    },
                 }));
             else if (name === 'Graduation album rug')
                 this.add(object, () => ({

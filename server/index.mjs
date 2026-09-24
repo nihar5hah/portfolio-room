@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { createBarcelonaFeed } from './football.mjs';
+import { createWeatherFeed } from './weather.mjs';
 import { readFile, stat } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import { resolve, extname, sep } from 'node:path';
@@ -39,6 +40,7 @@ export function createPortfolioServer({
     // ponytail: per-process limits suit one server; use a shared rate limiter when deploying multiple instances.
     const visitors = new Map();
     const barcelona = createBarcelonaFeed({ fetchImpl });
+    const weather = createWeatherFeed({ fetchImpl });
     const json = (res, status, body) => {
         res.writeHead(status, {
             'Content-Type': 'application/json',
@@ -60,6 +62,15 @@ export function createPortfolioServer({
                     return json(res, 503, {
                         error: 'Live match data is temporarily unavailable.',
                     });
+                }
+            }
+            if (url.pathname === '/api/weather') {
+                if (req.method !== 'GET')
+                    return json(res, 405, { error: 'Use GET for weather.' });
+                try {
+                    return json(res, 200, await weather());
+                } catch {
+                    return json(res, 503, { error: 'Weather is temporarily unavailable.' });
                 }
             }
             if (url.pathname === '/api/chat') {

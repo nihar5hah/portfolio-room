@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Application from '../../Application';
 import bus from '../EventBus';
 import { ALBUMS, AlbumState } from '../../Audio/AlbumAudio';
+import TvView from './TvView';
 const ART = Object.fromEntries(
     Object.keys(ALBUMS).map((slug) => [slug, `/room/albums/${slug}.jpg`]),
 ) as Record<keyof typeof ALBUMS, string>;
@@ -12,6 +13,7 @@ export default function InterfaceUI() {
     const [free, setFree] = useState(false);
     const [album, setAlbum] = useState<AlbumState | null>(null);
     const [records, setRecords] = useState({ found: 0, total: 0 });
+    const [asleep, setAsleep] = useState(false);
     useEffect(() => {
         const off = [
             bus.on('loadingScreenDone', () => setVisible(true)),
@@ -23,6 +25,7 @@ export default function InterfaceUI() {
             bus.on('muteToggle', setMute),
             bus.on('albumChange', setAlbum),
             bus.on('recordsFound', setRecords),
+            bus.on('goodNight', setAsleep),
         ];
         return () => off.forEach((f) => f());
     }, []);
@@ -57,6 +60,12 @@ export default function InterfaceUI() {
             >
                 Open my portfolio
             </button>
+            <TvView />
+            {asleep && (
+                <p className="good-night" role="status">
+                    Good night. <span>Tap the bed to wake the room.</span>
+                </p>
+            )}
             <header>
                 <span className="room-name">Nihar Shah</span>
                 {records.found > 0 && !inside && (

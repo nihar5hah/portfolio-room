@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Icon from '../general/Icon';
 import { IconName } from '../../assets/icons';
+import useWeather from '../../hooks/useWeather';
 const PINNED: { name: string; label: string; icon: IconName }[] = [
     { name: 'My Portfolio', label: 'Portfolio', icon: 'showcaseIcon' },
     { name: 'Begu', label: 'Begu · AI companion', icon: 'begu' },
@@ -26,6 +27,7 @@ export default function Toolbar({
     launch,
 }: ToolbarProps) {
     const [menu, setMenu] = useState(false);
+    const weather = useWeather();
     const [time, setTime] = useState('');
     useEffect(() => {
         const tick = () =>
@@ -103,6 +105,16 @@ export default function Toolbar({
                     About
                 </button>
                 <span className="system-spacer" />
+                {weather.length > 0 && (
+                    <span
+                        className="system-weather"
+                        title={weather
+                            .map((c) => `${c.name} (${c.note}): ${c.temp}°C, ${c.condition}`)
+                            .join(' · ')}
+                    >
+                        {weather.map((c) => `${c.id.toUpperCase()} ${c.temp}°`).join('  ')}
+                    </span>
+                )}
                 <span className="system-status" aria-hidden="true">
                     <svg viewBox="0 0 24 24">
                         <path d="M2 8.6a15 15 0 0 1 20 0M5 12.2a10 10 0 0 1 14 0M8.2 15.8a5 5 0 0 1 7.6 0M12 19.5h.01" />
