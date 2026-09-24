@@ -15,6 +15,7 @@ const HenordleApp: React.FC<HenordleAppProps> = (props) => {
             windowTitle="Word game"
             closeWindow={props.onClose}
             onInteract={props.onInteract}
+            active={props.active}
             minimizeWindow={props.onMinimize}
             bottomLeftText="Word game by Henry Heffernan"
         >

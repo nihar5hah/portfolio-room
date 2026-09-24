@@ -81,6 +81,7 @@ export default function Music(props: WindowAppProps) {
             closeWindow={props.onClose}
             minimizeWindow={props.onMinimize}
             onInteract={props.onInteract}
+            active={props.active}
             bottomLeftText={
                 state
                     ? `${state.count} songs · shuffled`

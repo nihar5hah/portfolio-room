@@ -88,12 +88,18 @@ body {
     pointer-events: none;
     justify-content: space-between;
     padding: 9vh 0 6vh;
-    background: linear-gradient(
-        180deg,
-        rgba(8, 10, 14, 0.62) 0%,
-        rgba(8, 10, 14, 0.42) 45%,
-        rgba(8, 10, 14, 0.7) 100%
-    );
+    background:
+        radial-gradient(
+            ellipse 46% 30% at 50% 17%,
+            rgba(8, 10, 14, 0.55),
+            rgba(8, 10, 14, 0) 100%
+        ),
+        linear-gradient(
+            180deg,
+            rgba(8, 10, 14, 0.62) 0%,
+            rgba(8, 10, 14, 0.42) 45%,
+            rgba(8, 10, 14, 0.7) 100%
+        );
     text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
 }
 .boot-screen[data-ready='true'] .boot-stage {
@@ -132,22 +138,22 @@ body {
     margin: 0 0 14px;
 }
 .login-enter {
-    width: 170px;
-    height: 30px;
+    width: 200px;
+    height: 38px;
     border-radius: 999px;
-    border: 0;
-    background: rgba(255, 255, 255, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.28);
     backdrop-filter: blur(24px) saturate(1.6);
     -webkit-backdrop-filter: blur(24px) saturate(1.6);
     color: #fff;
-    font: 500 13px var(--sys);
+    font: 600 15px var(--sys);
     text-shadow: none;
     transition:
         background 0.15s,
         transform 0.15s;
 }
 .login-enter:not(:disabled):hover {
-    background: rgba(255, 255, 255, 0.32);
+    background: rgba(255, 255, 255, 0.38);
 }
 .login-enter:not(:disabled):active {
     transform: scale(0.98);
@@ -181,6 +187,7 @@ body {
     color: #f5f5f7;
 }
 .room-controls button,
+.full-size-link,
 #begu-label,
 #laptop-label {
     pointer-events: auto;
@@ -200,6 +207,7 @@ body {
         opacity 0.3s;
 }
 .room-controls button:hover,
+.full-size-link:hover,
 #begu-label:hover,
 #laptop-label:hover {
     background: rgba(60, 60, 66, 0.7);
@@ -362,4 +370,34 @@ body {
     .album-controls {
         max-width: min(320px, 100%);
     }
+}
+
+/* Room objects that open something: a small label follows the cursor. */
+.over-object,
+.over-object canvas {
+    cursor: pointer;
+}
+#object-label {
+    position: fixed;
+    z-index: 8;
+    pointer-events: none;
+    transform: translate(14px, 14px);
+    padding: 5px 10px;
+    border-radius: 999px;
+    font: 500 12px var(--sys);
+    color: #f5f5f7;
+    background: rgba(28, 28, 32, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    white-space: nowrap;
+}
+#object-label[hidden] {
+    display: none;
+}
+.records-found {
+    margin-left: auto;
+    margin-right: 10px;
+    font: 500 12px var(--sys);
+    color: rgba(245, 245, 247, 0.75);
 }

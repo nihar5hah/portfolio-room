@@ -3,12 +3,16 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import Application from '../Application';
 import BakedModel from '../Utils/BakedModel';
 import Husky from './Husky';
+import bus from '../UI/EventBus';
+import { occluded } from '../Utils/Occlusion';
 
 export default class Decor {
     app = new Application();
     dog: THREE.Group;
     husky: Husky;
     hover = false;
+    labelBlocked = false;
+    labelCheck = 0;
     constructor() {
         const { scene, resources } = this.app;
         const old = new BakedModel(
@@ -149,6 +153,14 @@ export default class Decor {
         this.husky = new Husky(this.app.resources.items.gltfModel.beguModel);
         this.dog = this.husky.group;
         this.app.scene.add(this.dog);
+        // Begu keeps you company: he sits facing the desk while you use the Mac,
+        // and hops when a record starts from the room.
+        const desk = new THREE.Vector3(-350, 0, 480);
+        bus.on('enterMonitor', () => (this.husky.watching = desk));
+        bus.on('leftMonitor', () => (this.husky.watching = null));
+        bus.on('albumPicked', () =>
+            this.husky.hop(this.app.reducedMotion.matches),
+        );
     }
     openBegu() {
         this.husky.greet(
@@ -181,7 +193,17 @@ export default class Decor {
                 y = ((-point.y + 1) * innerHeight) / 2;
             label.style.left = Math.round(x) + 'px';
             label.style.top = Math.round(y) + 'px';
+            if (this.app.time.elapsed - this.labelCheck > 200) {
+                this.labelCheck = this.app.time.elapsed;
+                this.labelBlocked = occluded(
+                    this.app.scene,
+                    this.app.camera.instance,
+                    this.dog.position.clone().add(new THREE.Vector3(0, 500, 0)),
+                    this.dog,
+                );
+            }
             label.hidden =
+                this.labelBlocked ||
                 this.app.camera.currentKeyframe === 'monitor' ||
                 this.app.camera.targetKeyframe === 'monitor' ||
                 point.z > 1 ||

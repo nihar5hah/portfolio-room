@@ -126,7 +126,7 @@ test('Look Around keeps every orbit and zoom inside the walls, floor and ceiling
                         `back/front wall at ${p.z}`,
                     );
                     assert.ok(
-                        p.y > 2000 && p.y < 12000,
+                        p.y > 2000 && p.y < 10500,
                         `floor/ceiling at ${p.y}`,
                     );
                     assert.ok(
@@ -158,6 +158,7 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
     );
     const ctx = {
         createRadialGradient: () => ({ addColorStop() {} }),
+        createLinearGradient: () => ({ addColorStop() {} }),
         fillText() {},
         fillRect() {},
         drawImage() {},
@@ -596,6 +597,14 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
     const rugHeight = bounds('Graduation album rug').getSize(new THREE.Vector3()).y;
     assert.ok(rugHeight > 25 && rugHeight < 60, 'rug is a thin printed mat');
     assert.equal(room.getObjectByName('Woven rug fringe'), undefined, 'no fringe, like the real rug');
+    const { skyPhase } = exports;
+    assert.deepEqual(
+        [3, 6, 9, 16, 18, 21].map(skyPhase),
+        ['night', 'dusk', 'day', 'day', 'dusk', 'night'],
+        'the window follows the visitor’s local time',
+    );
+    for (const name of ['Walnut record player', 'Bookshelf', 'Graduation album rug'])
+        assert.ok(room.getObjectByName(name), `${name} is named so it can be clicked`);
     assert.equal(
         room.getObjectByName('Wall mounted TV frame').castShadow,
         false,
@@ -623,7 +632,7 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         'camera limits sit within the rendered walls',
     );
     assert.ok(
-        bounds('Ceiling').min.y > 12000,
+        bounds('Ceiling').min.y > 10300 + 400,
         'camera ceiling limit has clearance',
     );
 });

@@ -140,13 +140,20 @@ export default class Camera extends EventEmitter {
     }
 
     setMonitorListeners() {
-        this.on('enterMonitor', (app?: 'begu') => {
+        this.on('enterMonitor', (app?: string, route?: string) => {
             if (window.matchMedia('(max-width: 700px)').matches) {
                 location.assign(
-                    `/desktop/${app === 'begu' ? '?app=begu' : ''}`,
+                    `/desktop/${app ? `?app=${app}` : ''}${route ? `#${route}` : ''}`,
                 );
                 return;
             }
+            if (app)
+                document
+                    .querySelector<HTMLIFrameElement>('#computer-screen')
+                    ?.contentWindow?.postMessage(
+                        { type: 'openApp', app, route },
+                        location.origin,
+                    );
             this.freeCam = false;
             document.getElementById('webgl')!.style.pointerEvents = 'none';
             this.transition(
@@ -242,12 +249,12 @@ export default class Camera extends EventEmitter {
         if (this.orbitControls) this.orbitControls.enabled = this.freeCam;
         if (this.freeCam && this.orbitControls) {
             this.orbitControls.update();
-            // Room walls: x ±18000, z -6500/18500; ceiling 12985.
+            // Room walls: x ±18000, z -6500/18500; ceiling 10885.
             // Keep the camera and its near plane inside, above the furniture.
             const p = this.instance.position;
             p.set(
                 THREE.MathUtils.clamp(p.x, -16900, 16900),
-                THREE.MathUtils.clamp(p.y, 2600, 11200),
+                THREE.MathUtils.clamp(p.y, 2600, 10300),
                 THREE.MathUtils.clamp(p.z, -5300, 17500),
             );
             this.instance.lookAt(this.orbitControls.target);

@@ -6,6 +6,8 @@ declare interface WindowAppProps {
     onClose: () => void;
     onInteract: () => void;
     onMinimize: () => void;
+    /** Set by Desktop: the frontmost visible window is the active one, as in macOS. */
+    active?: boolean;
 }
 
 declare type DesktopWindows = {

@@ -13,7 +13,8 @@ if (window.parent !== window) {
         'keyup',
         'focusin',
     ]) {
-        window.addEventListener(type, (event: MouseEvent & KeyboardEvent) =>
+        window.addEventListener(type, (raw) => {
+            const event = raw as MouseEvent & KeyboardEvent;
             window.parent.postMessage(
                 {
                     type: type === 'pointercancel' ? 'mouseup' : type,
@@ -29,8 +30,8 @@ if (window.parent !== window) {
                     key: event.key,
                 },
                 window.location.origin,
-            ),
-        );
+            );
+        });
     }
 }
 ReactDOM.render(<App />, document.getElementById('root'));

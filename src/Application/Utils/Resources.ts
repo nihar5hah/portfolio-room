@@ -52,9 +52,17 @@ export default class Resources extends EventEmitter {
     }
 
     startLoading() {
+        const lazy: TextureResource[] = [];
         // Load each source
         for (const source of this.sources) {
-            if (source.type === 'gltfModel') {
+            if (source.type === 'texture' && source.lazy) {
+                // Materials keep this exact object; its image is swapped in later.
+                const placeholder = new THREE.Texture(this.swatch());
+                placeholder.encoding = THREE.sRGBEncoding;
+                placeholder.needsUpdate = true;
+                lazy.push(source);
+                this.sourceLoaded(source, placeholder);
+            } else if (source.type === 'gltfModel') {
                 this.loaders.gltfLoader.load(
                     source.path,
                     (file) => {
@@ -93,6 +101,29 @@ export default class Resources extends EventEmitter {
                 );
             }
         }
+        // Album art streams in once the room is usable; a failure keeps the swatch.
+        const images = new THREE.ImageLoader();
+        const fill = () =>
+            lazy.forEach((source) =>
+                images.load(source.path, (image) => {
+                    const texture = this.items.texture[source.name];
+                    texture.image = image;
+                    texture.needsUpdate = true;
+                }),
+            );
+        if (this.loaded === this.toLoad) setTimeout(fill);
+        else this.on('ready', fill);
+    }
+
+    swatch() {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 1;
+        const context = canvas.getContext('2d');
+        if (context) {
+            context.fillStyle = '#202124';
+            context.fillRect(0, 0, 1, 1);
+        }
+        return canvas;
     }
 
     sourceFailed(source: Resource) {

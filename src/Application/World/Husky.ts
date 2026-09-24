@@ -10,6 +10,9 @@ export default class Husky {
     elapsed = 0;
     phase = 0;
     greeting = 0;
+    cheer = 0; // a hop that does not open chat (music started, record found)
+    /** While set (the visitor is at the Mac), Begu stops and faces this point. */
+    watching: THREE.Vector3 | null = null;
     readonly floor = -2970;
 
     constructor(model: {
@@ -86,6 +89,12 @@ export default class Husky {
         this.play(reducedMotion ? 'Idle_2' : 'Jump_ToIdle', !reducedMotion);
     }
 
+    hop(reducedMotion: boolean) {
+        if (this.greeting > 0 || this.cheer > 0 || reducedMotion) return;
+        this.cheer = 2.2;
+        this.play('Jump_ToIdle', true);
+    }
+
     /** Returns true once the visible greeting has finished and chat can open. */
     update(seconds: number, reducedMotion: boolean) {
         const dt = Math.min(Math.max(seconds, 0), 0.05);
@@ -103,6 +112,27 @@ export default class Husky {
             return false;
         }
         if (reducedMotion) return false;
+        if (this.cheer > 0) {
+            this.cheer -= dt;
+            this.mixer.update(dt);
+            if (this.cheer <= 0) {
+                this.cheer = 0;
+                this.play('Idle_2');
+            }
+            return false;
+        }
+        if (this.watching) {
+            const turn =
+                Math.atan2(
+                    this.watching.x - this.group.position.x,
+                    this.watching.z - this.group.position.z,
+                ) - this.group.rotation.y;
+            this.group.rotation.y +=
+                Math.atan2(Math.sin(turn), Math.cos(turn)) * Math.min(1, dt * 3);
+            this.play('Idle_2');
+            this.mixer.update(dt);
+            return false;
+        }
         this.elapsed += dt;
         const step = this.elapsed % 26;
         const walking = step >= 8 && step < 22;

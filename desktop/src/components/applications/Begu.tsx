@@ -1,8 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import Window from '../os/Window';
-import Icon from '../general/Icon';
+import avatar from '../../assets/begu-avatar.jpg';
 type Message = { role: 'user' | 'assistant'; content: string };
+const GREETING =
+    'Hey, I’m Begu. I keep Nihar company while he builds. Ask me about his projects, his experience, or how to reach him.';
+const SUGGESTIONS = [
+    'What is Nihar building?',
+    'Tell me about his experience',
+    'Which project should I explore?',
+];
+// A Messages-style conversation: Begu's greeting is the first incoming bubble.
 export default function Begu(props: WindowAppProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
@@ -49,88 +57,97 @@ export default function Begu(props: WindowAppProps) {
             if (!pending.current?.signal.aborted) setBusy(false);
         }
     }
+    // The greeting is shown, never sent: the server only sees real turns.
+    const transcript: Message[] = [
+        { role: 'assistant', content: GREETING },
+        ...messages,
+    ];
     return (
         <Window
             top={58}
-            left={Math.max(16, innerWidth / 2 - 300)}
-            width={Math.min(600, innerWidth - 32)}
-            height={Math.min(760, innerHeight - 145)}
+            left={Math.max(16, innerWidth / 2 - 280)}
+            width={Math.min(560, innerWidth - 32)}
+            height={Math.min(720, innerHeight - 145)}
             windowTitle="Begu"
             windowBarIcon="begu"
             closeWindow={props.onClose}
             minimizeWindow={props.onMinimize}
             onInteract={props.onInteract}
+            active={props.active}
             bottomLeftText="Nihar’s AI companion"
         >
-            <section className="begu-app">
-                <header className="begu-profile">
-                    <Icon icon="begu" size={54} />
-                    <div>
-                        <h1>Begu</h1>
-                        <p>A curious husky. A lot about Nihar.</p>
-                    </div>
-                    <span className="begu-status">
-                        <i />
-                        AI companion
-                    </span>
+            <section className="msg-app">
+                <header className="msg-contact">
+                    <img src={avatar} alt="" width={44} height={44} />
+                    <strong>Begu</strong>
+                    <span>Husky · knows Nihar’s work</span>
                 </header>
                 <div
-                    className="chat-scroll"
+                    className="msg-scroll"
                     aria-live="polite"
                     aria-relevant="additions text"
                 >
-                    {!messages.length && (
-                        <div className="chat-welcome">
-                            <h2>Hey. I’m Begu.</h2>
-                            <p>
-                                I keep Nihar company while he builds.
-                                <br />
-                                Ask me about his work, projects, or experience.
-                            </p>
-                            <div className="chat-prompts">
-                                {[
-                                    'What is Nihar building?',
-                                    'Tell me about his experience',
-                                    'Which project should I explore?',
-                                ].map((q) => (
-                                    <button key={q} onClick={() => ask(q)}>
-                                        {q}
-                                        <span>↗</span>
-                                    </button>
-                                ))}
+                    {transcript.map((m, i) => {
+                        const last =
+                            m.role === 'assistant' &&
+                            transcript[i + 1]?.role !== 'assistant' &&
+                            !(busy && i === transcript.length - 1);
+                        return (
+                            <div className={'msg-row ' + m.role} key={i}>
+                                {m.role === 'assistant' && (
+                                    <img
+                                        className="msg-face"
+                                        src={avatar}
+                                        alt=""
+                                        data-hidden={!last}
+                                    />
+                                )}
+                                <div className="msg-bubble">
+                                    <span className="sr-only">
+                                        {m.role === 'assistant'
+                                            ? 'Begu:'
+                                            : 'You:'}
+                                    </span>
+                                    {m.role === 'assistant' ? (
+                                        <ReactMarkdown>{m.content}</ReactMarkdown>
+                                    ) : (
+                                        m.content
+                                    )}
+                                </div>
                             </div>
+                        );
+                    })}
+                    {!messages.length && (
+                        <div className="msg-replies">
+                            {SUGGESTIONS.map((q) => (
+                                <button key={q} onClick={() => ask(q)}>
+                                    {q}
+                                </button>
+                            ))}
                         </div>
                     )}
-                    {messages.map((m, i) => (
-                        <div className={'chat-message ' + m.role} key={i}>
-                            <span>
-                                {m.role === 'assistant' ? 'Begu' : 'You'}
-                            </span>
-                            <div>
-                                {m.role === 'assistant' ? (
-                                    <ReactMarkdown>{m.content}</ReactMarkdown>
-                                ) : (
-                                    m.content
-                                )}
+                    {busy && (
+                        <div className="msg-row assistant" role="status">
+                            <img className="msg-face" src={avatar} alt="" />
+                            <div className="msg-bubble msg-typing">
+                                <span className="sr-only">Begu is typing</span>
+                                <i />
+                                <i />
+                                <i />
                             </div>
                         </div>
-                    ))}
-                    {busy && (
-                        <p className="chat-thinking" role="status">
-                            Begu is thinking<span>•••</span>
-                        </p>
                     )}
                     {error && (
-                        <div className="chat-error" role="alert">
+                        <div className="msg-error" role="alert">
                             <p>{error}</p>
                             <button
                                 onClick={() => {
-                                    const last = messages
+                                    const lastAsk = messages
                                         .filter((m) => m.role === 'user')
                                         .slice(-1)[0];
-                                    if (last) {
+                                    if (lastAsk) {
                                         setMessages(messages.slice(0, -1));
-                                        setInput(last.content);
+                                        setInput(lastAsk.content);
                                     }
                                     setError('');
                                 }}
@@ -142,20 +159,20 @@ export default function Begu(props: WindowAppProps) {
                     <div ref={end} />
                 </div>
                 <form
-                    className="chat-form"
+                    className="msg-compose"
                     onSubmit={(e) => {
                         e.preventDefault();
                         void ask(input);
                     }}
                 >
                     <label htmlFor="begu-message" className="sr-only">
-                        Ask Begu about Nihar
+                        Message Begu
                     </label>
                     <input
                         id="begu-message"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Ask me about Nihar…"
+                        placeholder="Message Begu"
                         maxLength={2000}
                         disabled={busy}
                         autoComplete="off"
@@ -165,12 +182,18 @@ export default function Begu(props: WindowAppProps) {
                         type="submit"
                         disabled={busy || !input.trim()}
                     >
-                        ↑
+                        <svg viewBox="0 0 16 16" aria-hidden="true">
+                            <path
+                                d="M8 13V3M3.5 7.5 8 3l4.5 4.5"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </svg>
                     </button>
                 </form>
-                <p className="chat-note">
-                    Ask about projects, experience, or getting in touch.
-                </p>
             </section>
         </Window>
     );

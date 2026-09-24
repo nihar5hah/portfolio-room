@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import Application from '../Application';
+import { occluded } from '../Utils/Occlusion';
 
 export const LAPTOP_SCREEN = { width: 1512, height: 982 };
 const MODEL_SCALE = 2540 / 35.482;
@@ -23,6 +24,9 @@ export default class Computer {
     screenAnchor = new THREE.Object3D();
     openness = 0;
     screenGlow = new THREE.PointLight('#b8d6ff', 0, 3800, 2);
+    root!: THREE.Object3D;
+    labelBlocked = false;
+    labelCheck = 0;
 
     constructor() {
         const model = this.app.resources.items.gltfModel.macbookModel.scene;
@@ -52,6 +56,7 @@ export default class Computer {
         root.scale.setScalar(MODEL_SCALE);
         root.position.set(-350, -395, 480);
         root.name = 'MacBook Pro M3';
+        this.root = root;
         root.traverse((part) => {
             if (!(part instanceof THREE.Mesh)) return;
             part.castShadow = !part.material.transparent;
@@ -108,7 +113,17 @@ export default class Computer {
             const y = ((1 - point.y) * innerHeight) / 2;
             label.style.left = Math.round(x) + 'px';
             label.style.top = Math.round(y) + 'px';
+            if (this.app.time.elapsed - this.labelCheck > 200) {
+                this.labelCheck = this.app.time.elapsed;
+                this.labelBlocked = occluded(
+                    this.app.scene,
+                    camera.instance,
+                    new THREE.Vector3(-350, -360, 480),
+                    this.root,
+                );
+            }
             label.hidden =
+                this.labelBlocked ||
                 open ||
                 this.openness > 0 ||
                 target === 'loading' ||

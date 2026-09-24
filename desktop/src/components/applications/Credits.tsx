@@ -18,6 +18,7 @@ export default function Credits(props: WindowAppProps) {
             closeWindow={props.onClose}
             minimizeWindow={props.onMinimize}
             onInteract={props.onInteract}
+            active={props.active}
             bottomLeftText="Built on a generous foundation"
         >
             <article className="credits-page">

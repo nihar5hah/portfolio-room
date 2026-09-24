@@ -11,6 +11,7 @@ export default function InterfaceUI() {
     const [mute, setMute] = useState(true);
     const [free, setFree] = useState(false);
     const [album, setAlbum] = useState<AlbumState | null>(null);
+    const [records, setRecords] = useState({ found: 0, total: 0 });
     useEffect(() => {
         const off = [
             bus.on('loadingScreenDone', () => setVisible(true)),
@@ -21,6 +22,7 @@ export default function InterfaceUI() {
             bus.on('leftMonitor', () => setInside(false)),
             bus.on('muteToggle', setMute),
             bus.on('albumChange', setAlbum),
+            bus.on('recordsFound', setRecords),
         ];
         return () => off.forEach((f) => f());
     }, []);
@@ -57,6 +59,20 @@ export default function InterfaceUI() {
             </button>
             <header>
                 <span className="room-name">Nihar Shah</span>
+                {records.found > 0 && !inside && (
+                    // Only appears once someone has found a hidden record.
+                    <span className="records-found" role="status">
+                        {records.found === records.total
+                            ? `All ${records.total} records found`
+                            : `Records found · ${records.found}/${records.total}`}
+                    </span>
+                )}
+                {inside && (
+                    // Inside the laptop the desktop renders at ~0.67 scale; offer it at full size.
+                    <a className="full-size-link" href="/desktop/">
+                        Open full size ↗
+                    </a>
+                )}
             </header>
             <footer>
                 {album ? (
@@ -97,12 +113,6 @@ export default function InterfaceUI() {
                     </div>
                 )}
                 <div className="room-controls">
-                    <button
-                        className="begu-control"
-                        onClick={() => new Application().world.decor.openBegu()}
-                    >
-                        Begu
-                    </button>
                     <button
                         onClick={() => {
                             bus.dispatch('muteToggle', !mute);

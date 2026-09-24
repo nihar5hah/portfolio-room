@@ -1106,199 +1106,6 @@ img {
     font-size: 12px;
     color: #6f8ba0;
 }
-.begu-app {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    background: #fbfcfd;
-}
-.begu-profile {
-    display: flex;
-    align-items: center;
-    gap: 13px;
-    padding: 20px 25px;
-    border-bottom: 1px solid #e8edf2;
-    flex-shrink: 0;
-}
-.begu-profile img {
-    image-rendering: auto !important;
-    border-radius: 14px;
-}
-.begu-profile > div {
-    display: block !important;
-}
-.begu-profile h1 {
-    font-size: 21px;
-    letter-spacing: -0.6px;
-}
-.begu-profile p {
-    font-size: 11px;
-    color: #8a969e;
-    margin-top: 4px;
-}
-.begu-status {
-    font: 9px Mono;
-    color: #8d9d9a;
-    margin-left: auto;
-    white-space: nowrap;
-}
-.begu-status i {
-    display: inline-block;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: #85aa91;
-    margin-right: 6px;
-}
-.chat-scroll {
-    display: block !important;
-    flex: 1;
-    overflow-y: auto;
-    padding: 24px;
-    min-height: 0;
-    scrollbar-width: thin;
-}
-.chat-welcome {
-    display: flex !important;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    padding: 10px 12px 20px;
-}
-.chat-welcome h2 {
-    font-size: 28px;
-    letter-spacing: -1px;
-    margin: 18px 0 13px;
-}
-.chat-welcome > p {
-    font-size: 13px;
-    color: #8b99a5;
-    line-height: 1.9;
-}
-.chat-prompts {
-    flex-direction: column;
-    gap: 9px;
-    width: 100%;
-    margin-top: 27px;
-}
-.chat-prompts button {
-    background: #f0f4f7;
-    border: 1px solid #e5ecf1;
-    border-radius: 9px;
-    padding: 13px 15px;
-    font-size: 12px;
-    text-align: left;
-    display: flex;
-    justify-content: space-between;
-    color: #68839a;
-}
-.chat-prompts button:hover {
-    background: #e8eff5;
-}
-.chat-message {
-    display: flex !important;
-    flex-direction: column;
-    align-items: flex-start;
-    margin-bottom: 22px;
-    gap: 7px;
-}
-.chat-message > span {
-    font-size: 9px;
-    color: #9eacb8;
-    margin-left: 3px;
-}
-.chat-message > div {
-    display: block !important;
-    max-width: 95%;
-    border-radius: 12px;
-    padding: 14px 17px;
-    background: #eff3f6;
-    font-size: 13px;
-    line-height: 1.85;
-    color: #577084;
-    overflow-wrap: anywhere;
-}
-.chat-message.user {
-    align-items: flex-end;
-}
-.chat-message.user > div {
-    background: #e1edf9;
-    color: #46749e;
-}
-.chat-message p {
-    margin-bottom: 10px;
-}
-.chat-message p:last-child {
-    margin: 0;
-}
-.chat-message ul,
-.chat-message ol {
-    padding-left: 18px;
-}
-.chat-message a {
-    color: #3478f6;
-    text-decoration: underline;
-}
-.chat-thinking {
-    font-size: 12px;
-    color: #92a3b1;
-    padding: 12px;
-}
-.chat-thinking span {
-    letter-spacing: 3px;
-    margin-left: 10px;
-}
-.chat-error {
-    display: block !important;
-    background: #f8eeec;
-    border-radius: 8px;
-    padding: 14px;
-    color: #ab7974;
-    font-size: 12px;
-    line-height: 1.7;
-}
-.chat-error button {
-    padding: 8px 0;
-    background: none;
-    border: 0;
-    text-decoration: underline;
-    color: #9c625d;
-}
-.chat-form {
-    display: flex;
-    gap: 10px;
-    padding: 10px 12px;
-    border: 1px solid #e0e8ee;
-    border-radius: 12px;
-    background: white;
-    margin: 0 20px;
-    flex-shrink: 0;
-}
-.chat-form input {
-    flex: 1;
-    min-width: 0;
-    background: none;
-    border: 0;
-    font-size: 12px;
-    outline: none;
-}
-.chat-form button {
-    width: 31px;
-    height: 31px;
-    border-radius: 9px;
-    border: 0;
-    background: #5e89b0;
-    color: white;
-    font-size: 20px;
-}
-.chat-note {
-    text-align: center;
-    font-size: 9px;
-    color: #a8b1b9;
-    padding: 12px 10px 15px;
-    flex-shrink: 0;
-}
 .word-game .site-button {
     border: 1px solid #d6e1e9;
     border-radius: 6px;
@@ -1340,9 +1147,6 @@ img {
     .home-intro {
         font-size: 14px;
     }
-    .begu-status {
-        display: none;
-    }
 }
 /* Keep native-sized traffic lights inside comfortable pointer targets. */
 .traffic-lights {
@@ -1376,21 +1180,6 @@ img {
 .traffic-button span {
     z-index: 1;
     line-height: 1;
-}
-.chat-message > div {
-    font-size: 14px;
-}
-.chat-welcome > p {
-    font-size: 14px;
-}
-.chat-prompts button {
-    font-size: 13px;
-}
-.chat-form input {
-    font-size: 13px;
-}
-.chat-note {
-    font-size: 10px;
 }
 
 .system-action {
@@ -2187,47 +1976,6 @@ img {
     .dock-app.small {
         display: none;
     }
-    .begu-profile {
-        padding: 16px;
-        gap: 10px;
-    }
-    .begu-profile img {
-        width: 43px !important;
-        height: 43px !important;
-    }
-    .begu-profile h1 {
-        font-size: 19px;
-    }
-    .begu-profile p {
-        font-size: 10px;
-    }
-    .chat-scroll {
-        padding: 19px 15px;
-    }
-    .chat-welcome {
-        padding: 0 5px 15px;
-    }
-    .chat-welcome h2 {
-        font-size: 26px;
-    }
-    .chat-welcome p {
-        font-size: 12px;
-    }
-    .chat-prompts button {
-        font-size: 11px;
-        padding: 12px;
-    }
-    .chat-message > div {
-        font-size: 12px;
-        padding: 12px 14px;
-        max-width: 97%;
-    }
-    .chat-form {
-        margin: 0 13px;
-    }
-    .chat-note {
-        font-size: 8px;
-    }
     .word-game .site-button {
         min-width: 24px !important;
         padding: 10px 4px !important;
@@ -2263,15 +2011,6 @@ img {
     .traffic-button {
         width: 24px;
         height: 24px;
-    }
-    .chat-message > div,
-    .chat-welcome > p,
-    .chat-prompts button,
-    .chat-form input {
-        font-size: 12px;
-    }
-    .chat-note {
-        font-size: 8px;
     }
 }
 @media (max-width: 700px) {
@@ -2484,4 +2223,222 @@ img {
     .social-links a {
         font-size: 11px;
     }
+}
+
+/* macOS squares a zoomed window's corners against the screen edges. */
+.os-window[data-maximized='true'] {
+    border-radius: 0;
+}
+.os-window[data-maximized='true'] .window-resize-handle {
+    display: none;
+}
+/* The Trash is taller than the squircle app icons, as in the real Dock. */
+.dock-trash {
+    cursor: default;
+}
+
+/* ── Begu, as a Messages conversation ─────────────────────────── */
+.msg-app {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    font-family: var(--mac-font);
+}
+.msg-contact {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 14px 16px 12px;
+    border-bottom: 0.5px solid rgba(0, 0, 0, 0.12);
+    background: rgba(246, 246, 248, 0.9);
+    flex-shrink: 0;
+}
+.msg-contact img {
+    border-radius: 50%;
+    object-fit: cover;
+    background: #d9dde3;
+    margin-bottom: 3px;
+}
+.msg-contact strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--mac-text);
+}
+.msg-contact span {
+    font-size: 11px;
+    color: var(--mac-muted);
+}
+.msg-scroll {
+    display: flex !important;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 18px 16px 10px;
+    scrollbar-width: thin;
+}
+.msg-row {
+    display: flex !important;
+    align-items: flex-end;
+    gap: 7px;
+    margin-bottom: 5px;
+}
+.msg-row.user {
+    justify-content: flex-end;
+}
+.msg-face {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #d9dde3;
+    flex: none;
+}
+.msg-face[data-hidden='true'] {
+    visibility: hidden;
+}
+.msg-bubble {
+    display: block !important;
+    max-width: 76%;
+    padding: 8px 13px;
+    border-radius: 19px;
+    font-size: 14px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    background: #e9e9eb;
+    color: #111;
+}
+.msg-row.user .msg-bubble {
+    background: var(--mac-blue);
+    color: #fff;
+}
+.msg-bubble p {
+    margin: 0 0 8px;
+}
+.msg-bubble p:last-child {
+    margin: 0;
+}
+.msg-bubble ul,
+.msg-bubble ol {
+    padding-left: 18px;
+    margin: 4px 0 8px;
+}
+.msg-bubble a {
+    color: inherit;
+    text-decoration: underline;
+}
+.msg-replies {
+    display: flex !important;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    margin-top: 8px;
+}
+.msg-replies button {
+    font: 13px var(--mac-font);
+    color: var(--mac-blue);
+    background: #fff;
+    border: 1px solid rgba(10, 132, 255, 0.45);
+    border-radius: 999px;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+.msg-replies button:hover {
+    background: rgba(10, 132, 255, 0.07);
+}
+.msg-typing {
+    display: flex !important;
+    gap: 4px;
+    padding: 12px 14px;
+}
+.msg-typing i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #8e8e93;
+    animation: msg-typing 1.2s infinite ease-in-out;
+}
+.msg-typing i:nth-child(3) {
+    animation-delay: 0.15s;
+}
+.msg-typing i:nth-child(4) {
+    animation-delay: 0.3s;
+}
+@keyframes msg-typing {
+    0%,
+    60%,
+    100% {
+        opacity: 0.35;
+        transform: translateY(0);
+    }
+    30% {
+        opacity: 1;
+        transform: translateY(-2px);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .msg-typing i {
+        animation: none;
+    }
+}
+.msg-error {
+    display: block !important;
+    align-self: center;
+    text-align: center;
+    font-size: 12px;
+    color: #c0392b;
+    margin: 8px 0;
+}
+.msg-error p {
+    margin: 0 0 4px;
+}
+.msg-error button {
+    font: 12px var(--mac-font);
+    color: var(--mac-blue);
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+.msg-compose {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 6px 14px 14px;
+    padding: 4px 4px 4px 14px;
+    border: 1px solid rgba(0, 0, 0, 0.14);
+    border-radius: 999px;
+    flex-shrink: 0;
+}
+.msg-compose input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: none;
+    background: none;
+    font: 14px var(--mac-font);
+    color: var(--mac-text);
+}
+.msg-compose button {
+    width: 26px;
+    height: 26px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    background: var(--mac-blue);
+    color: #fff;
+    cursor: pointer;
+}
+.msg-compose button:disabled {
+    background: #c7c7cc;
+    cursor: default;
+}
+.msg-compose svg {
+    width: 14px;
+    height: 14px;
 }

@@ -140,12 +140,19 @@ test('licensed album playback is quiet, shuffled, gesture-started, muteable and 
     album.toggle();
     assert.equal(album.error, false);
     assert.equal(album.audio.paused, false);
+    const before = album.index;
+    album.audio.rejectPlay = true; // a broken file never reaches 'playing'
+    album.audio.onerror();
+    assert.equal(album.error, false, 'a missing track skips instead of stopping');
+    assert.equal(album.index, (before + 1) % 3, 'skips to the next song');
+    album.audio.onerror();
     album.audio.onerror();
     assert.equal(
         album.error,
         true,
-        'missing track surfaces an error instead of skipping the album',
+        'only a library where every track fails stops and offers retry',
     );
+    album.audio.rejectPlay = false;
     album.toggle();
     assert.equal(album.error, false);
     assert.ok(

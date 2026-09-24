@@ -13,6 +13,8 @@ type TextureResource = {
     type: 'texture';
     path: string;
     optional?: boolean;
+    /** Placeholder at once, real image after the room is ready: never blocks Enter. */
+    lazy?: boolean;
 };
 
 type CubeTextureResource = {

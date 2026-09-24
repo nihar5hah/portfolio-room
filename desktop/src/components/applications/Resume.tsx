@@ -15,6 +15,7 @@ export default function Resume(props: WindowAppProps) {
             closeWindow={props.onClose}
             minimizeWindow={props.onMinimize}
             onInteract={props.onInteract}
+            active={props.active}
             bottomLeftText="Résumé"
         >
             <section className="resume-viewer" aria-label="Résumé preview">

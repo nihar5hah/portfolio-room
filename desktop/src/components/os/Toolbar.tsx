@@ -211,9 +211,7 @@ export default function Toolbar({
                         </button>
                     );
                 })}
-                {Object.entries(windows).some(
-                    ([, w]) => !PINNED.some((a) => a.name === w.name),
-                ) && <span className="dock-divider" />}
+                <span className="dock-divider" />
                 {Object.entries(windows)
                     .filter(([, w]) => !PINNED.some((a) => a.name === w.name))
                     .map(([key, w]) => (
@@ -232,6 +230,11 @@ export default function Toolbar({
                             <i />
                         </button>
                     ))}
+                {/* Trash sits past the divider as in macOS; it has nothing to open here. */}
+                <span className="dock-app dock-trash" aria-hidden="true">
+                    <Icon icon="trash" size={52} />
+                    <span className="dock-tooltip">Trash</span>
+                </span>
             </footer>
         </>
     );

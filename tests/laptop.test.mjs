@@ -62,7 +62,9 @@ test('shipped MacBook closes above the base, opens with approach, and survives r
                           }
                       },
                   }
-                : require(name),
+                : name === '../Utils/Occlusion'
+                  ? { occluded: () => false }
+                  : require(name),
         exports,
     );
     const computer = new exports.default();

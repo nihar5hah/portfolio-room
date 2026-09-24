@@ -22,6 +22,8 @@ export const ALBUMS = {
     fouryou: 'Four You',
 };
 type Track = { title: string; src: string; album: keyof typeof ALBUMS };
+// Guards against a runaway manifest; raise it deliberately if the library grows.
+export const MAX_TRACKS = 500;
 export type AlbumState = {
     title: string;
     album: keyof typeof ALBUMS;
@@ -40,6 +42,7 @@ export default class AlbumAudio {
     entered = false;
     muted = true;
     error = false;
+    failures = 0; // consecutive tracks that failed to load since the last one played
 
     constructor() {
         this.audio.id = 'album-audio';
@@ -47,10 +50,17 @@ export default class AlbumAudio {
         this.audio.preload = 'none';
         this.audio.volume = 0.06;
         document.body.append(this.audio);
-        this.audio.onplaying = () => this.publish();
+        this.audio.onplaying = () => {
+            this.failures = 0;
+            this.publish();
+        };
         this.audio.onpause = () => this.publish();
         this.audio.onended = () => this.next();
+        // A missing or undecodable file skips to the next song; only a library
+        // where every track fails stops and offers retry.
         this.audio.onerror = () => {
+            this.failures++;
+            if (this.failures < this.tracks.length) return this.next(true);
             this.error = true;
             this.publish();
         };
@@ -75,12 +85,14 @@ export default class AlbumAudio {
             });
             if (!response.ok) throw new Error('Library unavailable');
             const data = await response.json();
-            if (
-                !Array.isArray(data.tracks) ||
-                !data.tracks.length ||
-                data.tracks.length > 128
-            )
+            if (!Array.isArray(data.tracks) || !data.tracks.length)
                 throw new Error('Invalid library');
+            if (data.tracks.length > MAX_TRACKS) {
+                console.error(
+                    `Music library has ${data.tracks.length} tracks; the limit is ${MAX_TRACKS} (AlbumAudio.ts).`,
+                );
+                throw new Error('Library too large');
+            }
             this.tracks = data.tracks.map((track: Track) => {
                 if (
                     typeof track.title !== 'string' ||
@@ -133,6 +145,7 @@ export default class AlbumAudio {
         if (!this.entered || this.muted || !this.tracks.length) return;
         if (this.error) this.audio.src = this.tracks[this.index].src;
         this.error = false;
+        this.failures = 0;
         void this.audio.play().catch(() => {
             if (!this.muted) {
                 this.error = true;
@@ -146,16 +159,34 @@ export default class AlbumAudio {
         else this.audio.pause();
     }
 
-    next() {
+    next(skipping = false) {
         if (!this.tracks.length) return;
-        const resume = !this.audio.paused || this.audio.ended;
+        const resume = skipping || !this.audio.paused || this.audio.ended;
         const previous = this.tracks[this.index].src;
         this.index = (this.index + 1) % this.tracks.length;
         if (this.index === 0) this.shuffle(previous);
         this.error = false;
         this.audio.src = this.tracks[this.index].src;
         this.publish();
-        if (resume) this.play();
+        if (resume && !skipping) this.play();
+        else if (resume && this.entered && !this.muted)
+            void this.audio.play().catch(() => undefined); // keep the failure count
+    }
+
+    /** Jump to the next queued track from one album (room rug and records). */
+    playAlbum(album: string) {
+        if (!this.tracks.length) return;
+        for (let step = 1; step <= this.tracks.length; step++) {
+            const i = (this.index + step) % this.tracks.length;
+            if (this.tracks[i].album !== album) continue;
+            this.index = i;
+            this.error = false;
+            this.audio.src = this.tracks[i].src;
+            this.publish();
+            bus.dispatch('muteToggle', false);
+            bus.dispatch('albumPicked', album);
+            return;
+        }
     }
 
     publish() {

@@ -9,6 +9,7 @@ import CoffeeSteam from './CoffeeSteam';
 import Cursor from './Cursor';
 import Hitboxes from './Hitboxes';
 import AudioManager from '../Audio/AudioManager';
+import Interactables from './Interactables';
 export default class World {
     application: Application;
     scene: THREE.Scene;
@@ -22,6 +23,7 @@ export default class World {
     coffeeSteam: CoffeeSteam;
     cursor: Cursor;
     audioManager: AudioManager;
+    interactables: Interactables;
 
     constructor() {
         this.application = new Application();
@@ -36,6 +38,8 @@ export default class World {
             this.monitorScreen = new MonitorScreen();
             this.coffeeSteam = new CoffeeSteam();
             this.audioManager = new AudioManager();
+            const room = this.scene.getObjectByName('Nihar’s Barça den');
+            if (room) this.interactables = new Interactables(room);
             const converted = new Set<THREE.Material>();
             this.scene.traverse((part) => {
                 if (!(part instanceof THREE.Mesh)) return;

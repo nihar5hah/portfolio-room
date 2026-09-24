@@ -5,7 +5,7 @@
     "dev": "webpack serve --config bundler/webpack.dev.js",
     "build": "webpack --config bundler/webpack.prod.js",
     "test": "node --test tests/*.test.cjs tests/*.test.mjs",
-    "lint": "tsc --noEmit -p tsconfig.json",
+    "lint": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p desktop/tsconfig.json",
     "preview": "node --env-file-if-exists=.env.local server/index.mjs"
   },
   "dependencies": {

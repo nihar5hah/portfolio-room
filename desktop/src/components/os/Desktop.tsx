@@ -63,6 +63,12 @@ const Desktop: React.FC<DesktopProps> = (props) => {
     const [shortcuts, setShortcuts] = useState<DesktopShortcutProps[]>([]);
 
     const [shutdown, setShutdown] = useState(false);
+    // Clicking bare wallpaper leaves no window active, like clicking the macOS desktop.
+    const [desktopFocused, setDesktopFocused] = useState(false);
+    const visible = Object.entries(windows).filter(([, w]) => !w.minimized);
+    const topKey = visible.length
+        ? visible.reduce((a, b) => (b[1].zIndex > a[1].zIndex ? b : a))[0]
+        : null;
     const [numShutdowns, setNumShutdowns] = useState(1);
 
     useEffect(() => {
@@ -93,11 +99,13 @@ const Desktop: React.FC<DesktopProps> = (props) => {
             });
         });
 
+        const requested = APPLICATIONS[
+            new URLSearchParams(location.search).get('app') || ''
+        ]?.name;
         newShortcuts.forEach((shortcut) => {
             if (
                 shortcut.shortcutName === 'My Portfolio' ||
-                (shortcut.shortcutName === 'Begu' &&
-                    new URLSearchParams(location.search).get('app') === 'begu')
+                shortcut.shortcutName === requested
             ) {
                 shortcut.onOpen();
             }
@@ -116,13 +124,27 @@ const Desktop: React.FC<DesktopProps> = (props) => {
             shortcuts
                 .find((shortcut) => shortcut.shortcutName === 'Résumé')
                 ?.onOpen();
+        // The room asks for an app when a visitor clicks an object (turntable,
+        // bookshelf, jerseys, Begu). Route is a portfolio page such as /notes.
+        const openApp = (key: string, route?: string) => {
+            if (typeof route === 'string' && /^\/[a-z-/]*$/.test(route))
+                location.hash = route;
+            shortcuts
+                .find((s) => s.shortcutName === APPLICATIONS[key]?.name)
+                ?.onOpen();
+        };
         const receive = (event: MessageEvent) => {
             if (
-                event.origin === location.origin &&
-                event.source === window.parent &&
-                event.data?.type === 'openBegu'
+                event.origin !== location.origin ||
+                event.source !== window.parent
             )
-                open();
+                return;
+            if (event.data?.type === 'openBegu') open();
+            else if (
+                event.data?.type === 'openApp' &&
+                Object.prototype.hasOwnProperty.call(APPLICATIONS, event.data.app)
+            )
+                openApp(event.data.app, event.data.route);
         };
         window.addEventListener('message', receive);
         window.addEventListener('openBegu', open);
@@ -133,6 +155,20 @@ const Desktop: React.FC<DesktopProps> = (props) => {
             window.removeEventListener('openResume', openResume);
         };
     }, [shortcuts]);
+
+    // Standalone only: inside the room, Escape belongs to the camera (Step back).
+    useEffect(() => {
+        if (window.parent !== window) return;
+        const close = (event: KeyboardEvent) => {
+            if (event.key !== 'Escape' || !topKey || desktopFocused) return;
+            if (document.querySelector('#workspace-menu')) return; // menu closes first
+            const field = (event.target as HTMLElement)?.closest?.('input, textarea');
+            if (field && (field as HTMLInputElement).value) return;
+            removeWindow(topKey);
+        };
+        window.addEventListener('keydown', close);
+        return () => window.removeEventListener('keydown', close);
+    }, [topKey, desktopFocused]);
 
     const rebootDesktop = useCallback(() => {
         setWindows({});
@@ -184,6 +220,7 @@ const Desktop: React.FC<DesktopProps> = (props) => {
 
     const onWindowInteract = useCallback(
         (key: string) => {
+            setDesktopFocused(false);
             setWindows((prevWindows) => ({
                 ...prevWindows,
                 [key]: {
@@ -209,6 +246,7 @@ const Desktop: React.FC<DesktopProps> = (props) => {
 
     const addWindow = useCallback(
         (key: string, element: JSX.Element) => {
+            setDesktopFocused(false);
             setWindows((prevState) => ({
                 ...prevState,
                 [key]: {
@@ -229,7 +267,18 @@ const Desktop: React.FC<DesktopProps> = (props) => {
     );
 
     return !shutdown ? (
-        <div style={styles.desktop} className="os-desktop">
+        <div
+            style={styles.desktop}
+            className="os-desktop"
+            onMouseDown={(event) => {
+                const target = event.target as HTMLElement;
+                if (
+                    target === event.currentTarget ||
+                    target.classList.contains('desktop-wallpaper')
+                )
+                    setDesktopFocused(true);
+            }}
+        >
             <div className="desktop-wallpaper" aria-hidden="true">
                 <span>
                     Make room
@@ -253,6 +302,7 @@ const Desktop: React.FC<DesktopProps> = (props) => {
                     >
                         {React.cloneElement(element, {
                             key,
+                            active: !desktopFocused && key === topKey,
                             onInteract: () => onWindowInteract(key),
                             onClose: () => removeWindow(key),
                         })}

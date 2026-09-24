@@ -13,7 +13,8 @@ import computerSmall from './computerSmall.png';
 import myComputer from './myComputer.png';
 import showcaseIcon from './mac-finder.png';
 import doomIcon from './doomIcon.png';
-import henordleIcon from './mac-chess.png';
+import henordleIcon from './mac-textedit.png';
+import trash from './mac-trash.png';
 import credits from './mac-settings.png';
 import volumeOn from './volumeOn.png';
 import volumeOff from './volumeOff.png';
@@ -43,6 +44,7 @@ const icons = {
     credits: credits,
     scrabbleIcon: scrabbleIcon,
     henordleIcon: henordleIcon,
+    trash,
     close: close,
     windowGameIcon: windowGameIcon,
     windowExplorerIcon: windowExplorerIcon,

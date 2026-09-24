@@ -5,7 +5,26 @@ import Application from '../Application';
 import { ALBUMS } from '../Audio/AlbumAudio';
 import BakedModel from '../Utils/BakedModel';
 import MatchBoard from './MatchBoard';
+type SkyPhase = 'day' | 'dusk' | 'night';
+const SKY: Record<
+    SkyPhase,
+    { top: string; bottom: string; orb: string; city: [string, string]; light: string; strength: number }
+> = {
+    day: { top: '#5f8fc9', bottom: '#b9d2ea', orb: '#fff6de', city: ['#4d5d70', '#5a6b7e'], light: '#fff1d6', strength: 1.7 },
+    dusk: { top: '#1f2b4d', bottom: '#d98b5f', orb: '#ffb877', city: ['#1a2130', '#222a3b'], light: '#f0a878', strength: 1.3 },
+    night: { top: '#142335', bottom: '#142335', orb: '#ddcaa0', city: ['#0b121d', '#101a27'], light: '#9fb8e6', strength: 1.4 },
+};
+export function skyPhase(hour: number): SkyPhase {
+    if (hour >= 7 && hour < 17) return 'day';
+    if ((hour >= 17 && hour < 19) || (hour >= 5 && hour < 7)) return 'dusk';
+    return 'night';
+}
+
 export default class Environment {
+    paintSky: (phase: SkyPhase) => void = () => undefined;
+    skyShown: SkyPhase | null = null;
+    moon: THREE.SpotLight;
+    lamp: THREE.PointLight;
     matchBoard: MatchBoard;
     clockMap: THREE.CanvasTexture;
     clockMinute = -1;
@@ -234,12 +253,15 @@ export default class Environment {
         front.position.z = 18500;
         front.rotation.y = Math.PI;
         room.add(front);
+        const CEILING = FLOOR + 13900;
         const ceiling = new THREE.Mesh(
             new THREE.PlaneGeometry(36000, 25000),
             charcoal,
         );
         ceiling.name = 'Ceiling';
-        ceiling.position.set(0, FLOOR + 16000, 6000);
+        // Just above the highest authored camera point (loading shot, y 10000):
+        // lower would cut through the original camera sweep.
+        ceiling.position.set(0, CEILING, 6000);
         ceiling.rotation.x = Math.PI / 2;
         room.add(ceiling);
         box(36000, 180, 80, black, 0, FLOOR + 90, BACK + 40);
@@ -247,11 +269,23 @@ export default class Environment {
         for (const side of [-1, 1])
             box(80, 180, 25000, black, side * 17960, FLOOR + 90, 6000);
         // Cornice where the walls meet the ceiling reads as a finished room, not a box.
-        const CORNICE = FLOOR + 16000 - 110;
+        const CORNICE = CEILING - 110;
         box(36000, 220, 220, black, 0, CORNICE, BACK + 110).name = 'Cornice';
         box(36000, 220, 220, black, 0, CORNICE, 18390);
         for (const side of [-1, 1])
             box(220, 220, 25000, black, side * 17890, CORNICE, 6000);
+        // A picture rail above the door, transom and window, lit by a dim warm
+        // cove line, gives the upper wall an edge instead of an empty dark band.
+        const RAIL = 6900;
+        const cove = glow('#7c5f43');
+        box(36000, 90, 70, wood, 0, RAIL, BACK + 35).name = 'Picture rail';
+        box(36000, 16, 24, cove, 0, RAIL + 60, BACK + 60).name = 'Cove light';
+        box(36000, 90, 70, wood, 0, RAIL, 18465);
+        box(36000, 16, 24, cove, 0, RAIL + 60, 18440);
+        for (const side of [-1, 1]) {
+            box(70, 90, 25000, wood, side * 17965, RAIL, 6000);
+            box(24, 16, 25000, cove, side * 17940, RAIL + 60, 6000);
+        }
         // The slatted wall brings texture without making the space bright.
         for (let x = -11000; x <= -2400; x += 180)
             box(55, 6800, 90, wood, x, 385, BACK + 50);
@@ -345,7 +379,7 @@ export default class Environment {
         const diffuser = cylinder(390, 12, glow('#ffe4ad'), 10100, 325, -3700);
         diffuser.name = 'Lamp diffuser';
         diffuser.castShadow = false;
-        const lamp = new THREE.PointLight('#ffb877', 3.2, 14500, 2);
+        const lamp = (this.lamp = new THREE.PointLight('#ffb877', 3.2, 14500, 2));
         lamp.name = 'Warm floor lamp';
         // Keep the emitter inside the shade, clear of the opaque central pole.
         lamp.position.set(10260, 550, -3700);
@@ -382,9 +416,11 @@ export default class Environment {
 
         // Bookshelf: technical books, records and a football on the lower shelf.
         for (const x of [-9800, -5900])
-            box(90, 5100, 1000, black, x, FLOOR + 2550, -5240);
+            box(90, 5100, 1000, black, x, FLOOR + 2550, -5240).name =
+                'Bookshelf';
         for (const y of [250, 1650, 3100, 4700])
-            box(4000, 80, 1000, wood, -7850, FLOOR + y, -5240);
+            box(4000, 80, 1000, wood, -7850, FLOOR + y, -5240).name =
+                'Bookshelf';
         const titles = [
             'SYSTEMS',
             'DEEP LEARNING',
@@ -396,7 +432,8 @@ export default class Environment {
             const x = -9550 + i * 225;
             const h = 880 + (i % 3) * 70;
             const m = [blue, red, cream, black, fabric][i % 5];
-            box(180, h, 660, m, x, FLOOR + 3150 + h / 2, -5200);
+            box(180, h, 660, m, x, FLOOR + 3150 + h / 2, -5200).name =
+                'Bookshelf';
             if (i % 2 === 0) {
                 const t = label(
                     titles[i % 5],
@@ -745,29 +782,38 @@ export default class Environment {
         sky.width = 1024;
         sky.height = 768;
         const skyContext = sky.getContext('2d')!;
-        skyContext.fillStyle = '#142335';
-        skyContext.fillRect(0, 0, 1024, 768);
-        skyContext.fillStyle = '#ddcaa0';
-        skyContext.beginPath();
-        skyContext.arc(770, 130, 36, 0, Math.PI * 2);
-        skyContext.fill();
-        for (let i = 0; i < 18; i++) {
-            const x = i * 62,
-                height = 130 + ((i * 73) % 230);
-            skyContext.fillStyle = i % 2 ? '#0b121d' : '#101a27';
-            skyContext.fillRect(x, 768 - height, 70, height);
-            skyContext.fillStyle = '#ad8552';
-            for (let row = 0; row < 6; row++)
-                for (let col = 0; col < 3; col++)
-                    if ((row + col + i) % 3 === 0)
-                        skyContext.fillRect(
-                            x + col * 18 + 9,
-                            785 - height + row * 38,
-                            5,
-                            9,
-                        );
-        }
         const skyMap = new THREE.CanvasTexture(sky);
+        // The view outside follows the visitor's own clock; the room stays dark.
+        this.paintSky = (phase: SkyPhase) => {
+            const look = SKY[phase];
+            const gradient = skyContext.createLinearGradient(0, 0, 0, 768);
+            gradient.addColorStop(0, look.top);
+            gradient.addColorStop(1, look.bottom);
+            skyContext.fillStyle = gradient;
+            skyContext.fillRect(0, 0, 1024, 768);
+            skyContext.fillStyle = look.orb;
+            skyContext.beginPath();
+            skyContext.arc(770, phase === 'dusk' ? 470 : 130, phase === 'day' ? 44 : 36, 0, Math.PI * 2);
+            skyContext.fill();
+            for (let i = 0; i < 18; i++) {
+                const x = i * 62,
+                    height = 130 + ((i * 73) % 230);
+                skyContext.fillStyle = i % 2 ? look.city[0] : look.city[1];
+                skyContext.fillRect(x, 768 - height, 70, height);
+                if (phase === 'day') continue; // no lit windows in daylight
+                skyContext.fillStyle = '#ad8552';
+                for (let row = 0; row < 6; row++)
+                    for (let col = 0; col < 3; col++)
+                        if ((row + col + i) % (phase === 'dusk' ? 5 : 3) === 0)
+                            skyContext.fillRect(
+                                x + col * 18 + 9,
+                                785 - height + row * 38,
+                                5,
+                                9,
+                            );
+            }
+            skyMap.needsUpdate = true;
+        };
         skyMap.encoding = THREE.sRGBEncoding;
         window.add(
             new THREE.Mesh(
@@ -805,6 +851,7 @@ export default class Environment {
         moon.position.set(-20500, 9800, 6200);
         moon.target.position.set(-9500, FLOOR, 7200);
         room.add(moon, moon.target);
+        this.moon = moon;
         box(1300, 570, 6400, wood, -16700, FLOOR + 500, 6200, 90);
         box(1220, 180, 6100, fabric, -16700, FLOOR + 875, 6200, 100);
 
@@ -1354,7 +1401,7 @@ export default class Environment {
 
         const fan = new THREE.Group();
         fan.name = 'Ceiling fan';
-        fan.position.set(1300, 10500, 5500);
+        fan.position.set(1300, CEILING - 2485, 5500);
         const hub = cylinder(420, 260, cream, 0, 0, 0);
         fan.add(hub);
         for (let i = 0; i < 3; i++) {
@@ -1371,7 +1418,9 @@ export default class Environment {
             blade.rotation.y = (-i * Math.PI * 2) / 3;
             fan.add(blade);
         }
-        cylinder(90, 2300, cream, 1300, 11700, 5500);
+        // Down-rod reaches the ceiling plate so the fan hangs from something.
+        cylinder(90, 2400, cream, 1300, CEILING - 1200, 5500);
+        cylinder(360, 120, cream, 1300, CEILING - 60, 5500);
         room.add(fan);
         // A broad-leaf plant softens the window corner.
         cylinder(600, 700, cream, -14600, FLOOR + 350, 13000);
@@ -1449,6 +1498,15 @@ export default class Environment {
             )
                 this.record.rotation.y -=
                     ((Math.min(app.time.delta, 50) / 1000) * Math.PI * 10) / 9;
+        }
+        const phase = skyPhase(new Date().getHours());
+        if (phase !== this.skyShown && this.moon) {
+            this.skyShown = phase;
+            this.paintSky(phase);
+            this.moon.color.set(SKY[phase].light);
+            this.moon.intensity = SKY[phase].strength;
+            // Daylight outside: the reading lamp is on, just less needed.
+            this.lamp.intensity = phase === 'day' ? 2.4 : 3.2;
         }
         const minute = Math.floor(Date.now() / 60000);
         if (this.clockMap && this.clockMinute !== minute) {

@@ -41,7 +41,7 @@
    "album": "mbdtf"
   },
   {
-   "title": "HIGHEST IN THE ROOM (REMIX) [feat. ROSAL\u00cdA & Lil Baby]",
+   "title": "HIGHEST IN THE ROOM (REMIX)",
    "album": "jackboys",
    "src": "/audio/jackboys/01.mp3"
   },
@@ -56,32 +56,32 @@
    "src": "/audio/jackboys/03.mp3"
   },
   {
-   "title": "OUT WEST (feat. Young Thug)",
+   "title": "OUT WEST",
    "album": "jackboys",
    "src": "/audio/jackboys/05.mp3"
   },
   {
-   "title": "WHAT TO DO? (feat. Don Toliver)",
+   "title": "WHAT TO DO?",
    "album": "jackboys",
    "src": "/audio/jackboys/06.mp3"
   },
   {
-   "title": "3500 (feat. Future & 2 Chainz)",
+   "title": "3500",
    "album": "rodeo",
    "src": "/audio/rodeo/03.m4a"
   },
   {
-   "title": "90210 (feat. Kacy Hill)",
+   "title": "90210",
    "album": "rodeo",
    "src": "/audio/rodeo/05.m4a"
   },
   {
-   "title": "Pray 4 Love (feat. The Weeknd)",
+   "title": "Pray 4 Love",
    "album": "rodeo",
    "src": "/audio/rodeo/06.m4a"
   },
   {
-   "title": "Nightcrawler (feat. Swae Lee & Chief Keef)",
+   "title": "Nightcrawler",
    "album": "rodeo",
    "src": "/audio/rodeo/07.m4a"
   },
@@ -196,7 +196,7 @@
    "album": "yeezus"
   },
   {
-   "title": "range brothers (feat. Kendrick Lamar)",
+   "title": "range brothers",
    "src": "/audio/melodicblue/01-range-brothers-feat-kendrick-lamar.mp3",
    "album": "melodicblue"
   },
@@ -206,12 +206,12 @@
    "album": "melodicblue"
   },
   {
-   "title": "cocoa (feat. Don Toliver)",
+   "title": "cocoa",
    "src": "/audio/melodicblue/03-cocoa-feat-don-toliver.mp3",
    "album": "melodicblue"
   },
   {
-   "title": "family ties (feat. Kendrick Lamar)",
+   "title": "family ties",
    "src": "/audio/melodicblue/04-family-ties-feat-kendrick-lamar.mp3",
    "album": "melodicblue"
   },
@@ -231,7 +231,7 @@
    "album": "melodicblue"
   },
   {
-   "title": "lost souls (feat. Brent Faiyaz)",
+   "title": "lost souls",
    "src": "/audio/melodicblue/08-lost-souls-feat-brent-faiyaz.mp3",
    "album": "melodicblue"
   },
@@ -241,7 +241,7 @@
    "album": "melodicblue"
   },
   {
-   "title": "killstreaks (feat. Don Toliver & PinkPantheress)",
+   "title": "killstreaks",
    "src": "/audio/melodicblue/10-killstreaks-feat-don-toliver-pinkpantheress.mp3",
    "album": "melodicblue"
   },
@@ -376,7 +376,7 @@
    "album": "honestly"
   },
   {
-   "title": "Jimmy Cooks (feat. 21 Savage)",
+   "title": "Jimmy Cooks",
    "src": "/audio/honestly/06-jimmy-cooks-feat-21-savage.mp3",
    "album": "honestly"
   },
@@ -406,7 +406,7 @@
    "album": "livelove"
   },
   {
-   "title": "Holy Ghost (feat. Joe Fox)",
+   "title": "Holy Ghost",
    "src": "/audio/atlonglast/01-holy-ghost-feat-joe-fox.mp3",
    "album": "atlonglast"
   },
@@ -421,17 +421,17 @@
    "album": "atlonglast"
   },
   {
-   "title": "Jukebox Joints (feat. Joe Fox, Kanye West)",
+   "title": "Jukebox Joints",
    "src": "/audio/atlonglast/04-jukebox-joints-feat-joe-fox-kanye-west.mp3",
    "album": "atlonglast"
   },
   {
-   "title": "Pharsyde (feat. Joe Fox)",
+   "title": "Pharsyde",
    "src": "/audio/atlonglast/05-pharsyde-feat-joe-fox.mp3",
    "album": "atlonglast"
   },
   {
-   "title": "Everyday (feat. Rod Stewart, Miguel & Mark Ronson)",
+   "title": "Everyday",
    "src": "/audio/atlonglast/06-everyday-feat-rod-stewart-miguel-mark-ronson.mp3",
    "album": "atlonglast"
   },
@@ -456,7 +456,7 @@
    "album": "utopia"
   },
   {
-   "title": "MELTDOWN (feat. Drake)",
+   "title": "MELTDOWN",
    "src": "/audio/utopia/05-meltdown-feat-drake.mp3",
    "album": "utopia"
   },
@@ -466,17 +466,17 @@
    "album": "utopia"
   },
   {
-   "title": "CIRCUS MAXIMUS (feat. The Weeknd & Swae Lee)",
+   "title": "CIRCUS MAXIMUS",
    "src": "/audio/utopia/07-circus-maximus-feat-the-weeknd-swae-lee.mp3",
    "album": "utopia"
   },
   {
-   "title": "TELEKINESIS (feat. SZA & Future)",
+   "title": "TELEKINESIS",
    "src": "/audio/utopia/08-telekinesis-feat-sza-future.mp3",
    "album": "utopia"
   },
   {
-   "title": "TIL FURTHER NOTICE (feat. James Blake & 21 Savage)",
+   "title": "TIL FURTHER NOTICE",
    "src": "/audio/utopia/09-til-further-notice-feat-james-blake-21-savage.mp3",
    "album": "utopia"
   },

@@ -64,7 +64,8 @@ function describe(pathname: string): [string, string] {
 function Explorer(props: WindowAppProps) {
     const { initWidth, initHeight } = useInitialWindowSize({ margin: 120 });
     const width = Math.min(1180, initWidth);
-    const height = Math.max(420, Math.min(760, initHeight));
+    // ~40px of air above the dock, like a real window left where macOS opens it.
+    const height = Math.max(420, Math.min(760, initHeight - 30));
     const [title, status] = describe(useLocation().pathname);
     return (
         <Window
@@ -76,6 +77,7 @@ function Explorer(props: WindowAppProps) {
             windowBarIcon="windowExplorerIcon"
             closeWindow={props.onClose}
             onInteract={props.onInteract}
+            active={props.active}
             minimizeWindow={props.onMinimize}
             bottomLeftText={status}
         >

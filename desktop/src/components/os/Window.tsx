@@ -16,6 +16,7 @@ export interface WindowProps {
     windowBarColor?: string;
     windowBarIcon?: IconName;
     onWidthChange?: (width: number) => void;
+    active?: boolean;
     onHeightChange?: (height: number) => void;
 }
 
@@ -37,7 +38,7 @@ const Window: React.FC<WindowProps> = (props) => {
     const [contentWidth, setContentWidth] = useState(props.width);
     const [contentHeight, setContentHeight] = useState(props.height);
 
-    const [windowActive, setWindowActive] = useState(true);
+    const windowActive = props.active ?? true;
 
     const [isMaximized, setIsMaximized] = useState(false);
     const [preMaxSize, setPreMaxSize] = useState({
@@ -236,21 +237,9 @@ const Window: React.FC<WindowProps> = (props) => {
         }
     };
 
-    useEffect(() => {
-        // Active follows the last press: inside this window keeps it lit, anywhere
-        // else (another window, dock, menu bar) dims it. Checking the target
-        // directly avoids a flag that focus events could re-arm out of order.
-        const onPress = (event: MouseEvent) =>
-            setWindowActive(
-                windowRef.current?.contains(event.target as Node) ?? false,
-            );
-        window.addEventListener('mousedown', onPress);
-        return () => window.removeEventListener('mousedown', onPress);
-    }, []);
 
     const onWindowInteract = () => {
         props.onInteract();
-        setWindowActive(true);
     };
 
     return (
@@ -260,6 +249,7 @@ const Window: React.FC<WindowProps> = (props) => {
                 role="region"
                 tabIndex={-1}
                 data-active={windowActive}
+                data-maximized={isMaximized}
                 aria-label={props.windowTitle}
                 style={{ position: 'absolute', width, height, top, left }}
                 ref={windowRef}
