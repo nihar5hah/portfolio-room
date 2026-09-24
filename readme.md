@@ -30,6 +30,14 @@ The server reads `GEMINI_API_KEY` from the environment. On this machine, the exi
 
 A static host alone can serve the portfolio but cannot run Begu: host this Node server or provide an equivalent same-origin `/api/chat` route. The server currently binds to localhost. Shared rate limiting and the hosting platform’s networking configuration should be chosen when deployment is requested.
 
+## Room interactions
+
+The room overlay keeps one control per action: the floating Begu and “Open my portfolio” labels on the objects, plus Sound, Look around and Use the Mac. Labels hide when their object is off-screen or blocked by furniture. Inside the Mac an “Open full size ↗” link opens the standalone desktop.
+
+Objects open things: the turntable opens Music, the bookshelf opens Notes, the Messi frames open About and the Graduation rug plays Graduation. Eleven record sleeves are hidden around the room; clicking one plays its album and counts it (“Records found · n/11”, stored in the visitor’s browser). Begu sits and watches while you use the Mac and hops when a record starts. The window view follows the visitor’s local time (day, dusk, night); the room itself stays dark. The flag’s lights ease down while the Mac is in use so the crest does not compete with the screen.
+
+Begu’s chat uses the original Gemini model and falls back to `gemini-2.5-flash` when Google reports the primary overloaded or rate limited (`MODELS` in `server/index.mjs`).
+
 ## Editing map
 
 - `src/Application/World/Computer.ts`: imported MacBook assembly, calibrated hinge, approach animation and live-display anchor.
@@ -39,7 +47,9 @@ A static host alone can serve the portfolio but cannot run Begu: host this Node 
 - `src/Application/Camera/`: original camera/tween machinery with endpoints fitted to the new laptop.
 - `desktop/src/components/os/`: desktop/window/dock controls.
 - `desktop/src/components/showcase/`: portfolio pages.
-- `desktop/src/components/applications/Begu.tsx`: chat UI.
+- `desktop/src/components/applications/Begu.tsx`: Messages-style chat UI.
+- `src/Application/World/Interactables.ts`: clickable room objects and the hidden-record hunt.
+- `scripts/tuft-rug.py`: rebuilds the Graduation rug texture from `scripts/source/`.
 - `desktop/src/data/`: migrated portfolio content and article bodies.
 - `desktop/src/index.css`: the desktop visual system and responsive layouts.
 - `server/`: server-only chatbot logic and original profile knowledge.
@@ -47,7 +57,7 @@ A static host alone can serve the portfolio but cannot run Begu: host this Node 
 
 Look Around offers a full orbit with a wider lens, constrained inside all four walls and below the ceiling. A night window and bench, media console, entry door and display cabinet furnish the other views.
 
-The original room assets remain on disk for provenance; the CRT and old desk/plant are no longer rendered. The imported MacBook and husky use the installed GLTFLoader and Meshopt decoder. The husky is a free, stylized rigged model with smooth shading and its original geometry, not a fur simulation. Remaining objects use installed Three.js geometry/materials and real shadows, with no new modeling or rendering dependency. Sound waits for Enter, then starts the shuffled music library at 6% volume alongside soft ambience. Music contains 114 tracks across 19 albums; see [audio behavior](docs/ALBUM-AUDIO.md). Direct desktop entry waits for Play in Music. Reduced-motion preferences suppress camera drift, transition duration, steam/noise animation and Begu’s movement; the chat stays accessible. The desktop uses the system font and glass styling informed by Apple’s current macOS reference, with an ocean wallpaper. Narrow-screen Mac and Begu entries open the readable standalone desktop. Portfolio content adapts to its own resizable window width.
+The original room assets remain on disk for provenance; the CRT and old desk/plant are no longer rendered. The imported MacBook and husky use the installed GLTFLoader and Meshopt decoder. The husky is a free, stylized rigged model with smooth shading and its original geometry, not a fur simulation. Remaining objects use installed Three.js geometry/materials and real shadows, with no new modeling or rendering dependency. Sound waits for Enter, then starts the shuffled music library at 6% volume alongside soft ambience. Music contains 114 tracks across 19 albums; see [audio behavior](docs/ALBUM-AUDIO.md). Direct desktop entry waits for Play in Music. Reduced-motion preferences suppress camera drift, transition duration, steam/noise animation and Begu’s movement; the chat stays accessible. The desktop uses the system font and glass styling informed by Apple’s current macOS reference, with the Catalina Night wallpaper. Narrow-screen Mac and Begu entries open the readable standalone desktop. Portfolio content adapts to its own resizable window width.
 
 ## Provenance
 

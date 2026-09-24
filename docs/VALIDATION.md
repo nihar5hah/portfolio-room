@@ -1,3 +1,15 @@
+# V16 — room interactions, Messages-style Begu, desktop window model
+
+Current state, September 24, 2026 (Asia/Kolkata). Earlier sections below are historical records and describe superseded counts (for example the 31-track library).
+
+- **Room.** Ceiling lowered to just above the highest authored camera point, with a picture rail and dim cove line; the ceiling fan hangs from a visible down-rod and plate. The stray glow strip above the flag is now a mounted brass picture light; the flag caption is larger. The Graduation rug is a thin tufted mat with a bound edge and the complete, uncropped print (`scripts/tuft-rug.py`). The MacBook's lid-lift notch now takes the space-black finish (it rendered as a white slit).
+- **Overlay.** One control per action; floating labels hide when off-screen or occluded (`Utils/Occlusion.ts`); lock screen has a darker pool behind the clock and a larger Enter; boot screen shows only the progress bar; “Open full size ↗” while using the Mac.
+- **Interactions.** Turntable → Music, bookshelf → Notes, Messi frames → About, rug → plays Graduation, eleven hidden sleeves → play their album and count toward “Records found”. Begu watches while the Mac is open and hops when a record starts. The window follows local time. Flag lights ease down while the Mac is in use.
+- **Desktop.** The frontmost visible window is the active one (derived in `Desktop.tsx`); closing a window activates the next; Escape closes the top window in the standalone desktop; zoomed windows have square corners; dock has a divider and Trash; the word game uses the TextEdit icon, fits its window and labels the key “ENTER”; Music fills its window. Title and status bars describe the open portfolio page. Begu is a Messages conversation with a husky avatar.
+- **Music.** Broken tracks are skipped; retry appears only when every track fails. The limit is `MAX_TRACKS` (500) with a console error. Featured-artist tags are stripped from all titles. Album art loads after the room is enterable and replaces a placeholder in place.
+- **Server.** Begu falls back to `gemini-2.5-flash` on 503/429 from the primary model; verified live while the primary returned 503.
+- **Checks.** `npm test` 31/31 (three consecutive runs), `npm run lint` now type-checks the room **and** the desktop, `npm run build` passes with the existing size warnings. Verified in the T3 browser: Begu reply, Escape/active window, maximize corners, Music/Résumé/word game layout, lock screen, room interactions (bookshelf → Notes with Begu watching), record counter, and renders of the notch, Mac view and share image. Sound stayed muted throughout. No push or deployment.
+
 # V15 — shuffled three-album music and synchronized physical artwork
 
 The active music library now contains every supplied file: 13 MBDTF MP3s, 7 JACKBOYS MP3s and 11 Rodeo M4As. The supplied Rodeo folder is partial. A single manifest replaces the old MBDTF-only manifest. Every refresh creates a new Fisher–Yates shuffle across all 31 songs, and each completed queue reshuffles without an immediate repeat. The visible player identifies the current album and Shuffle mode.

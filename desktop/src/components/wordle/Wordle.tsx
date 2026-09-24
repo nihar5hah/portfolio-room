@@ -44,7 +44,7 @@ const KeyboardLetter: React.FC<KeyboardLetterProps> = ({
     }, [guesses, letter, word]);
 
     const handleClick = () => {
-        if (letter === 'RET') {
+        if (letter === 'ENTER') {
             if (currentGuess.length === word.length) {
                 if (WORDS.includes(currentGuess.toLowerCase())) {
                     setGuesses([...guesses, currentGuess]);
@@ -210,7 +210,7 @@ export interface WordleProps {}
 
 const TOP_ROW = ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'];
 const MIDDLE_ROW = ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'];
-const BOTTOM_ROW = ['RET', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'DEL'];
+const BOTTOM_ROW = ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'DEL'];
 const ROWS = [TOP_ROW, MIDDLE_ROW, BOTTOM_ROW];
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
@@ -423,7 +423,7 @@ const styles: StyleSheetCSS = {
     },
     header: {
         flexShrink: 1,
-        paddingTop: 32,
+        paddingTop: 20,
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
@@ -431,7 +431,7 @@ const styles: StyleSheetCSS = {
     keyboardContainer: {
         flexShrink: 1,
 
-        paddingBottom: 24,
+        paddingBottom: 16,
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
@@ -442,23 +442,23 @@ const styles: StyleSheetCSS = {
 
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 16,
-        marginBottom: 16,
+        marginTop: 10,
+        marginBottom: 12,
     },
     letterBox: {
-        padding: 12,
-        paddingTop: 16,
+        padding: 10,
+        paddingTop: 12,
         minWidth: 42,
 
         justifyContent: 'center',
         alignItems: 'center',
-        paddingBottom: 16,
-        margin: 4,
+        paddingBottom: 12,
+        margin: 3,
     },
     keyboardRow: {},
     guessLetterBox: {
-        width: 60,
-        height: 60,
+        width: 46,
+        height: 46,
         justifyContent: 'center',
         alignItems: 'center',
 

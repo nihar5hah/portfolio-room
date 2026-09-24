@@ -224,6 +224,7 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         },
     ).outputText;
     const exports = {};
+    const busHandlers = {};
     new Function('require', 'exports', compiled)((name) => {
         if (name === 'three') return THREE;
         if (name.includes('AlbumAudio'))
@@ -254,6 +255,13 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
             };
         if (name.includes('RoundedBoxGeometry')) return { RoundedBoxGeometry };
         if (name.includes('Reflector')) return { Reflector };
+        if (name.includes('EventBus'))
+            return {
+                default: {
+                    on: (event, fn) => ((busHandlers[event] ??= []).push(fn), () => {}),
+                    dispatch: (event, data) => busHandlers[event]?.forEach((fn) => fn(data)),
+                },
+            };
         if (name === './MatchBoard')
             return {
                 default: class {
@@ -597,6 +605,15 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
     const rugHeight = bounds('Graduation album rug').getSize(new THREE.Vector3()).y;
     assert.ok(rugHeight > 25 && rugHeight < 60, 'rug is a thin printed mat');
     assert.equal(room.getObjectByName('Woven rug fringe'), undefined, 'no fringe, like the real rug');
+    const flagLight = environment.flagLights[0];
+    busHandlers.enterMonitor.forEach((fn) => fn());
+    assert.ok(
+        environment.flagLightTarget === 0.25,
+        'flag lights ease down while the visitor is on the Mac',
+    );
+    busHandlers.leftMonitor.forEach((fn) => fn());
+    assert.equal(environment.flagLightTarget, 1, 'and come back after');
+    assert.ok(flagLight.full > 0);
     const { skyPhase } = exports;
     assert.deepEqual(
         [3, 6, 9, 16, 18, 21].map(skyPhase),

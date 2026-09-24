@@ -6,7 +6,7 @@ The active `static/audio/playlist.json` contains 114 user-supplied tracks across
 { "title": "POWER", "album": "mbdtf", "src": "/audio/mbdtf/03-power.mp3" }
 ```
 
-Each page fetches the manifest with a ten-second timeout and shuffles across the complete library. Every song plays once per queue, then a fresh shuffle avoids immediately repeating the last song. There is no persisted queue. Validation rejects empty or malformed libraries and more than 128 tracks; failures show a retry action rather than an indefinite loading state.
+Each page fetches the manifest with a ten-second timeout and shuffles across the complete library. Every song plays once per queue, then a fresh shuffle avoids immediately repeating the last song. There is no persisted queue. Validation rejects empty or malformed libraries, and libraries above `MAX_TRACKS` (500, in `AlbumAudio.ts`) with a console error naming the limit; failures show a retry action rather than an indefinite loading state. A missing or undecodable track is skipped automatically; only when every track fails in a row does playback stop and offer retry. Clicking a hidden record sleeve or the Graduation rug in the room jumps to that album.
 
 Sound waits for Enter. Music starts at 6% native media volume (previously 5%); the office ambience ranges from 3.75% to 7.5% gain as the camera moves (previously 5% to 10%). The startup cue uses 25% gain (previously 30%). Effects receive their initial gain before playback, avoiding a full-volume first instant. Click and typing feedback uses 16% gain without spatial panners. At most four non-looping effects overlap; finished source, panner and gain nodes all disconnect. These are gain settings, not perceived-loudness measurements.
 

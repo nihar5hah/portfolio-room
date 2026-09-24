@@ -5,6 +5,7 @@ import Application from '../Application';
 import { ALBUMS } from '../Audio/AlbumAudio';
 import BakedModel from '../Utils/BakedModel';
 import MatchBoard from './MatchBoard';
+import bus from '../UI/EventBus';
 type SkyPhase = 'day' | 'dusk' | 'night';
 const SKY: Record<
     SkyPhase,
@@ -25,6 +26,9 @@ export default class Environment {
     skyShown: SkyPhase | null = null;
     moon: THREE.SpotLight;
     lamp: THREE.PointLight;
+    flagLights: { light: THREE.Light; full: number }[] = [];
+    flagLightScale = 1;
+    flagLightTarget = 1;
     matchBoard: MatchBoard;
     clockMap: THREE.CanvasTexture;
     clockMinute = -1;
@@ -771,6 +775,17 @@ export default class Environment {
         memorabilia.position.set(1000, 5800, -1500);
         memorabilia.target.position.set(500, 1600, BACK);
         room.add(memorabilia, memorabilia.target);
+        // The flag sits right behind the laptop: its lights ease down while the
+        // visitor is on the Mac so the crest stops competing with the screen.
+        const flagLights = [memorabilia, wallWash].map((light) => ({
+            light,
+            full: light.intensity,
+        }));
+        this.flagLightScale = 1;
+        this.flagLightTarget = 1;
+        this.flagLights = flagLights;
+        bus.on('enterMonitor', () => (this.flagLightTarget = 0.25));
+        bus.on('leftMonitor', () => (this.flagLightTarget = 1));
 
         // A night window and reading bench give the left wall a purpose.
         const window = new THREE.Group();
@@ -1498,6 +1513,12 @@ export default class Environment {
             )
                 this.record.rotation.y -=
                     ((Math.min(app.time.delta, 50) / 1000) * Math.PI * 10) / 9;
+        }
+        if (Math.abs(this.flagLightScale - this.flagLightTarget) > 0.002) {
+            this.flagLightScale +=
+                (this.flagLightTarget - this.flagLightScale) * 0.06;
+            for (const { light, full } of this.flagLights)
+                light.intensity = full * this.flagLightScale;
         }
         const phase = skyPhase(new Date().getHours());
         if (phase !== this.skyShown && this.moon) {

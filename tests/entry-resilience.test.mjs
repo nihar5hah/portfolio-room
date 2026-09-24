@@ -72,12 +72,15 @@ test('optional artwork failures finish loading; required models keep the room un
 });
 
 test('album art never blocks entry and fills the same texture once loaded', async () => {
+    let loaded;
     const Resources = load('../src/Application/Utils/Resources.ts', {
         three: {
             ...THREE,
             ImageLoader: class {
                 load(path, done) {
-                    setTimeout(() => done({ path, width: 500, height: 500 }));
+                    loaded = new Promise((resolve) =>
+                        setTimeout(() => resolve(done({ path, width: 500, height: 500 }))),
+                    );
                 }
             },
         },
@@ -101,7 +104,8 @@ test('album art never blocks entry and fills the same texture once loaded', asyn
     resources.startLoading();
     const placeholder = resources.items.texture.sleeve;
     assert.deepEqual(events, ['ready'], 'room is enterable before any album art arrives');
-    await new Promise((r) => setTimeout(r, 5));
+    await new Promise((r) => setTimeout(r)); // fill() is scheduled after ready
+    await loaded;
     assert.equal(resources.items.texture.sleeve, placeholder, 'materials keep their texture object');
     assert.equal(placeholder.image.path, 'room/albums/x.jpg', 'real artwork replaces the swatch');
 });

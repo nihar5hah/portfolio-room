@@ -16,6 +16,7 @@ const ALUMINUM_MATERIALS = new Set([
     'LpqXZqhaGCeSzdu',
     'wjAYtisbflXilXi',
     'RyKTMHTpkkwQkvB',
+    'YYwBgwvcyZVOOAA', // lid-lift notch; left silver it read as a white slit
 ]);
 
 export default class Computer {

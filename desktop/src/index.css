@@ -1734,6 +1734,7 @@ img {
 .music-app {
     display: flex !important;
     flex-direction: column;
+    width: 100%;
     height: 100%;
     min-height: 0;
     background: var(--mac-window, #fff);

@@ -107,6 +107,9 @@ export default class Resources extends EventEmitter {
             lazy.forEach((source) =>
                 images.load(source.path, (image) => {
                     const texture = this.items.texture[source.name];
+                    // WebGL2 storage is immutable at 1×1: free it so the real
+                    // size is allocated on the next upload.
+                    texture.dispose();
                     texture.image = image;
                     texture.needsUpdate = true;
                 }),

@@ -4,6 +4,8 @@ import { readFile, stat } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import { resolve, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+export const MODELS = ['gemini-3.1-flash-lite-preview', 'gemini-2.5-flash'];
 const root = resolve(fileURLToPath(new URL('../dist/', import.meta.url)));
 const knowledge = await readFile(
     new URL('./profile-context.txt', import.meta.url),
@@ -128,17 +130,15 @@ export function createPortfolioServer({
                     });
                 entry.count++;
                 visitors.set(ip, entry);
-                let upstream;
-                try {
-                    upstream = await fetchImpl(
-                        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent',
-                        {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'x-goog-api-key': apiKey,
-                            },
-                            body: JSON.stringify({
+                // The original model first; when Google reports it overloaded or
+                // rate limited, one stable fallback answers instead of failing.
+                const request = {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-goog-api-key': apiKey,
+                    },
+                    body: JSON.stringify({
                                 systemInstruction: {
                                     parts: [
                                         {
@@ -160,9 +160,16 @@ export function createPortfolioServer({
                                     temperature: 0.45,
                                 },
                             }),
-                            signal: AbortSignal.timeout(30000),
-                        },
-                    );
+                };
+                let upstream;
+                try {
+                    for (const model of MODELS) {
+                        upstream = await fetchImpl(
+                            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+                            { ...request, signal: AbortSignal.timeout(30000) },
+                        );
+                        if (upstream.status !== 503 && upstream.status !== 429) break;
+                    }
                 } catch {
                     return json(res, 502, {
                         error: 'Begu couldn’t connect. Please try again in a moment.',
