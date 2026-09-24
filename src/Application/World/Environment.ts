@@ -6,7 +6,7 @@ import { ALBUMS } from '../Audio/AlbumAudio';
 import BakedModel from '../Utils/BakedModel';
 import MatchBoard from './MatchBoard';
 import bus from '../UI/EventBus';
-import { DESK_Z } from './Layout';
+import { DESK_Z, SOFA_AT } from './Layout';
 type SkyPhase = 'day' | 'dusk' | 'night';
 const SKY: Record<
     SkyPhase,
@@ -756,7 +756,7 @@ export default class Environment {
             ['poster_blonde', 17520, 2360, 5600, -Math.PI / 2, -0.15], // right-wall ledge
             ['poster_808s', 15480, FLOOR + 310, 1410, -Math.PI / 2, -0.18], // floor, against the bedside table
             ['poster_jackboys', 17500, FLOOR + 310, -2400, -Math.PI / 2, -0.18], // skirting, by the mirror
-            ['poster_livelove', -5100, FLOOR + 310, 7400, -Math.PI / 2, -0.18], // floor, against the sofa arm
+            ['poster_livelove', -6350, FLOOR + 310, 6500, -Math.PI / 2, -0.18], // floor, against the sofa's outer arm
             ['poster_mbdtf', -15600, FLOOR + 310, -4230, 0.12, -0.2], // floor, against the display cabinet
         ] as const) {
             const sleeve = box(SLEEVE, SLEEVE, 46, black, x, y, z, 10);
@@ -1429,93 +1429,48 @@ export default class Environment {
             }
             room.add(bag);
         }
-        // PlayStation lounge: a deep L-shaped sectional facing the TV, in the
-        // room's navy with garnet piping, a Blaugrana cushion and a low blue
-        // under-glow. Scale here is ~3.3 units per mm: 2.9 m wide, 1 m deep
-        // seats, a 1.6 m chaise and a 420 mm seat height.
+        // PlayStation lounge: a real L-shaped corner sofa (Heliona, CC BY 4.0,
+        // see static/licenses/models.txt) at true scale, 3300 units per metre,
+        // with its chaise toward the TV. The imported model is authored in
+        // metres, seats facing +Z.
         const lounge = new THREE.Group();
         lounge.name = 'Blaugrana gaming sectional';
-        lounge.position.set(0, FLOOR, 6200);
-        const navy = material('#1c2740', 1);
-        const navyDeep = material('#141c2f', 1);
-        const stripeCanvas = document.createElement('canvas');
-        stripeCanvas.width = 256;
-        stripeCanvas.height = 64;
-        const stripeContext = stripeCanvas.getContext('2d')!;
-        for (let i = 0; i < 8; i++) {
-            stripeContext.fillStyle = i % 2 ? '#a50044' : '#004d98';
-            stripeContext.fillRect(i * 32, 0, 32, 64);
+        const sofaModel = app.resources.items.gltfModel?.sofaModel;
+        if (sofaModel) {
+            const sofa = sofaModel.scene;
+            sofa.scale.setScalar(3300);
+            sofa.traverse((part: THREE.Object3D) => {
+                if (!(part instanceof THREE.Mesh)) return;
+                part.castShadow = true;
+                part.receiveShadow = true;
+                const materials = Array.isArray(part.material)
+                    ? part.material
+                    : [part.material];
+                materials.forEach((m: THREE.MeshStandardMaterial) => {
+                    m.userData.linearColor = true; // glTF colours are already linear
+                    // Pull the grey-blue fabric toward the room's navy.
+                    if (m.name === 'm_sofa_up' || m.name === 'm_sofa_bottom')
+                        m.color.set('#6f86b8').convertSRGBToLinear();
+                });
+            });
+            lounge.add(sofa);
         }
-        const stripeMap = new THREE.CanvasTexture(stripeCanvas);
-        stripeMap.encoding = THREE.sRGBEncoding;
-        const part = (
-            w: number,
-            h: number,
-            d: number,
-            m: THREE.Material,
-            x: number,
-            y: number,
-            z: number,
-            r = 0,
-        ) => {
-            const mesh = box(w, h, d, m, x, y, z, r);
-            lounge.add(mesh);
-            return mesh;
-        };
-        // Plinth: main run and chaise, lifted on a recessed dark kick.
-        part(9400, 180, 3100, black, 0, 90, 1650);
-        part(3000, 180, 1800, black, 3200, 90, 4250);
-        part(9600, 720, 3300, navyDeep, 0, 540, 1650, 120).name =
-            'Sectional base';
-        part(3200, 720, 1900, navyDeep, 3200, 540, 4250, 120);
-        // Seat cushions: two on the main run, one long chaise cushion.
-        for (const x of [-2675, 175])
-            part(2800, 520, 2600, navy, x, 1150, 1980, 170);
-        part(3150, 520, 4500, navy, 3200, 1150, 2930, 170);
-        // Back frame, left arm and three leaning back cushions.
-        part(9600, 2750, 650, navyDeep, 0, 1375, 325, 140);
-        part(700, 2050, 3300, navyDeep, -4450, 1025, 1650, 160);
-        for (const x of [-2650, 350, 3250]) {
-            const back = part(2900, 1450, 620, navy, x, 2150, 900, 200);
-            back.rotation.x = -0.14;
-        }
-        // Garnet piping along the seat front and the chaise edge.
-        const garnet = material('#8a1c3a', 0.7);
-        part(6400, 34, 34, garnet, -1600, 900, 3305);
-        part(3200, 34, 34, garnet, 3200, 900, 5205);
-        // Cushions: garnet and Blaugrana stripes.
-        const throwPillow = part(950, 950, 300, garnet, -3500, 1850, 1350, 140);
-        throwPillow.rotation.set(-0.3, 0.2, 0.12);
-        const stripePillow = part(
-            1000,
-            1000,
-            300,
-            new THREE.MeshStandardMaterial({ map: stripeMap, roughness: 0.95 }),
-            2450,
-            1850,
-            1400,
-            140,
-        );
-        stripePillow.name = 'Blaugrana cushion';
-        stripePillow.rotation.set(-0.3, -0.25, -0.1);
-        // Gaming under-glow: a thin strip, not a light, so the room stays dark.
-        part(9200, 16, 16, glow('#3a6cff'), 0, 30, 3320).name =
-            'Sectional under-glow';
-        part(16, 16, 1700, glow('#3a6cff'), 4815, 30, 4250);
+        lounge.position.set(SOFA_AT.x, FLOOR, SOFA_AT.z);
+        lounge.rotation.y = SOFA_AT.turn;
         room.add(lounge);
+        const navyDeep = material('#141c2f', 1);
         // Ottoman in front of the sofa holds the controllers.
         // Sits on the rug's top face (~FLOOR + 50) instead of cutting through it:
         // coplanar/intersecting surfaces there were what flickered.
-        const ottoman = box(2600, 1150, 1500, navyDeep, -900, FLOOR + 625,
-            10900,
+        const ottoman = box(2600, 1150, 1500, navyDeep, 2700, FLOOR + 625, 10300,
             220,
         );
         ottoman.name = 'Match night controller table';
-        box(1500, 40, 1000, wood, -900, FLOOR + 1220, 10900, 20);
+        box(1500, 40, 1000, wood, 2700, FLOOR + 1220, 10300, 20);
         for (const x of [-240, 240]) {
             const pad = new THREE.Group();
             pad.name = 'Match night gamepad';
-            pad.position.set(-900 + x, FLOOR + 1290, 10900);
+            pad.position.set(2700 + x, FLOOR + 1290, 10300);
             pad.rotation.y = x < 0 ? -0.22 : 0.22;
             pad.add(box(390, 80, 210, cream, 0, 0, 0, 65));
             for (const side of [-1, 1]) {

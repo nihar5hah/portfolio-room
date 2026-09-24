@@ -6,3 +6,6 @@
  */
 export const DESK_Z = -4650;
 
+
+/** Where the imported corner sofa stands, facing the TV (+Z). */
+export const SOFA_AT = { x: 0, z: 6800, turn: 0 };

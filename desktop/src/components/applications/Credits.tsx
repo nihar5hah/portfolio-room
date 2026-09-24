@@ -61,6 +61,18 @@ export default function Credits(props: WindowAppProps) {
                             Origami credits ↗
                         </a>
                     </dd>
+                    <dt>Heliona</dt>
+                    <dd>
+                        The corner sofa in the TV lounge (CC BY 4.0), with
+                        textures resized, compressed and the fabric tinted navy.{' '}
+                        <a
+                            href="https://sketchfab.com/3d-models/corner-sofa-9cef8fd19dd84684b91830f35cc54d4f"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Model page ↗
+                        </a>
+                    </dd>
                     <dt>Quaternius</dt>
                     <dd>
                         Begu’s animated husky, with smooth shading, coat colors,
