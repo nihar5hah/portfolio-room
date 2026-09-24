@@ -6,6 +6,7 @@ import { ALBUMS } from '../Audio/AlbumAudio';
 import BakedModel from '../Utils/BakedModel';
 import MatchBoard from './MatchBoard';
 import bus from '../UI/EventBus';
+import { DESK_Z, SOFA_MOVE } from './Layout';
 type SkyPhase = 'day' | 'dusk' | 'night';
 const SKY: Record<
     SkyPhase,
@@ -113,6 +114,9 @@ export default class Environment {
         rail.position.set(-550, -2230, -930);
         rail.castShadow = true;
         desk.add(rail);
+        // Desk and its chair stand under the flag (see Layout.ts).
+        desk.position.z = DESK_Z;
+        original.position.z += DESK_Z;
         app.scene.add(desk);
         app.scene.add(this.buildRoom());
         // Hemisphere fill is free per-fragment; it replaces the room-wide
@@ -309,19 +313,22 @@ export default class Environment {
         wallWash.position.set(-3500, 4300, -4800);
         room.add(wallWash);
         // Thick pile, no trim strip: a framed edge read as a picture, not a rug.
+        // Runs from the wall under the desk out past the chair and Begu's walk.
         const deskRug = box(
-            11200,
+            10000,
             70,
-            7800,
+            6400,
             material('#28323d'),
             -550,
             FLOOR + 35,
-            1100,
+            BACK + 100 + 3200,
             34,
         );
         deskRug.name = 'Desk rug';
 
-        // A sofa for match nights, behind and to the right of the working desk.
+        // A sofa for match nights. Authored against the back wall, then moved as
+        // one piece into the middle of the room to face the TV (Layout.ts).
+        const sofaStart = room.children.length;
         box(4700, 600, 1550, black, 6600, FLOOR + 450, -3700, 180).name =
             'Sofa';
         box(4700, 1700, 440, fabric, 6600, FLOOR + 1270, -4500, 190);
@@ -363,6 +370,10 @@ export default class Environment {
         for (const x of [6990, 7230]) {
             const knob = cylinder(40, 20, brass, x, FLOOR + 713, -1600);
             knob.castShadow = false;
+        }
+        for (const part of room.children.slice(sofaStart)) {
+            part.position.x += SOFA_MOVE.x;
+            part.position.z += SOFA_MOVE.z;
         }
         // Reading lamp, with an actual pool of warm light.
         cylinder(420, 75, black, 10100, FLOOR + 40, -3700);
@@ -732,7 +743,7 @@ export default class Environment {
         flag.position.set(-550, 1900, BACK + 320);
         room.add(flag);
         box(7950, 55, 80, brass, -550, 4365, flag.position.z);
-        label('MÉS QUE UN CLUB', 4000, 400, -550, -880, BACK + 225);
+        // (The "MÉS QUE UN CLUB" caption sat where the desk now stands.)
         // The collection is left around the room rather than framed on the walls:
         // single sleeves propped on shelves, consoles and skirting for anyone
         // who looks twice. Each sits on the surface named beside it.
@@ -747,7 +758,7 @@ export default class Environment {
             ['poster_blonde', 17520, 2360, 5600, -Math.PI / 2, -0.15], // right-wall ledge
             ['poster_808s', 15480, FLOOR + 310, 1410, -Math.PI / 2, -0.18], // floor, against the bedside table
             ['poster_jackboys', 17500, FLOOR + 310, -2400, -Math.PI / 2, -0.18], // skirting, by the mirror
-            ['poster_livelove', 9500, FLOOR + 310, -4300, Math.PI / 2, -0.18], // floor, against the sofa arm
+            ['poster_livelove', 9500 + SOFA_MOVE.x, FLOOR + 310, -4300 + SOFA_MOVE.z, Math.PI / 2, -0.18], // floor, against the sofa arm
             ['poster_mbdtf', -15600, FLOOR + 310, -4230, 0.12, -0.2], // floor, against the display cabinet
         ] as const) {
             const sleeve = box(SLEEVE, SLEEVE, 46, black, x, y, z, 10);
@@ -1129,7 +1140,8 @@ export default class Environment {
         graduation.name = 'Graduation album rug';
         graduation.rotation.x = -Math.PI / 2;
         // Underside sits 2 units over the boards; the mat is ~13 mm thick.
-        graduation.position.set(6450, FLOOR + 22, 8840);
+        // Under the lounge, between the sofa and the TV.
+        graduation.position.set(0, FLOOR + 22, 9800);
         graduation.receiveShadow = true;
         room.add(graduation);
 
@@ -1323,13 +1335,14 @@ export default class Environment {
 
         // Two sculpted bean bags face the TV, with space between them for controllers.
         for (const [x, color, name] of [
-            [-2200, '#33425d', 'Blue match night bean bag'],
-            [2200, '#793e49', 'Burgundy match night bean bag'],
+            [-4700, '#33425d', 'Blue match night bean bag'],
+            [4700, '#793e49', 'Burgundy match night bean bag'],
         ] as const) {
+            // They flank the Graduation rug, angled in toward the screen.
             const bag = new THREE.Group();
             bag.name = name;
-            bag.position.set(x, FLOOR, 11700);
-            bag.rotation.y = Math.atan2(-x, 18100 - 11700);
+            bag.position.set(x, FLOOR, 10800);
+            bag.rotation.y = Math.atan2(-x, 18100 - 10800);
             const geometry = new THREE.SphereGeometry(1, 48, 32);
             const vertices = geometry.attributes.position;
             for (let i = 0; i < vertices.count; i++) {
@@ -1461,11 +1474,11 @@ export default class Environment {
         }
 
         // Begu's corner, away from chair wheels and desk legs.
-        cylinder(1050, 220, fabric, -5100, FLOOR + 110, 800);
-        cylinder(880, 80, material('#6b727e'), -5100, FLOOR + 255, 800);
-        cylinder(280, 140, brass, -4900, FLOOR + 70, -800);
-        cylinder(240, 12, material('#5187a0', 0.2), -4900, FLOOR + 143, -800);
-        label('BEGU', 1000, 200, -5100, FLOOR + 155, 1865);
+        cylinder(1050, 220, fabric, -4800, FLOOR + 110, 800 + DESK_Z);
+        cylinder(880, 80, material('#6b727e'), -4800, FLOOR + 255, 800 + DESK_Z);
+        cylinder(280, 140, brass, -4600, FLOOR + 70, -800 + DESK_Z);
+        cylinder(240, 12, material('#5187a0', 0.2), -4600, FLOOR + 143, -800 + DESK_Z);
+        label('BEGU', 1000, 200, -4800, FLOOR + 155, 1865 + DESK_Z);
         return room;
     }
 

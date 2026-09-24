@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import layout from './layout.mjs';
 const require = createRequire(import.meta.url);
 
 // Load the shipped geometry without browser-only textures. Keep the real mesh compression and transforms.
@@ -62,7 +63,9 @@ test('shipped MacBook closes above the base, opens with approach, and survives r
                           }
                       },
                   }
-                : name === '../Utils/Occlusion'
+                : name === './Layout'
+                  ? layout
+                  : name === '../Utils/Occlusion'
                   ? { occluded: () => false }
                   : require(name),
         exports,
@@ -149,7 +152,7 @@ test('shipped MacBook closes above the base, opens with approach, and survives r
     assert.ok(
         Math.abs(openPanel.x + 350) < 1 &&
             Math.abs(openPanel.y - 446) < 5 &&
-            Math.abs(openPanel.z + 734) < 5,
+            Math.abs(openPanel.z + 734 - layout.DESK_Z) < 5,
         'desktop must register to the imported panel',
     );
     app.camera.currentKeyframe = 'idle';

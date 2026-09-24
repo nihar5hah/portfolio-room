@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as geometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import layout from './layout.mjs';
 const require = createRequire(import.meta.url);
 
 async function loadDog() {
@@ -31,7 +32,8 @@ async function loadDog() {
     }).outputText;
     const exports = {};
     new Function('require', 'exports', compiled)(
-        (name) => (name === 'three' ? THREE : geometryUtils),
+        (name) =>
+            name === 'three' ? THREE : name === './Layout' ? layout : geometryUtils,
         exports,
     );
     const authored = new Map();
@@ -88,7 +90,11 @@ test('Begu walks with his skeleton, stays clear of furniture, greets once and re
         assert.ok(
             dog.group.position.x >= -4001 && dog.group.position.x <= -1199,
         );
-        assert.ok(dog.group.position.z >= 2799 && dog.group.position.z <= 4201);
+        const { DESK_Z } = layout;
+        assert.ok(
+            dog.group.position.z >= 2799 + DESK_Z &&
+                dog.group.position.z <= 4201 + DESK_Z,
+        );
     }
     assert.equal(dog.current.getClip().name, 'Walk');
     assert.ok(start.distanceTo(dog.group.position) > 500);

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { DESK_Z } from './Layout';
 
 /** Begu's authored skeletal clips, cross-faded around a clear path on the rug. */
 export default class Husky {
@@ -54,7 +55,7 @@ export default class Husky {
         });
         this.group.name = 'Begu — animated Siberian husky';
         this.group.add(model.scene);
-        this.group.position.set(-2600, this.floor, 4200);
+        this.group.position.set(-2600, this.floor, 4200 + DESK_Z);
         this.group.rotation.y = Math.PI / 2;
         this.mixer = new THREE.AnimationMixer(model.scene);
         for (const clip of model.animations) {
@@ -142,7 +143,7 @@ export default class Husky {
             this.group.position.set(
                 -2600 + Math.sin(this.phase) * 1400,
                 this.floor,
-                3500 + Math.cos(this.phase) * 700,
+                3500 + DESK_Z + Math.cos(this.phase) * 700,
             );
             const heading = Math.atan2(
                 Math.cos(this.phase) * 1400,

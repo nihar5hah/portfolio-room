@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import layout from './layout.mjs';
 const require = createRequire(import.meta.url);
 
 test('idle camera follows the original automatic sweep and respects reduced motion', () => {
@@ -84,6 +85,7 @@ test('Look Around keeps every orbit and zoom inside the walls, floor and ceiling
     new Function('require', 'exports', compiled)((name) => {
         if (name === 'three') return THREE;
         if (name.includes('OrbitControls')) return { OrbitControls };
+        if (name.endsWith('/Layout')) return layout;
         if (name.startsWith('.')) return { default: class {} };
         return require(name);
     }, exports);
@@ -262,6 +264,7 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
                     dispatch: (event, data) => busHandlers[event]?.forEach((fn) => fn(data)),
                 },
             };
+        if (name === './Layout') return layout;
         if (name === './MatchBoard')
             return {
                 default: class {
@@ -448,8 +451,8 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
             'seating clears desk and media console',
         );
         assert.ok(
-            extents.max.x < bounds('Graduation album rug').min.x,
-            'seating clears bedside rug',
+            !extents.intersectsBox(bounds('Graduation album rug')),
+            'bean bags flank the lounge rug instead of sitting on it',
         );
         const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(
             bag.quaternion,

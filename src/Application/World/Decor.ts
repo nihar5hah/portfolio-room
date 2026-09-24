@@ -5,6 +5,7 @@ import BakedModel from '../Utils/BakedModel';
 import Husky from './Husky';
 import bus from '../UI/EventBus';
 import { occluded } from '../Utils/Occlusion';
+import { DESK_Z } from './Layout';
 
 export default class Decor {
     app = new Application();
@@ -15,6 +16,7 @@ export default class Decor {
     labelCheck = 0;
     constructor() {
         const { scene, resources } = this.app;
+        const deskPropsStart = scene.children.length;
         const old = new BakedModel(
             resources.items.gltfModel.decorModel,
             resources.items.texture.decorTexture,
@@ -122,6 +124,9 @@ export default class Decor {
         pencil.position.set(-2470, -380, -590);
         pencil.castShadow = true;
         scene.add(pencil);
+        // Desk props were authored around the old island desk (Layout.ts).
+        for (const prop of scene.children.slice(deskPropsStart))
+            prop.position.z += DESK_Z;
         this.makeBegu();
         const ray = new THREE.Raycaster();
         const point = new THREE.Vector2();
@@ -155,7 +160,7 @@ export default class Decor {
         this.app.scene.add(this.dog);
         // Begu keeps you company: he sits facing the desk while you use the Mac,
         // and hops when a record starts from the room.
-        const desk = new THREE.Vector3(-350, 0, 480);
+        const desk = new THREE.Vector3(-350, 0, 480 + DESK_Z);
         bus.on('enterMonitor', () => (this.husky.watching = desk));
         bus.on('leftMonitor', () => (this.husky.watching = null));
         bus.on('albumPicked', () =>

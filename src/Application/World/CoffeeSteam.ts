@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import Application from '../Application';
+import { DESK_Z } from './Layout';
 import Resources from '../Utils/Resources';
 import Time from '../Utils/Time';
 
@@ -48,7 +49,7 @@ export default class CoffeeSteam {
             this.model.material,
         );
 
-        this.model.mesh.position.copy(new THREE.Vector3(1670, 200, 900));
+        this.model.mesh.position.copy(new THREE.Vector3(1670, 200, 900 + DESK_Z));
 
         this.scene.add(this.model.mesh);
     }

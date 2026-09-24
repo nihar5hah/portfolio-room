@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import Application from '../Application';
 import { occluded } from '../Utils/Occlusion';
+import { DESK_Z } from './Layout';
 
 export const LAPTOP_SCREEN = { width: 1512, height: 982 };
 const MODEL_SCALE = 2540 / 35.482;
@@ -55,7 +56,7 @@ export default class Computer {
         this.hinge.attach(this.screenAnchor);
         root.rotation.x = Math.PI / 2;
         root.scale.setScalar(MODEL_SCALE);
-        root.position.set(-350, -395, 480);
+        root.position.set(-350, -395, 480 + DESK_Z);
         root.name = 'MacBook Pro M3';
         this.root = root;
         root.traverse((part) => {
@@ -80,7 +81,7 @@ export default class Computer {
         this.hinge.rotation.x = CLOSED_ANGLE;
         this.app.scene.add(root);
         this.screenGlow.name = 'MacBook screen glow';
-        this.screenGlow.position.set(-350, 320, 50);
+        this.screenGlow.position.set(-350, 320, 50 + DESK_Z);
         this.app.scene.add(this.screenGlow);
     }
 
@@ -107,7 +108,7 @@ export default class Computer {
         this.screenAnchor.updateWorldMatrix(true, false);
         const label = document.getElementById('laptop-label');
         if (label) {
-            const point = new THREE.Vector3(-350, 300, 480).project(
+            const point = new THREE.Vector3(-350, 300, 480 + DESK_Z).project(
                 camera.instance,
             );
             const x = ((point.x + 1) * innerWidth) / 2;
@@ -119,7 +120,7 @@ export default class Computer {
                 this.labelBlocked = occluded(
                     this.app.scene,
                     camera.instance,
-                    new THREE.Vector3(-350, -360, 480),
+                    new THREE.Vector3(-350, -360, 480 + DESK_Z),
                     this.root,
                 );
             }

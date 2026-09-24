@@ -4,6 +4,7 @@ import Time from '../Utils/Time';
 import Application from '../Application';
 import Mouse from '../Utils/Mouse';
 import Sizes from '../Utils/Sizes';
+import { DESK_Z } from '../World/Layout';
 
 export class CameraKeyframeInstance {
     position: THREE.Vector3;
@@ -22,13 +23,14 @@ const keys: { [key in CameraKey]: CameraKeyframe } = {
         position: new THREE.Vector3(-13500, 8500, 14500),
         focalPoint: new THREE.Vector3(0, -1000, 0),
     },
+    // Same framing as before, following the desk to the flag wall.
     monitor: {
-        position: new THREE.Vector3(-350, 1450, 3000),
-        focalPoint: new THREE.Vector3(-350, 450, -730),
+        position: new THREE.Vector3(-350, 1450, 3000 + DESK_Z),
+        focalPoint: new THREE.Vector3(-350, 450, -730 + DESK_Z),
     },
     desk: {
-        position: new THREE.Vector3(-350, 2400, 7000),
-        focalPoint: new THREE.Vector3(-350, 50, 200),
+        position: new THREE.Vector3(-350, 2400, 7000 + DESK_Z),
+        focalPoint: new THREE.Vector3(-350, 50, 200 + DESK_Z),
     },
     loading: {
         // Establishing shot of the room; the login screen sits over this.
