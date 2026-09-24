@@ -66,9 +66,9 @@ const KeyboardLetter: React.FC<KeyboardLetterProps> = ({
             style={Object.assign(
                 {},
                 styles.letterBox,
-                isInWord && { backgroundColor: 'yellow' },
-                isInPlace && { backgroundColor: 'lightgreen' },
-                notInWord && { backgroundColor: 'gray' },
+                isInWord && { backgroundColor: 'var(--tile-present, yellow)' },
+                isInPlace && { backgroundColor: 'var(--tile-correct, lightgreen)' },
+                notInWord && { backgroundColor: 'var(--tile-absent, gray)' },
             )}
         >
             <p>{letter}</p>
@@ -109,9 +109,9 @@ const GuessLetter: React.FC<GuessLetterProps> = ({
             style={Object.assign(
                 {},
                 styles.guessLetterBox,
-                isInWord && { backgroundColor: 'yellow' },
-                isInPlace && { backgroundColor: 'lightgreen' },
-                !guessed && { backgroundColor: 'white' },
+                isInWord && { backgroundColor: 'var(--tile-present, yellow)' },
+                isInPlace && { backgroundColor: 'var(--tile-correct, lightgreen)' },
+                !guessed && { backgroundColor: 'var(--tile-empty, white)' },
                 letter === ' ' && styles.emptyBox,
             )}
         >
@@ -159,7 +159,7 @@ const GuessWord: React.FC<GuessWordProps> = ({
                         controls
                             .start({
                                 x: -4,
-                                backgroundColor: '#fff',
+                                backgroundColor: tileEmpty(),
                                 transition: {
                                     duration: 0.1,
                                 },
@@ -167,7 +167,7 @@ const GuessWord: React.FC<GuessWordProps> = ({
                             .then(() => {
                                 controls.start({
                                     x: 0,
-                                    backgroundColor: '#fff',
+                                    backgroundColor: tileEmpty(),
                                     transition: {
                                         duration: 0.09,
                                     },
@@ -210,6 +210,12 @@ export interface WordleProps {}
 
 const TOP_ROW = ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'];
 const MIDDLE_ROW = ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'];
+// Resolved colour for framer-motion, which cannot animate CSS variables.
+const tileEmpty = () =>
+    getComputedStyle(document.documentElement)
+        .getPropertyValue('--tile-empty')
+        .trim() || '#fff';
+
 const BOTTOM_ROW = ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'DEL'];
 const ROWS = [TOP_ROW, MIDDLE_ROW, BOTTOM_ROW];
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -419,7 +425,7 @@ const styles: StyleSheetCSS = {
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#fff',
+        backgroundColor: 'var(--tile-surface, #fff)',
     },
     header: {
         flexShrink: 1,
@@ -466,8 +472,8 @@ const styles: StyleSheetCSS = {
     },
     guessWordRow: {},
     emptyBox: {
-        border: '2px solid gray',
-        backgroundColor: 'white',
+        border: '2px solid var(--tile-border, gray)',
+        backgroundColor: 'var(--tile-empty, white)',
         boxShadow: 'none',
     },
 };

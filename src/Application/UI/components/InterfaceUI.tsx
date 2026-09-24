@@ -3,6 +3,7 @@ import Application from '../../Application';
 import bus from '../EventBus';
 import { ALBUMS, AlbumState } from '../../Audio/AlbumAudio';
 import TvView from './TvView';
+import MessiCard from './MessiCard';
 const ART = Object.fromEntries(
     Object.keys(ALBUMS).map((slug) => [slug, `/room/albums/${slug}.jpg`]),
 ) as Record<keyof typeof ALBUMS, string>;
@@ -61,6 +62,7 @@ export default function InterfaceUI() {
                 Open my portfolio
             </button>
             <TvView />
+            <MessiCard />
             {asleep && (
                 <p className="good-night" role="status">
                     Good night. <span>Tap the bed to wake the room.</span>

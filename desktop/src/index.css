@@ -2446,3 +2446,254 @@ img {
         display: none;
     }
 }
+
+/* ───────────── Dark mode (menu-bar toggle; macOS dark palette) ───────────── */
+html[data-theme='dark'] {
+    --mac-text: #f5f5f7;
+    --mac-muted: #98989d;
+    --mac-hairline: rgba(255, 255, 255, 0.1);
+    --mac-glass: rgba(40, 40, 44, 0.72);
+    --mac-window: #1e1e1e;
+    --line: rgba(255, 255, 255, 0.1);
+    --ink: #f5f5f7;
+    color-scheme: dark;
+}
+html[data-theme='dark'] body {
+    color: #f5f5f7;
+}
+/* Windows and chrome */
+html[data-theme='dark'] .os-window {
+    background: rgba(30, 30, 30, 0.96);
+    color: #f5f5f7;
+    box-shadow:
+        0 0 0 0.5px rgba(0, 0, 0, 0.8),
+        inset 0 0 0 0.5px rgba(255, 255, 255, 0.14),
+        0 22px 60px rgba(0, 0, 0, 0.6),
+        0 2px 8px rgba(0, 0, 0, 0.4);
+}
+html[data-theme='dark'] .os-titlebar {
+    background: linear-gradient(#383838, #2e2e2e);
+    color: #f5f5f7;
+    border-color: rgba(0, 0, 0, 0.6);
+}
+html[data-theme='dark'] .os-window[data-active='false'] .os-titlebar {
+    background: #2a2a2a;
+    color: #6e6e73;
+}
+html[data-theme='dark'] .os-window[data-active='false'] .traffic-button::before {
+    background: #4a4a4c;
+}
+html[data-theme='dark'] .window-status {
+    background: #252526;
+    color: #98989d;
+    border-top-color: rgba(0, 0, 0, 0.6);
+}
+/* Menu bar, Apple menu, dock */
+html[data-theme='dark'] .system-menu {
+    background: rgba(24, 24, 28, 0.6);
+    color: #f5f5f7;
+}
+html[data-theme='dark'] .start-menu {
+    background: rgba(40, 40, 44, 0.9);
+    color: #f5f5f7;
+    border-color: rgba(255, 255, 255, 0.12);
+}
+html[data-theme='dark'] .start-menu a,
+html[data-theme='dark'] .start-menu button {
+    color: #f5f5f7;
+}
+html[data-theme='dark'] .os-dock {
+    background: rgba(30, 30, 34, 0.45);
+    border-color: rgba(255, 255, 255, 0.14);
+}
+html[data-theme='dark'] .dock-divider {
+    background: rgba(255, 255, 255, 0.22);
+}
+html[data-theme='dark'] .dock-tooltip {
+    background: rgba(40, 40, 44, 0.94);
+    color: #f5f5f7;
+}
+html[data-theme='dark'] .dock-tooltip::after {
+    border-top-color: rgba(40, 40, 44, 0.94);
+}
+/* Finder sidebar and pages */
+html[data-theme='dark'] .portfolio-nav {
+    background: rgba(42, 42, 44, 0.92);
+    border-color: rgba(0, 0, 0, 0.5);
+}
+html[data-theme='dark'] .nav-links a,
+html[data-theme='dark'] .nav-links button,
+html[data-theme='dark'] .nav-identity {
+    color: #f5f5f7;
+}
+html[data-theme='dark'] .nav-links a.active {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+}
+html[data-theme='dark'] .nav-links a:hover,
+html[data-theme='dark'] .nav-links button:hover {
+    background: rgba(255, 255, 255, 0.07);
+}
+html[data-theme='dark'] .nav-links img,
+html[data-theme='dark'] .nav-links svg {
+    filter: invert(1) brightness(0.95);
+}
+html[data-theme='dark'] .portfolio-page {
+    background: #1e1e1e;
+    color: #f5f5f7;
+}
+html[data-theme='dark'] .portfolio-page :is(h1, h2, h3, strong),
+html[data-theme='dark'] .feature-copy h2,
+html[data-theme='dark'] .contact-address {
+    color: #f5f5f7;
+}
+html[data-theme='dark'] .portfolio-page :is(p, li, dd, small),
+html[data-theme='dark'] :is(.home-intro, .page-lead, .page-eyebrow, .file-meta,
+        .home-rule, .home-footer, .experience-date, .certifications,
+        .contact-location, .empty-state, .project-search > span) {
+    color: #a1a1a6;
+}
+html[data-theme='dark'] .portfolio-page :is(.text-link, .back-link, .note-read, .markdown a),
+html[data-theme='dark'] .social-links a,
+html[data-theme='dark'] .contact-actions button,
+html[data-theme='dark'] .credits-links a {
+    color: #4aa3ff;
+}
+html[data-theme='dark'] :is(.featured-project, .project-card, .contact-letter,
+        .detail-body aside) {
+    background: #2a2a2c;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+html[data-theme='dark'] :is(.project-image, .feature-image, .markdown pre) {
+    background: #323234;
+}
+html[data-theme='dark'] .project-search input {
+    background: #2a2a2c;
+    color: #f5f5f7;
+    border-color: rgba(255, 255, 255, 0.14);
+}
+html[data-theme='dark'] .tech-tag,
+html[data-theme='dark'] .empty-state button {
+    background: #323234;
+    color: #d1d1d6;
+}
+html[data-theme='dark'] .file-badge {
+    background: rgba(30, 30, 30, 0.85);
+    color: #f5f5f7;
+}
+html[data-theme='dark'] .portfolio-page hr,
+html[data-theme='dark'] .portfolio-page :is(section, article, a, div) {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+/* Credits, word game, shutdown */
+html[data-theme='dark'] .credits-page,
+html[data-theme='dark'] .credits-page :is(h1, h2, dt) {
+    color: #f5f5f7;
+}
+html[data-theme='dark'] .credits-page dd {
+    color: #a1a1a6;
+}
+html[data-theme='dark'] .word-game {
+    background: #1e1e1e !important;
+    color: #f5f5f7;
+}
+html[data-theme='dark'] .word-game :is(h1, h2, h3, p) {
+    color: #f5f5f7;
+}
+html[data-theme='dark'] .word-game .site-button {
+    background: #3a3a3c !important;
+    border-color: #4a4a4c !important;
+}
+html[data-theme='dark'] .shutdown-screen {
+    background: #1c1c1e;
+}
+/* Music */
+html[data-theme='dark'] .music-app {
+    background: #1e1e1e;
+}
+html[data-theme='dark'] .music-now {
+    background: linear-gradient(#262628, #1e1e1e);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+html[data-theme='dark'] .music-now h1,
+html[data-theme='dark'] .music-queue li span {
+    color: #f5f5f7;
+}
+html[data-theme='dark'] .music-controls button {
+    background: #f5f5f7;
+    color: #1d1d1f;
+}
+html[data-theme='dark'] .music-queue li:nth-child(even) {
+    background: rgba(255, 255, 255, 0.04);
+}
+html[data-theme='dark'] .music-queue li[data-current='true'] {
+    background: rgba(250, 45, 72, 0.18);
+}
+/* Résumé: the page stays paper-white, as in Preview's dark mode. */
+html[data-theme='dark'] .resume-viewer {
+    background: #2a2a2c;
+}
+html[data-theme='dark'] .resume-toolbar {
+    background: #323234;
+    border-color: rgba(0, 0, 0, 0.5);
+}
+/* Messages */
+html[data-theme='dark'] .msg-app {
+    background: #1e1e1e;
+}
+html[data-theme='dark'] .msg-contact {
+    background: rgba(40, 40, 42, 0.9);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+html[data-theme='dark'] .msg-bubble {
+    background: #3a3a3c;
+    color: #f5f5f7;
+}
+html[data-theme='dark'] .msg-row.user .msg-bubble {
+    background: #0a84ff;
+}
+html[data-theme='dark'] .msg-replies button {
+    background: #1e1e1e;
+    color: #4aa3ff;
+    border-color: rgba(10, 132, 255, 0.55);
+}
+html[data-theme='dark'] .msg-compose {
+    border-color: rgba(255, 255, 255, 0.18);
+}
+html[data-theme='dark'] .msg-compose button:disabled {
+    background: #48484a;
+}
+/* Menu-bar appearance toggle */
+.system-appearance {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 22px;
+    margin-right: 10px;
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+}
+.system-appearance:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+.system-appearance svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+html[data-theme='dark'] {
+    --tile-empty: #1e1e1e;
+    --tile-surface: #1e1e1e;
+    --tile-border: #48484a;
+    --tile-correct: #538d4e;
+    --tile-present: #b59f3b;
+    --tile-absent: #3a3a3c;
+}

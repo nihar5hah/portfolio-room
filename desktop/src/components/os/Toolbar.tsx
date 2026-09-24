@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Icon from '../general/Icon';
 import { IconName } from '../../assets/icons';
 import useWeather from '../../hooks/useWeather';
+import useTheme from '../../hooks/useTheme';
 const PINNED: { name: string; label: string; icon: IconName }[] = [
     { name: 'My Portfolio', label: 'Portfolio', icon: 'showcaseIcon' },
     { name: 'Begu', label: 'Begu · AI companion', icon: 'begu' },
@@ -28,6 +29,7 @@ export default function Toolbar({
 }: ToolbarProps) {
     const [menu, setMenu] = useState(false);
     const weather = useWeather();
+    const [theme, toggleTheme] = useTheme();
     const [time, setTime] = useState('');
     useEffect(() => {
         const tick = () =>
@@ -115,6 +117,24 @@ export default function Toolbar({
                         {weather.map((c) => `${c.id.toUpperCase()} ${c.temp}°`).join('  ')}
                     </span>
                 )}
+                <button
+                    className="system-appearance"
+                    onClick={toggleTheme}
+                    aria-pressed={theme === 'dark'}
+                    aria-label={theme === 'dark' ? 'Use light mode' : 'Use dark mode'}
+                    title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+                >
+                    {theme === 'dark' ? (
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="12" cy="12" r="4.2" />
+                            <path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6" />
+                        </svg>
+                    ) : (
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M20 14.6A8.2 8.2 0 1 1 9.4 4a6.6 6.6 0 0 0 10.6 10.6Z" />
+                        </svg>
+                    )}
+                </button>
                 <span className="system-status" aria-hidden="true">
                     <svg viewBox="0 0 24 24">
                         <path d="M2 8.6a15 15 0 0 1 20 0M5 12.2a10 10 0 0 1 14 0M8.2 15.8a5 5 0 0 1 7.6 0M12 19.5h.01" />

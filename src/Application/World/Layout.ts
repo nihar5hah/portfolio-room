@@ -6,5 +6,3 @@
  */
 export const DESK_Z = -4650;
 
-/** The sofa lounge faces the TV from the middle of the room (was against the back wall). */
-export const SOFA_MOVE = { x: -6600, z: 8300 };

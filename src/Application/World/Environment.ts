@@ -6,15 +6,43 @@ import { ALBUMS } from '../Audio/AlbumAudio';
 import BakedModel from '../Utils/BakedModel';
 import MatchBoard from './MatchBoard';
 import bus from '../UI/EventBus';
-import { DESK_Z, SOFA_MOVE } from './Layout';
+import { DESK_Z } from './Layout';
 type SkyPhase = 'day' | 'dusk' | 'night';
 const SKY: Record<
     SkyPhase,
-    { top: string; bottom: string; orb: string; city: [string, string]; light: string; strength: number }
+    {
+        top: string;
+        bottom: string;
+        orb: string;
+        city: [string, string];
+        light: string;
+        strength: number;
+    }
 > = {
-    day: { top: '#5f8fc9', bottom: '#b9d2ea', orb: '#fff6de', city: ['#4d5d70', '#5a6b7e'], light: '#fff1d6', strength: 1.7 },
-    dusk: { top: '#1f2b4d', bottom: '#d98b5f', orb: '#ffb877', city: ['#1a2130', '#222a3b'], light: '#f0a878', strength: 1.3 },
-    night: { top: '#142335', bottom: '#142335', orb: '#ddcaa0', city: ['#0b121d', '#101a27'], light: '#9fb8e6', strength: 1.4 },
+    day: {
+        top: '#5f8fc9',
+        bottom: '#b9d2ea',
+        orb: '#fff6de',
+        city: ['#4d5d70', '#5a6b7e'],
+        light: '#fff1d6',
+        strength: 1.7,
+    },
+    dusk: {
+        top: '#1f2b4d',
+        bottom: '#d98b5f',
+        orb: '#ffb877',
+        city: ['#1a2130', '#222a3b'],
+        light: '#f0a878',
+        strength: 1.3,
+    },
+    night: {
+        top: '#142335',
+        bottom: '#142335',
+        orb: '#ddcaa0',
+        city: ['#0b121d', '#101a27'],
+        light: '#9fb8e6',
+        strength: 1.4,
+    },
 };
 export function skyPhase(hour: number): SkyPhase {
     if (hour >= 7 && hour < 17) return 'day';
@@ -326,55 +354,6 @@ export default class Environment {
         );
         deskRug.name = 'Desk rug';
 
-        // A sofa for match nights. Authored against the back wall, then moved as
-        // one piece into the middle of the room to face the TV (Layout.ts).
-        const sofaStart = room.children.length;
-        box(4700, 600, 1550, black, 6600, FLOOR + 450, -3700, 180).name =
-            'Sofa';
-        box(4700, 1700, 440, fabric, 6600, FLOOR + 1270, -4500, 190);
-        for (const x of [5000, 6600, 8200]) {
-            box(1450, 400, 1400, fabric, x, FLOOR + 920, -3700, 170);
-            box(1410, 1150, 320, fabric, x, FLOOR + 1620, -4220, 140);
-        }
-        for (const x of [4080, 9120])
-            box(400, 1000, 1800, fabric, x, FLOOR + 1130, -3700, 140);
-        box(750, 760, 270, blue, 4750, FLOOR + 1500, -3710, 120).rotation.z =
-            0.12;
-        box(
-            750,
-            760,
-            270,
-            material('#583c43'),
-            8330,
-            FLOOR + 1500,
-            -3710,
-            120,
-        ).rotation.z = -0.14;
-        // Low coffee table, book and controller.
-        // Sized to the sofa: a coffee table sits a hand below the seat cushion.
-        box(1800, 80, 860, wood, 6720, FLOOR + 560, -1720, 160);
-        for (const x of [6050, 7390])
-            box(60, 500, 560, black, x, FLOOR + 250, -1720);
-        box(620, 75, 450, red, 6360, FLOOR + 640, -1800, 12);
-        const controller = box(
-            440,
-            100,
-            220,
-            black,
-            7100,
-            FLOOR + 655,
-            -1600,
-            70,
-        );
-        controller.rotation.y = -0.25;
-        for (const x of [6990, 7230]) {
-            const knob = cylinder(40, 20, brass, x, FLOOR + 713, -1600);
-            knob.castShadow = false;
-        }
-        for (const part of room.children.slice(sofaStart)) {
-            part.position.x += SOFA_MOVE.x;
-            part.position.z += SOFA_MOVE.z;
-        }
         // Reading lamp, with an actual pool of warm light.
         cylinder(420, 75, black, 10100, FLOOR + 40, -3700);
         cylinder(32, 3700, brass, 10100, FLOOR + 1900, -3700);
@@ -394,7 +373,12 @@ export default class Environment {
         const diffuser = cylinder(390, 12, glow('#ffe4ad'), 10100, 325, -3700);
         diffuser.name = 'Lamp diffuser';
         diffuser.castShadow = false;
-        const lamp = (this.lamp = new THREE.PointLight('#ffb877', 3.2, 14500, 2));
+        const lamp = (this.lamp = new THREE.PointLight(
+            '#ffb877',
+            3.2,
+            14500,
+            2,
+        ));
         lamp.name = 'Warm floor lamp';
         // Keep the emitter inside the shade, clear of the opaque central pole.
         lamp.position.set(10260, 550, -3700);
@@ -753,12 +737,26 @@ export default class Environment {
             ['poster_rodeo', -13750, FLOOR + 1880, -6200, 0, -0.15], // record cabinet, beside the turntable
             ['poster_honestly', -9150, FLOOR + 5050, -5050, -0.12, -0.14], // bookshelf, top shelf
             ['poster_tlop', -4400, FLOOR + 1935, 17700, Math.PI, -0.13], // media console, left end
-            ['poster_currents', 6400, FLOOR + 3160, 17400, Math.PI - 0.2, -0.12], // on the right speaker tower
-            ['poster_graduation', -16700, FLOOR + 1275, 4100, Math.PI / 2 - 0.25, -0.15], // window bench
+            [
+                'poster_currents',
+                6400,
+                FLOOR + 3160,
+                17400,
+                Math.PI - 0.2,
+                -0.12,
+            ], // on the right speaker tower
+            [
+                'poster_graduation',
+                -16700,
+                FLOOR + 1275,
+                4100,
+                Math.PI / 2 - 0.25,
+                -0.15,
+            ], // window bench
             ['poster_blonde', 17520, 2360, 5600, -Math.PI / 2, -0.15], // right-wall ledge
             ['poster_808s', 15480, FLOOR + 310, 1410, -Math.PI / 2, -0.18], // floor, against the bedside table
             ['poster_jackboys', 17500, FLOOR + 310, -2400, -Math.PI / 2, -0.18], // skirting, by the mirror
-            ['poster_livelove', 9500 + SOFA_MOVE.x, FLOOR + 310, -4300 + SOFA_MOVE.z, Math.PI / 2, -0.18], // floor, against the sofa arm
+            ['poster_livelove', -5100, FLOOR + 310, 7400, -Math.PI / 2, -0.18], // floor, against the sofa arm
             ['poster_mbdtf', -15600, FLOOR + 310, -4230, 0.12, -0.2], // floor, against the display cabinet
         ] as const) {
             const sleeve = box(SLEEVE, SLEEVE, 46, black, x, y, z, 10);
@@ -825,7 +823,13 @@ export default class Environment {
             skyContext.fillRect(0, 0, 1024, 768);
             skyContext.fillStyle = look.orb;
             skyContext.beginPath();
-            skyContext.arc(770, phase === 'dusk' ? 470 : 130, phase === 'day' ? 44 : 36, 0, Math.PI * 2);
+            skyContext.arc(
+                770,
+                phase === 'dusk' ? 470 : 130,
+                phase === 'day' ? 44 : 36,
+                0,
+                Math.PI * 2,
+            );
             skyContext.fill();
             for (let i = 0; i < 18; i++) {
                 const x = i * 62,
@@ -878,7 +882,14 @@ export default class Environment {
         room.add(window);
         // Moonlight through the window: a cool, narrow spill across the bench and
         // floor so the left wall reads as an opening, not a painted rectangle.
-        const moon = new THREE.SpotLight('#9fb8e6', 1.4, 26000, Math.PI / 5, 0.6, 1.4);
+        const moon = new THREE.SpotLight(
+            '#9fb8e6',
+            1.4,
+            26000,
+            Math.PI / 5,
+            0.6,
+            1.4,
+        );
         moon.name = 'Window moonlight';
         moon.position.set(-20500, 9800, 6200);
         moon.target.position.set(-9500, FLOOR, 7200);
@@ -1080,13 +1091,33 @@ export default class Environment {
         const outline = new THREE.Shape();
         outline.moveTo(-rugW / 2 + corner, -rugD / 2);
         outline.lineTo(rugW / 2 - corner, -rugD / 2);
-        outline.quadraticCurveTo(rugW / 2, -rugD / 2, rugW / 2, -rugD / 2 + corner);
+        outline.quadraticCurveTo(
+            rugW / 2,
+            -rugD / 2,
+            rugW / 2,
+            -rugD / 2 + corner,
+        );
         outline.lineTo(rugW / 2, rugD / 2 - corner);
-        outline.quadraticCurveTo(rugW / 2, rugD / 2, rugW / 2 - corner, rugD / 2);
+        outline.quadraticCurveTo(
+            rugW / 2,
+            rugD / 2,
+            rugW / 2 - corner,
+            rugD / 2,
+        );
         outline.lineTo(-rugW / 2 + corner, rugD / 2);
-        outline.quadraticCurveTo(-rugW / 2, rugD / 2, -rugW / 2, rugD / 2 - corner);
+        outline.quadraticCurveTo(
+            -rugW / 2,
+            rugD / 2,
+            -rugW / 2,
+            rugD / 2 - corner,
+        );
         outline.lineTo(-rugW / 2, -rugD / 2 + corner);
-        outline.quadraticCurveTo(-rugW / 2, -rugD / 2, -rugW / 2 + corner, -rugD / 2);
+        outline.quadraticCurveTo(
+            -rugW / 2,
+            -rugD / 2,
+            -rugW / 2 + corner,
+            -rugD / 2,
+        );
         const rugGeometry = new THREE.ExtrudeGeometry(outline, {
             depth: 8,
             bevelEnabled: true,
@@ -1109,7 +1140,8 @@ export default class Environment {
         const tuftData = new Uint8Array(64 * 64 * 4);
         for (let y = 0; y < 64; y++)
             for (let x = 0; x < 64; x++) {
-                let seed = Math.imul((x >> 3) + 1, 73856093) ^
+                let seed =
+                    Math.imul((x >> 3) + 1, 73856093) ^
                     Math.imul((y >> 3) + 1, 19349663);
                 seed = Math.imul(seed ^ (seed >>> 13), 1274126177);
                 const lift = 0.65 + ((seed >>> 24) / 255) * 0.35;
@@ -1147,7 +1179,7 @@ export default class Environment {
         graduation.rotation.x = -Math.PI / 2;
         // Underside sits 2 units over the boards; the mat is ~13 mm thick.
         // Under the lounge, between the sofa and the TV.
-        graduation.position.set(0, FLOOR + 22, 9800);
+        graduation.position.set(0, FLOOR + 22, 12500);
         graduation.receiveShadow = true;
         room.add(graduation);
 
@@ -1167,7 +1199,7 @@ export default class Environment {
                 metalness: 1,
                 roughness: 0.04,
                 envMapIntensity: 1.6,
-            })
+            }),
         );
         glass.position.z = 76;
         mirror.add(glass);
@@ -1341,14 +1373,14 @@ export default class Environment {
 
         // Two sculpted bean bags face the TV, with space between them for controllers.
         for (const [x, color, name] of [
-            [-4700, '#33425d', 'Blue match night bean bag'],
-            [4700, '#793e49', 'Burgundy match night bean bag'],
+            [-6200, '#33425d', 'Blue match night bean bag'],
+            [6200, '#793e49', 'Burgundy match night bean bag'],
         ] as const) {
             // They flank the Graduation rug, angled in toward the screen.
             const bag = new THREE.Group();
             bag.name = name;
-            bag.position.set(x, FLOOR, 10800);
-            bag.rotation.y = Math.atan2(-x, 18100 - 10800);
+            bag.position.set(x, FLOOR, 13200);
+            bag.rotation.y = Math.atan2(-x, 18100 - 13200);
             const geometry = new THREE.SphereGeometry(1, 48, 32);
             const vertices = geometry.attributes.position;
             for (let i = 0; i < vertices.count; i++) {
@@ -1397,14 +1429,93 @@ export default class Environment {
             }
             room.add(bag);
         }
-        cylinder(600, 100, wood, 0, FLOOR + 950, 13000).name =
-            'Match night controller table';
-        cylinder(65, 865, black, 0, FLOOR + 482.5, 13000);
-        cylinder(400, 50, black, 0, FLOOR + 25, 13000);
+        // PlayStation lounge: a deep L-shaped sectional facing the TV, in the
+        // room's navy with garnet piping, a Blaugrana cushion and a low blue
+        // under-glow. Scale here is ~3.3 units per mm: 2.9 m wide, 1 m deep
+        // seats, a 1.6 m chaise and a 420 mm seat height.
+        const lounge = new THREE.Group();
+        lounge.name = 'Blaugrana gaming sectional';
+        lounge.position.set(0, FLOOR, 6200);
+        const navy = material('#1c2740', 1);
+        const navyDeep = material('#141c2f', 1);
+        const stripeCanvas = document.createElement('canvas');
+        stripeCanvas.width = 256;
+        stripeCanvas.height = 64;
+        const stripeContext = stripeCanvas.getContext('2d')!;
+        for (let i = 0; i < 8; i++) {
+            stripeContext.fillStyle = i % 2 ? '#a50044' : '#004d98';
+            stripeContext.fillRect(i * 32, 0, 32, 64);
+        }
+        const stripeMap = new THREE.CanvasTexture(stripeCanvas);
+        stripeMap.encoding = THREE.sRGBEncoding;
+        const part = (
+            w: number,
+            h: number,
+            d: number,
+            m: THREE.Material,
+            x: number,
+            y: number,
+            z: number,
+            r = 0,
+        ) => {
+            const mesh = box(w, h, d, m, x, y, z, r);
+            lounge.add(mesh);
+            return mesh;
+        };
+        // Plinth: main run and chaise, lifted on a recessed dark kick.
+        part(9400, 180, 3100, black, 0, 90, 1650);
+        part(3000, 180, 1800, black, 3200, 90, 4250);
+        part(9600, 720, 3300, navyDeep, 0, 540, 1650, 120).name =
+            'Sectional base';
+        part(3200, 720, 1900, navyDeep, 3200, 540, 4250, 120);
+        // Seat cushions: two on the main run, one long chaise cushion.
+        for (const x of [-2675, 175])
+            part(2800, 520, 2600, navy, x, 1150, 1980, 170);
+        part(3150, 520, 4500, navy, 3200, 1150, 2930, 170);
+        // Back frame, left arm and three leaning back cushions.
+        part(9600, 2750, 650, navyDeep, 0, 1375, 325, 140);
+        part(700, 2050, 3300, navyDeep, -4450, 1025, 1650, 160);
+        for (const x of [-2650, 350, 3250]) {
+            const back = part(2900, 1450, 620, navy, x, 2150, 900, 200);
+            back.rotation.x = -0.14;
+        }
+        // Garnet piping along the seat front and the chaise edge.
+        const garnet = material('#8a1c3a', 0.7);
+        part(6400, 34, 34, garnet, -1600, 900, 3305);
+        part(3200, 34, 34, garnet, 3200, 900, 5205);
+        // Cushions: garnet and Blaugrana stripes.
+        const throwPillow = part(950, 950, 300, garnet, -3500, 1850, 1350, 140);
+        throwPillow.rotation.set(-0.3, 0.2, 0.12);
+        const stripePillow = part(
+            1000,
+            1000,
+            300,
+            new THREE.MeshStandardMaterial({ map: stripeMap, roughness: 0.95 }),
+            2450,
+            1850,
+            1400,
+            140,
+        );
+        stripePillow.name = 'Blaugrana cushion';
+        stripePillow.rotation.set(-0.3, -0.25, -0.1);
+        // Gaming under-glow: a thin strip, not a light, so the room stays dark.
+        part(9200, 16, 16, glow('#3a6cff'), 0, 30, 3320).name =
+            'Sectional under-glow';
+        part(16, 16, 1700, glow('#3a6cff'), 4815, 30, 4250);
+        room.add(lounge);
+        // Ottoman in front of the sofa holds the controllers.
+        // Sits on the rug's top face (~FLOOR + 50) instead of cutting through it:
+        // coplanar/intersecting surfaces there were what flickered.
+        const ottoman = box(2600, 1150, 1500, navyDeep, -900, FLOOR + 625,
+            10900,
+            220,
+        );
+        ottoman.name = 'Match night controller table';
+        box(1500, 40, 1000, wood, -900, FLOOR + 1220, 10900, 20);
         for (const x of [-240, 240]) {
             const pad = new THREE.Group();
             pad.name = 'Match night gamepad';
-            pad.position.set(x, FLOOR + 1045, 13000);
+            pad.position.set(-900 + x, FLOOR + 1290, 10900);
             pad.rotation.y = x < 0 ? -0.22 : 0.22;
             pad.add(box(390, 80, 210, cream, 0, 0, 0, 65));
             for (const side of [-1, 1]) {
@@ -1481,9 +1592,23 @@ export default class Environment {
 
         // Begu's corner, away from chair wheels and desk legs.
         cylinder(1050, 220, fabric, -4800, FLOOR + 110, 800 + DESK_Z);
-        cylinder(880, 80, material('#6b727e'), -4800, FLOOR + 255, 800 + DESK_Z);
+        cylinder(
+            880,
+            80,
+            material('#6b727e'),
+            -4800,
+            FLOOR + 255,
+            800 + DESK_Z,
+        );
         cylinder(280, 140, brass, -4600, FLOOR + 70, -800 + DESK_Z);
-        cylinder(240, 12, material('#5187a0', 0.2), -4600, FLOOR + 143, -800 + DESK_Z);
+        cylinder(
+            240,
+            12,
+            material('#5187a0', 0.2),
+            -4600,
+            FLOOR + 143,
+            -800 + DESK_Z,
+        );
         label('BEGU', 1000, 200, -4800, FLOOR + 155, 1865 + DESK_Z);
         return room;
     }

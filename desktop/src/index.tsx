@@ -2,6 +2,10 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
+import { applyTheme, initialTheme } from './hooks/useTheme';
+
+// Before first paint, so a dark-mode visitor never sees a light flash.
+applyTheme(initialTheme());
 // The original room listens to input from its physical CSS3D monitor.
 if (window.parent !== window) {
     for (const type of [

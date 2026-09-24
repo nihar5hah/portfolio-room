@@ -41,8 +41,8 @@ export default class Interactables {
                 }));
             else if (name.endsWith(' jersey frame'))
                 this.add(object, () => ({
-                    label: 'About Nihar',
-                    run: openApp('showcase', '/about'),
+                    label: 'Lionel Messi · my idol',
+                    run: () => bus.dispatch('openMessi', {}),
                 }));
             else if (name === 'Match night media wall')
                 this.add(object, () => ({
