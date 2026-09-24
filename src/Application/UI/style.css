@@ -1,185 +1,365 @@
-h1,
-h2,
-h3,
-h4,
-h5,
-p {
-    /* font-family: ocr-a-std, monospace; */
-    font-family: monospace;
-    font-weight: 400;
-    font-style: normal;
-    color: white;
-    /* mobile friendly font size */
-    font-size: 16px;
+@font-face {
+    font-family: Manrope;
+    src: url('/fonts/manrope-latin-400-normal.woff2');
 }
-
-/* if on mobile */
-@media only screen and (max-width: 768px) {
-    h1,
-    h2,
-    h3,
-    h4,
-    h5,
-    p {
-        font-size: 10px;
-    }
+@font-face {
+    font-family: Manrope;
+    src: url('/fonts/manrope-latin-700-normal.woff2');
+    font-weight: 700;
 }
-
-br {
-    padding-top: 8px;
-    padding-bottom: 8px;
-    height: 16px;
+@font-face {
+    font-family: Mono;
+    src: url('/fonts/ibm-plex-mono-latin-400-normal.woff2');
 }
-
-.loading::after {
-    display: inline-block;
-    animation: dotty steps(1, end) 1s infinite;
-    content: '';
+body {
+    font-family: Manrope, Arial, sans-serif;
+    color: #233747;
 }
-
-@keyframes dotty {
-    0% {
-        content: '   ';
-    }
-    25% {
-        content: '. ';
-    }
-    50% {
-        content: '.. ';
-    }
-    75% {
-        content: '...';
-    }
-    100% {
-        content: '   ';
-    }
+a {
+    color: inherit;
 }
-.blinking-cursor {
-    background-color: #fff;
-    width: 0.8em;
-    height: 0.15em;
-    -webkit-animation: 0.65s blink step-end infinite;
-    -moz-animation: 0.65s blink step-end infinite;
-    -ms-animation: 0.65s blink step-end infinite;
-    -o-animation: 0.65s blink step-end infinite;
-    animation: 0.65s blink step-end infinite;
-}
-
-@keyframes blink {
-    from,
-    to {
-        background-color: transparent;
-    }
-    50% {
-        background-color: white;
-    }
-}
-
-@-moz-keyframes blink {
-    from,
-    to {
-        background-color: transparent;
-    }
-    50% {
-        background-color: white;
-    }
-}
-
-@-webkit-keyframes blink {
-    from,
-    to {
-        background-color: transparent;
-    }
-    50% {
-        background-color: white;
-    }
-}
-
-@-ms-keyframes blink {
-    from,
-    to {
-        background-color: transparent;
-    }
-    50% {
-        background-color: white;
-    }
-}
-
-@-o-keyframes blink {
-    from,
-    to {
-        background-color: transparent;
-    }
-    50% {
-        background-color: white;
-    }
-}
-
-.bios-start-button {
-    background-color: #000;
-    border: 4px solid #fff;
-    border-width: 4px 3px 4px 3px;
-}
-
-.bios-start-button p {
-    box-sizing: border-box;
-    padding: 8px;
-}
-
-.bios-start-button:hover p {
-    background-color: #fff;
+button {
+    font: inherit;
     cursor: pointer;
-    color: #000;
+}
+button:disabled {
+    cursor: wait;
+    opacity: 0.45;
+}
+:root {
+    --sys:
+        -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui,
+        sans-serif;
+}
+body {
+    font-family: var(--sys);
 }
 
-.loading-screen-header {
-    padding: 48px;
+/* ── Boot → login ─────────────────────────────────────────────── */
+.boot-screen {
+    position: absolute;
+    inset: 0;
+    color: #f5f5f7;
+    overflow: hidden;
+}
+.boot-portfolio-link {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    padding: 12px 16px;
+    border-radius: 24px;
+    background: #17191ee6;
+    font-size: 13px;
+    text-decoration: none;
+}
+.boot-portfolio-link:hover {
+    text-decoration: underline;
+}
+.boot-stage,
+.login-stage {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.9s ease;
+}
+.boot-stage {
+    background: #000;
+}
+.boot-progress {
+    width: 220px;
+    height: 5px;
+    border-radius: 3px;
+    background: #3a3a3c;
+    overflow: hidden;
+}
+.boot-progress span {
+    display: block;
+    height: 100%;
+    background: #f5f5f7;
+    border-radius: 3px;
+    transition: width 0.35s ease-out;
+}
+/* Lock screen: the live room shows through a dark scrim. */
+.login-stage {
+    opacity: 0;
+    pointer-events: none;
+    justify-content: space-between;
+    padding: 9vh 0 6vh;
+    background: linear-gradient(
+        180deg,
+        rgba(8, 10, 14, 0.62) 0%,
+        rgba(8, 10, 14, 0.42) 45%,
+        rgba(8, 10, 14, 0.7) 100%
+    );
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+}
+.boot-screen[data-ready='true'] .boot-stage {
+    opacity: 0;
+    pointer-events: none;
+}
+.boot-screen[data-ready='true'] .login-stage {
+    opacity: 1;
+    pointer-events: auto;
+}
+.login-clock {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+.login-clock span {
+    font: 500 22px var(--sys);
+    letter-spacing: -0.2px;
+    color: rgba(245, 245, 247, 0.92);
+}
+.login-clock time {
+    font: 600 clamp(84px, 12vw, 128px) / 1 var(--sys);
+    letter-spacing: -6px;
+    font-variant-numeric: tabular-nums;
+}
+.login-user {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
-.loading-screen-body {
-    padding-left: 48px;
-    padding-right: 48px;
+.login-stage h1 {
+    font: 600 17px var(--sys);
+    letter-spacing: -0.1px;
+    margin: 0 0 14px;
+}
+.login-enter {
+    width: 170px;
+    height: 30px;
+    border-radius: 999px;
+    border: 0;
+    background: rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(24px) saturate(1.6);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6);
+    color: #fff;
+    font: 500 13px var(--sys);
+    text-shadow: none;
+    transition:
+        background 0.15s,
+        transform 0.15s;
+}
+.login-enter:not(:disabled):hover {
+    background: rgba(255, 255, 255, 0.32);
+}
+.login-enter:not(:disabled):active {
+    transform: scale(0.98);
+}
+.login-enter:disabled {
+    opacity: 0.55;
+}
+/* ── Room overlay ─────────────────────────────────────────────── */
+.room-interface {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 22px 26px;
+    color: #f5f5f7;
+    font-family: var(--sys);
+}
+.room-interface header,
+.room-interface footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.room-name {
+    pointer-events: auto;
+    text-decoration: none;
+    font: 600 17px var(--sys);
+    letter-spacing: -0.3px;
+    color: #f5f5f7;
+}
+.room-controls button,
+#begu-label,
+#laptop-label {
+    pointer-events: auto;
+    font: 500 13px var(--sys);
+    color: #f5f5f7;
+    text-decoration: none;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(28, 28, 32, 0.55);
+    backdrop-filter: blur(24px) saturate(1.6);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    transition:
+        background 0.15s,
+        transform 0.15s,
+        opacity 0.3s;
+}
+.room-controls button:hover,
+#begu-label:hover,
+#laptop-label:hover {
+    background: rgba(60, 60, 66, 0.7);
+    filter: none;
+}
+.room-controls button:active {
+    transform: scale(0.97);
+}
+.room-caption p {
+    margin: 0;
+    font: 13px var(--sys);
+    color: rgba(245, 245, 247, 0.6);
+}
+.room-controls {
+    display: flex;
+    gap: 8px;
+    pointer-events: auto;
+}
+.room-controls .enter-computer {
+    background: #0a84ff;
+    border-color: #0a84ff;
+}
+.room-controls .enter-computer:hover {
+    background: #2b93ff;
+}
+.room-controls button[aria-pressed='true']:not(.enter-computer) {
+    background: rgba(255, 255, 255, 0.85);
+    color: #1d1d1f;
+}
+.room-interface[data-inside='true'] .room-caption,
+.room-interface[data-inside='true'] .room-name {
+    opacity: 0;
+}
+.over-begu {
+    cursor: pointer;
 }
 
-.loading-screen-footer {
-    padding: 48px;
-    padding-bottom: 64px;
+#begu-label,
+#laptop-label {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    z-index: 7;
+    white-space: nowrap;
+}
+#begu-label[hidden],
+#laptop-label[hidden] {
+    display: none;
+}
+#begu-label span {
+    color: rgba(245, 245, 247, 0.6);
+    margin-left: 8px;
+    font-weight: 400;
+}
+#begu-label::after,
+#laptop-label::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    width: 1px;
+    height: 14px;
+    background: rgba(255, 255, 255, 0.5);
 }
 
-.info-wrapper {
-    top: 64px;
-    left: 64px;
-}
-
-/* if on mobile make all loading screen elements have a padding of 16 */
-@media only screen and (max-width: 768px) {
-    .loading-screen-header {
+@media (max-width: 650px) {
+    .room-interface {
         padding: 16px;
     }
-
-    .info-wrapper {
-        top: 16px;
-        left: 16px;
+    .room-caption {
+        display: none;
     }
-
-    .blinking-cursor {
-        background-color: #fff;
-        width: 0.4em;
-        height: 0.08em;
-        -webkit-animation: 0.65s blink step-end infinite;
-        -moz-animation: 0.65s blink step-end infinite;
-        -ms-animation: 0.65s blink step-end infinite;
-        -o-animation: 0.65s blink step-end infinite;
-        animation: 0.65s blink step-end infinite;
+    .room-interface footer {
+        justify-content: center;
     }
-    
-    .loading-screen-body {
-        padding-left: 16px;
-        padding-right: 16px;
+    .room-controls {
+        flex-wrap: wrap;
+        justify-content: center;
     }
-
-    .loading-screen-footer {
-        padding: 16px;
-        padding-bottom: 32px;
+    .room-controls button {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+}
+.album-controls {
+    display: flex;
+    gap: 4px;
+    pointer-events: auto;
+    max-width: 320px;
+}
+.album-controls button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 44px;
+    min-height: 44px;
+    border: 1px solid #ffffff30;
+    border-radius: 12px;
+    padding: 7px 12px;
+    background: #1c1c20dd;
+    color: #f5f5f7;
+    text-align: left;
+    font: 500 12px var(--sys);
+}
+.album-thumb {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    border-radius: 5px;
+    overflow: hidden;
+    flex: none;
+    display: grid;
+    place-items: center;
+}
+.album-thumb img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(0.5) brightness(0.55);
+}
+/* Play triangle by default; two pause bars while playing. */
+.album-thumb::after {
+    content: '';
+    position: relative;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 6px 0 6px 10px;
+    border-color: transparent transparent transparent #fff;
+    margin-left: 2px;
+    filter: drop-shadow(0 1px 2px #0009);
+}
+.album-thumb[data-playing='true'] img {
+    filter: none;
+}
+.album-thumb[data-playing='true']::after {
+    width: 3px;
+    height: 11px;
+    border: 0;
+    margin-left: 0;
+    background: #fff;
+    box-shadow: 5px 0 0 #fff, 0 1px 2px #0009, 5px 1px 2px #0009;
+    transform: translateX(-2.5px);
+}
+.album-controls small {
+    display: block;
+    margin-top: 3px;
+    font: 10px var(--sys);
+    color: #b9cde1;
+}
+.room-interface footer {
+    gap: 16px;
+}
+@media (max-width: 650px) {
+    .room-interface footer {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .album-controls {
+        max-width: min(320px, 100%);
     }
 }

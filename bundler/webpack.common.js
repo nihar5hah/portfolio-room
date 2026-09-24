@@ -1,85 +1,84 @@
-const CopyWebpackPlugin = require('copy-webpack-plugin');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const MiniCSSExtractPlugin = require('mini-css-extract-plugin');
 const path = require('path');
-
+const CopyPlugin = require('copy-webpack-plugin');
+const HtmlPlugin = require('html-webpack-plugin');
+const CSSPlugin = require('mini-css-extract-plugin');
 module.exports = {
-    entry: path.resolve(__dirname, '../src/script.ts'),
+    entry: { room: './src/script.ts', desktop: './desktop/src/index.tsx' },
     output: {
-        hashFunction: 'xxhash64',
-        filename: 'bundle.[contenthash].js',
-        path: path.resolve(__dirname, '../public'),
+        path: path.resolve(__dirname, '../dist'),
+        filename: '[name].[contenthash].js',
+        publicPath: '/',
+        clean: true,
     },
-    devtool: 'source-map',
     plugins: [
-        new CopyWebpackPlugin({
-            patterns: [{ from: path.resolve(__dirname, '../static') }],
+        new CopyPlugin({
+            patterns: [
+                {
+                    from: 'static',
+                    globOptions: {
+                        ignore: [
+                            '**/draco/**',
+                            '**/images/**',
+                            '**/layers/png/**',
+                            '**/environmentMap/**',
+                            '**/video/real.mp4',
+                            '**/audio/radio/**',
+                            '**/audio/computer/**',
+                            '**/audio/atmosphere/office.ogg',
+                            '**/baked_decor.jpg',
+                        ],
+                    },
+                },
+            ],
         }),
-        new HtmlWebpackPlugin({
-            template: path.resolve(__dirname, '../src/index.html'),
-            minify: true,
+        new CSSPlugin({ filename: '[name].[contenthash].css' }),
+        new HtmlPlugin({ template: 'src/index.html', chunks: ['room'] }),
+        new HtmlPlugin({
+            template: 'desktop/public/index.html',
+            filename: 'desktop/index.html',
+            chunks: ['desktop'],
         }),
-        new MiniCSSExtractPlugin(),
     ],
     resolve: {
-        alias: {
-            three: path.resolve('./node_modules/three'),
-        },
         extensions: ['.tsx', '.ts', '.js'],
+        alias: { three: path.resolve(__dirname, '../node_modules/three') },
     },
     module: {
         rules: [
-            // HTML
             {
-                test: /\.(html)$/,
-                use: ['html-loader'],
-            },
-            {
-                test: /\.ts?$/,
-                use: 'ts-loader',
+                test: /\.[jt]sx?$/,
                 exclude: /node_modules/,
+                use: {
+                    loader: 'babel-loader',
+                    options: {
+                        presets: [
+                            '@babel/preset-env',
+                            '@babel/preset-react',
+                            '@babel/preset-typescript',
+                        ],
+                    },
+                },
             },
-            // JS
-            {
-                test: /\.tsx$/,
-                exclude: /node_modules/,
-                use: ['babel-loader'],
-            },
-
-            // CSS
             {
                 test: /\.css$/,
-                use: [MiniCSSExtractPlugin.loader, 'css-loader'],
+                use: [
+                    CSSPlugin.loader,
+                    {
+                        loader: 'css-loader',
+                        options: {
+                            url: {
+                                filter: (url) => !url.startsWith('/fonts/'),
+                            },
+                        },
+                    },
+                ],
             },
-
-            // Images
             {
-                test: /\.(jpg|png|gif|svg)$/,
+                test: /\.(png|jpe?g|gif|svg|webp|ttf|woff2?|pdf|mp4|mp3|wav)$/,
                 type: 'asset/resource',
-                generator: {
-                    filename: 'assets/images/[hash][ext]',
-                },
             },
-            // Audio
-            {
-                test: /\.(mp3|wav)$/,
-                loader: 'file-loader',
-                options: {
-                    name: '[path][name].[ext]',
-                },
-            },
-            // Fonts
-            {
-                test: /\.(ttf|eot|woff|woff2)$/,
-                type: 'asset/resource',
-                generator: {
-                    filename: 'assets/fonts/[hash][ext]',
-                },
-            },
-            // Shaders
             {
                 test: /\.(glsl|vs|fs|vert|frag)$/,
-                exclude: /node_modules/,
                 use: ['glslify-import-loader', 'raw-loader', 'glslify-loader'],
             },
         ],

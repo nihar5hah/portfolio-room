@@ -1,6 +1,17 @@
-node_modules
-package-lock.json
+node_modules/
+dist/
 .DS_Store
 *.psd
-
-public/
+.env*
+.agent-artifacts/
+.playwright-cli/
+# Personal music library: ~434 MB of user-supplied albums, local only.
+# The room's own sound effects stay tracked.
+static/audio/*/
+!static/audio/atmosphere/
+!static/audio/cc/
+!static/audio/computer/
+!static/audio/keyboard/
+!static/audio/mouse/
+!static/audio/radio/
+!static/audio/startup/

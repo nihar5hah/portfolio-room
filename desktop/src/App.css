@@ -1,0 +1,18 @@
+.App {
+    height: 100dvh;
+    width: 100%;
+    overflow: hidden;
+}
+html,
+body,
+#root {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+}
+div {
+    display: flex;
+}
+#root {
+    height: 100%;
+}

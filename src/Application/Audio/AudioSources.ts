@@ -1,7 +1,6 @@
 import AudioManager from './AudioManager';
 import * as THREE from 'three';
 import UIEventBus from '../UI/EventBus';
-import { Vector3 } from 'three';
 
 export class AudioSource {
     manager: AudioManager;
@@ -22,8 +21,7 @@ export class ComputerAudio extends AudioSource {
             // @ts-ignore
             if (event.inComputer) {
                 this.manager.playAudio('mouseDown', {
-                    volume: 0.8,
-                    position: new THREE.Vector3(800, -300, 1200),
+                    volume: 0.16,
                 });
             }
         });
@@ -32,8 +30,7 @@ export class ComputerAudio extends AudioSource {
             // @ts-ignore
             if (event.inComputer) {
                 this.manager.playAudio('mouseUp', {
-                    volume: 0.8,
-                    position: new THREE.Vector3(800, -300, 1200),
+                    volume: 0.16,
                 });
             }
         });
@@ -60,8 +57,7 @@ export class ComputerAudio extends AudioSource {
             // @ts-ignore
             if (event.inComputer) {
                 this.manager.playAudio('keyboardKeydown', {
-                    volume: 0.8,
-                    position: new THREE.Vector3(-300, -400, 1200),
+                    volume: 0.16,
                 });
             }
         });
@@ -75,7 +71,7 @@ export class AmbienceAudio extends AudioSource {
         super(manager);
         UIEventBus.on('loadingScreenDone', () => {
             this.poolKey = this.manager.playAudio('office', {
-                volume: 1,
+                volume: 0.075,
                 loop: true,
                 randDetuneScale: 0,
                 filter: {
@@ -84,40 +80,24 @@ export class AmbienceAudio extends AudioSource {
                 },
             });
             this.manager.playAudio('startup', {
-                volume: 0.4,
+                volume: 0.25,
                 randDetuneScale: 0,
             });
         });
     }
 
-    mapValues(
-        input: number,
-        input_start: number,
-        input_end: number,
-        output_start: number,
-        output_end: number
-    ) {
-        return (
-            output_start +
-            ((output_end - output_start) / (input_end - input_start)) *
-                (input - input_start)
-        );
-    }
-
     update() {
-        const cameraPosition =
-            this.manager.application.camera.instance.position;
-        const y = cameraPosition.y;
-        const x = cameraPosition.x;
-        const z = cameraPosition.z;
-
-        // calculate distance to origin
-        const distance = Math.sqrt(x * x + y * y + z * z);
-
-        const freq = this.mapValues(distance, 0, 10000, 100, 22000);
-
-        const volume = this.mapValues(distance, 1200, 10000, 0, 0.2);
-        const volumeClamped = Math.min(Math.max(volume, 0.05), 0.1);
+        const distance =
+            this.manager.application.camera.instance.position.length();
+        const freq = THREE.MathUtils.mapLinear(distance, 0, 10000, 100, 22000);
+        const volume = THREE.MathUtils.mapLinear(
+            distance,
+            1200,
+            10000,
+            0,
+            0.15,
+        );
+        const volumeClamped = THREE.MathUtils.clamp(volume, 0.0375, 0.075);
 
         this.manager.setAudioFilterFrequency(this.poolKey, freq - 3000);
         this.manager.setAudioVolume(this.poolKey, volumeClamped);

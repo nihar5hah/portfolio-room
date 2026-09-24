@@ -1,4 +1,5 @@
 import Application from '../Application';
+import * as THREE from 'three';
 import Resources from '../Utils/Resources';
 import ComputerSetup from './Computer';
 import MonitorScreen from './MonitorScreen';
@@ -35,13 +36,33 @@ export default class World {
             this.monitorScreen = new MonitorScreen();
             this.coffeeSteam = new CoffeeSteam();
             this.audioManager = new AudioManager();
+            const converted = new Set<THREE.Material>();
+            this.scene.traverse((part) => {
+                if (!(part instanceof THREE.Mesh)) return;
+                const material = part.material;
+                if (material instanceof THREE.MeshStandardMaterial)
+                    material.envMapIntensity = Math.min(
+                        material.envMapIntensity,
+                        material.userData.linearColor ? 0.75 : 0.12,
+                    );
+                if (
+                    material instanceof THREE.MeshStandardMaterial &&
+                    !converted.has(material) &&
+                    !material.userData.linearColor
+                ) {
+                    material.color.convertSRGBToLinear();
+                    converted.add(material);
+                }
+            });
             // const hb = new Hitboxes();
             // this.cursor = new Cursor();
         });
     }
 
     update() {
+        if (this.computerSetup) this.computerSetup.update();
         if (this.monitorScreen) this.monitorScreen.update();
+        if (this.decor) this.decor.update();
         if (this.environment) this.environment.update();
         if (this.coffeeSteam) this.coffeeSteam.update();
         if (this.audioManager) this.audioManager.update();

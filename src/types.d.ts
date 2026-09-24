@@ -12,6 +12,7 @@ type TextureResource = {
     name: string;
     type: 'texture';
     path: string;
+    optional?: boolean;
 };
 
 type CubeTextureResource = {

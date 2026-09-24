@@ -67,9 +67,8 @@ export default class Camera extends EventEmitter {
         };
 
         document.addEventListener('mousedown', (event) => {
-            event.preventDefault();
             // @ts-ignore
-            if (event.target.id === 'prevent-click') return;
+            if ((event.target as Element)?.closest?.('button,a,input')) return;
             // print target and current keyframe
             if (
                 this.currentKeyframe === CameraKey.IDLE ||
@@ -94,14 +93,19 @@ export default class Camera extends EventEmitter {
         key: CameraKey,
         duration: number = 1000,
         easing?: any,
-        callback?: () => void
+        callback?: () => void,
     ) {
-        if (this.currentKeyframe === key) return;
+        const previousKey = this.targetKeyframe || this.currentKeyframe;
+        if (previousKey === key) return;
+        if (this.application.reducedMotion.matches) duration = 0;
 
         if (this.targetKeyframe) TWEEN.removeAll();
 
         this.currentKeyframe = undefined;
         this.targetKeyframe = key;
+        if (previousKey === CameraKey.MONITOR)
+            UIEventBus.dispatch('leftMonitor', {});
+        if (key === CameraKey.MONITOR) UIEventBus.dispatch('enterMonitor', {});
 
         const keyframe = this.keyframes[key];
 
@@ -126,8 +130,9 @@ export default class Camera extends EventEmitter {
         this.instance = new THREE.PerspectiveCamera(
             35,
             this.sizes.width / this.sizes.height,
-            10,
-            900000
+            // Preserve sub-unit depth detail on the chair without clipping the distant floor.
+            100,
+            900000,
         );
         this.currentKeyframe = CameraKey.LOADING;
 
@@ -135,17 +140,23 @@ export default class Camera extends EventEmitter {
     }
 
     setMonitorListeners() {
-        this.on('enterMonitor', () => {
+        this.on('enterMonitor', (app?: 'begu') => {
+            if (window.matchMedia('(max-width: 700px)').matches) {
+                location.assign(
+                    `/desktop/${app === 'begu' ? '?app=begu' : ''}`,
+                );
+                return;
+            }
+            this.freeCam = false;
+            document.getElementById('webgl')!.style.pointerEvents = 'none';
             this.transition(
                 CameraKey.MONITOR,
                 2000,
-                BezierEasing(0.13, 0.99, 0, 1)
+                BezierEasing(0.13, 0.99, 0, 1),
             );
-            UIEventBus.dispatch('enterMonitor', {});
         });
         this.on('leftMonitor', () => {
             this.transition(CameraKey.DESK);
-            UIEventBus.dispatch('leftMonitor', {});
         });
     }
 
@@ -159,12 +170,12 @@ export default class Camera extends EventEmitter {
                     BezierEasing(0.13, 0.99, 0, 1),
                     () => {
                         this.instance.position.copy(
-                            this.keyframes.orbitControlsStart.position
+                            this.keyframes.orbitControlsStart.position,
                         );
 
                         this.orbitControls.update();
                         this.freeCam = true;
-                    }
+                    },
                 );
                 // @ts-ignore
                 document.getElementById('webgl').style.pointerEvents = 'auto';
@@ -173,7 +184,7 @@ export default class Camera extends EventEmitter {
                 this.transition(
                     CameraKey.IDLE,
                     4000,
-                    TWEEN.Easing.Exponential.Out
+                    TWEEN.Easing.Exponential.Out,
                 );
                 // @ts-ignore
                 document.getElementById('webgl').style.pointerEvents = 'none';
@@ -196,7 +207,7 @@ export default class Camera extends EventEmitter {
         this.renderer = this.application.renderer;
         this.orbitControls = new OrbitControls(
             this.instance,
-            this.renderer.instance.domElement
+            this.renderer.instance.domElement,
         );
 
         const { x, y, z } = this.keyframes.orbitControlsStart.focalPoint;
@@ -205,7 +216,7 @@ export default class Camera extends EventEmitter {
         this.orbitControls.enablePan = false;
         this.orbitControls.enableDamping = true;
         this.orbitControls.object.position.copy(
-            this.keyframes.orbitControlsStart.position
+            this.keyframes.orbitControlsStart.position,
         );
         this.orbitControls.dampingFactor = 0.05;
         this.orbitControls.maxPolarAngle = Math.PI / 2;
@@ -218,10 +229,30 @@ export default class Camera extends EventEmitter {
     update() {
         TWEEN.update();
 
+        const key = this.targetKeyframe || this.currentKeyframe;
+        const fov = this.freeCam
+            ? 55
+            : key === CameraKey.IDLE || key === CameraKey.LOADING
+              ? 44
+              : 35;
+        if (this.instance.fov !== fov) {
+            this.instance.fov = fov;
+            this.instance.updateProjectionMatrix();
+        }
+        if (this.orbitControls) this.orbitControls.enabled = this.freeCam;
         if (this.freeCam && this.orbitControls) {
-            this.position.copy(this.orbitControls.object.position);
-            this.focalPoint.copy(this.orbitControls.target);
             this.orbitControls.update();
+            // Room walls: x ±18000, z -6500/18500; ceiling 12985.
+            // Keep the camera and its near plane inside, above the furniture.
+            const p = this.instance.position;
+            p.set(
+                THREE.MathUtils.clamp(p.x, -16900, 16900),
+                THREE.MathUtils.clamp(p.y, 2600, 11200),
+                THREE.MathUtils.clamp(p.z, -5300, 17500),
+            );
+            this.instance.lookAt(this.orbitControls.target);
+            this.position.copy(p);
+            this.focalPoint.copy(this.orbitControls.target);
             return;
         }
 

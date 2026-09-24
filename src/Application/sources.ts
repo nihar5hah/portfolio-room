@@ -1,14 +1,38 @@
+import { ALBUMS } from './Audio/AlbumAudio';
+
 const sources: Resource[] = [
+    ...Object.keys(ALBUMS).flatMap((slug): Resource[] => [
+        {
+            name: `poster_${slug}`,
+            type: 'texture',
+            path: `room/albums/${slug}.jpg`,
+            optional: true,
+        },
+        {
+            name: `${slug}Vinyl`,
+            type: 'texture',
+            path: `room/${slug}-vinyl.jpg`,
+            optional: true,
+        },
+    ]),
+    { name: 'messiJersey', type: 'texture', path: 'room/messi-10.jpg' },
     {
-        name: 'computerSetupModel',
-        type: 'gltfModel',
-        path: 'models/Computer/computer_setup.glb',
-    },
-    {
-        name: 'computerSetupTexture',
+        name: 'argentinaJersey',
         type: 'texture',
-        path: 'models/Computer/baked_computer.jpg',
+        path: 'room/argentina-messi-10.webp',
     },
+    {
+        name: 'graduationRug',
+        type: 'texture',
+        path: 'room/graduation-rug.webp',
+    },
+    { name: 'barcaCrest', type: 'texture', path: 'room/fc-barcelona.svg' },
+    {
+        name: 'macbookModel',
+        type: 'gltfModel',
+        path: 'models/MacBook/macbook-pro-m3.glb',
+    },
+    { name: 'beguModel', type: 'gltfModel', path: 'models/Begu/husky.glb' },
     {
         name: 'environmentModel',
         type: 'gltfModel',
@@ -28,16 +52,6 @@ const sources: Resource[] = [
         name: 'decorTexture',
         type: 'texture',
         path: 'models/Decor/baked_decor_modified.jpg',
-    },
-    {
-        name: 'monitorSmudgeTexture',
-        type: 'texture',
-        path: 'textures/monitor/layers/compressed/smudges.jpg',
-    },
-    {
-        name: 'monitorShadowTexture',
-        type: 'texture',
-        path: 'textures/monitor/layers/compressed/shadow-compressed.png',
     },
     {
         name: 'mouseDown',

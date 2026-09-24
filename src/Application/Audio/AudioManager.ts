@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import Application from '../Application';
 import { AmbienceAudio, ComputerAudio } from './AudioSources';
 import UIEventBus from '../UI/EventBus';
+import AlbumAudio from './AlbumAudio';
 
-const POS_DEBUG = false;
 const DEFAULT_REF_DISTANCE = 10000;
 export default class Audio {
     application: Application;
@@ -16,10 +16,12 @@ export default class Audio {
         ambience: AmbienceAudio;
     };
     scene: THREE.Scene;
+    album: AlbumAudio;
 
     constructor() {
         this.application = new Application();
         this.listener = new THREE.AudioListener();
+        this.listener.setMasterVolume(0);
         this.application.camera.instance.add(this.listener);
         this.loadedAudio = this.application.resources.items.audio;
         this.scene = this.application.scene;
@@ -30,19 +32,13 @@ export default class Audio {
             ambience: new AmbienceAudio(this),
         };
 
-        UIEventBus.on('loadingScreenDone', () => {
-            setTimeout(() => {
-                const AudioContext =
-                    // @ts-ignore
-                    window.AudioContext || window.webkitAudioContext;
-                this.context = new AudioContext();
-                this.context.resume();
-            }, 100);
-        });
+        this.context = this.listener.context;
 
         UIEventBus.on('muteToggle', (mute: boolean) => {
             this.listener.setMasterVolume(mute ? 0 : 1);
+            if (!mute) void this.context.resume();
         });
+        this.album = new AlbumAudio();
     }
 
     playAudio(
@@ -58,8 +54,16 @@ export default class Audio {
             position?: THREE.Vector3;
             refDistance?: number;
             pitch?: number;
-        } = {}
+        } = {},
     ) {
+        // Drop excess transient feedback instead of playing queued input as a burst.
+        if (
+            !options.loop &&
+            Object.values(this.audioPool).filter((sound) => !sound.loop)
+                .length >= 4
+        )
+            return;
+
         // Resume context if it's suspended
         if (this.context) this.context.resume();
 
@@ -68,37 +72,16 @@ export default class Audio {
 
         // Setup
         const buffer = this.loadedAudio[sourceName];
-        const poolKey = sourceName + '_' + Object.keys(this.audioPool).length;
-
-        let audio: THREE.Audio<any> | THREE.PositionalAudio = new THREE.Audio(
-            this.listener
-        );
+        const audio = options.position
+            ? new THREE.PositionalAudio(this.listener)
+            : new THREE.Audio(this.listener);
+        const poolKey = sourceName + '_' + audio.id;
 
         if (options.position) {
-            audio = new THREE.PositionalAudio(this.listener);
-
             // @ts-ignore
             audio.setRefDistance(options.refDistance || DEFAULT_REF_DISTANCE);
-            // @ts-ignore
-            // audio.setDistanceModel('linear');
-
-            const extraMaterialOptions = !POS_DEBUG
-                ? {
-                      transparent: true,
-                      opacity: 0,
-                  }
-                : {};
-
-            const sphere = new THREE.SphereGeometry(100, 8, 8);
-            const material = new THREE.MeshBasicMaterial({
-                color: 0xff0000,
-                ...extraMaterialOptions,
-            });
-            const mesh = new THREE.Mesh(sphere, material);
-
-            mesh.position.copy(options.position);
-            mesh.name = poolKey;
-            this.scene.add(mesh);
+            audio.position.copy(options.position);
+            this.scene.add(audio);
         }
         audio.setBuffer(buffer);
 
@@ -108,7 +91,7 @@ export default class Audio {
             filter.type = options.filter.type; // Low pass filter
             filter.frequency.setValueAtTime(
                 options.filter.frequency,
-                ac.currentTime
+                ac.currentTime,
             );
             // filter.frequency.linearRampToValueAtTime(2400, ac.currentTime + 2);
 
@@ -117,7 +100,12 @@ export default class Audio {
 
         // Set options
         audio.setLoop(options.loop ? true : false);
-        audio.setVolume(options.volume || 1);
+        // Three's setVolume ramps from the new gain node's default of 1.
+        // Set the initial gain before playback so quiet sounds never start loud.
+        audio.gain.gain.setValueAtTime(
+            options.volume ?? 1,
+            audio.context.currentTime,
+        );
 
         audio.play();
 
@@ -138,14 +126,12 @@ export default class Audio {
         // Add to pool
         if (audio.source) {
             audio.source.onended = () => {
+                audio.onEnded();
+                audio.removeFromParent();
+                audio.disconnect();
+                audio.getOutput().disconnect();
+                audio.gain.disconnect();
                 delete this.audioPool[poolKey];
-                if (options.position) {
-                    const positionalObject =
-                        this.scene.getObjectByName(poolKey);
-                    if (positionalObject) {
-                        this.scene.remove(positionalObject);
-                    }
-                }
             };
             this.audioPool[poolKey] = audio;
         }

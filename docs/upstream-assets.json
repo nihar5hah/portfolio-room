@@ -1,0 +1,10 @@
+{
+    "static/models/World/environment.glb": "817a3daf8da639268bcd57327277919888432e6e53a75a4201e7c2788b329672",
+    "static/models/Computer/computer_setup.glb": "5b7ecb5d0d1c21ab1253fc57b64f235f4040ba0751cfe0ff204141deb1dbc236",
+    "static/models/Decor/decor.glb": "b25f99d3fbf42cb54009c398b61eed86b78679f426800237daa5077c7a46c832",
+    "static/models/World/baked_environment.jpg": "63c353baf84c4f6d9665d5d2db030593a9e306d7730fdb8dad409a62b186a2b7",
+    "static/models/Computer/baked_computer.jpg": "2ea48b3d9e135a1d901645925249643fd828d9d26af513281e659142f61e6376",
+    "static/models/Decor/baked_decor.jpg": "13892d8a736efdee0466545523cad9900d21dd023701a03983d1fda87032e667",
+    "static/models/Decor/baked_decor_modified.jpg": "7d8fbbfa314a360905485f36ebfd2416e178c6e19925dd4ebd4f0a248197aa3d",
+    "static/resume.pdf": "8be9e2f27121f5b0ae74d79f1c108fb0e205561277acf660e7e8d528c8d7f982"
+}

@@ -21,6 +21,7 @@ import UI from './UI';
 let instance: Application | null = null;
 
 export default class Application {
+    reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     debug: Debug;
     sizes: Sizes;
     time: Time;
@@ -44,9 +45,6 @@ export default class Application {
 
         instance = this;
 
-        // Global access
-        //@ts-ignore
-        // window.Application = this;
 
         // Setup
         this.debug = new Debug();
@@ -67,6 +65,7 @@ export default class Application {
 
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('debug')) {
+            (window as any).__app = this;
             this.stats = new Stats();
             this.stats.showPanel(0);
 

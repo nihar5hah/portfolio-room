@@ -1,0 +1,428 @@
+{
+    "projects": [
+        {
+            "id": "kalexam",
+            "title": "KalExam \u2013 AI-Powered Learning & Evaluation Platform",
+            "description": "An AI-driven learning system that generates personalized study strategies from syllabus, study materials, and past papers.",
+            "longDescription": "KalExam is an AI-driven learning and evaluation platform that generates personalized study strategies from syllabus documents, study materials, and past papers. The system uses RAG-powered contextual learning to deliver source-grounded responses with full citation tracking, ensuring students can verify every answer against original material. It features multi-model AI routing that dynamically selects between models to optimize for speed and response quality depending on query complexity. The platform supports source ingestion from multiple formats including PDFs, websites, and YouTube transcripts, building a comprehensive knowledge base per course. A context-aware chat interface provides conversational study assistance with persistent memory across sessions. The architecture is built on a scalable async foundation with intelligent caching and real-time progress tracking for both individual and batch study workflows.",
+            "technologies": [
+                "RAG",
+                "Multi-Model AI",
+                "PDF Ingestion",
+                "YouTube Transcripts",
+                "Async Architecture",
+                "Caching"
+            ],
+            "featured": true,
+            "inProgress": true,
+            "image": "/projects/kalexam.webp",
+            "imagePlaceholder": "KalExam Dashboard Screenshot",
+            "highlights": [
+                "RAG-powered contextual learning with source-grounded responses",
+                "Multi-model AI routing to optimize speed and response quality",
+                "Source ingestion from PDFs, websites, and YouTube transcripts",
+                "Context-aware chat interface with citation tracking",
+                "Scalable async architecture with caching and progress tracking"
+            ],
+            "links": {
+                "github": "https://github.com/nihar5hah/KalExam",
+                "demo": "https://kalexam-3666b.web.app/"
+            }
+        },
+        {
+            "id": "openclaw",
+            "title": "OpenClaw Multi-Agent Orchestration System",
+            "description": "A structured 24/7 autonomous AI system built using OpenClaw with a Boss\u2013Worker architecture.",
+            "longDescription": "A structured 24/7 autonomous AI system built using OpenClaw with a Boss\u2013Worker architecture. The system implements a multi-agent delegation model with specialized roles \u2014 a Coordinator agent manages task routing, a Coder agent handles code generation and review, a Researcher agent gathers information and context, and an Extractor agent processes and structures data from various sources. Autonomous workflows run on scheduled cron jobs, enabling continuous operation without manual intervention. The infrastructure includes self-healing gateway monitoring that detects failures and automatically recovers services, ensuring high availability. Security is enforced through prompt-injection resistance mechanisms and strict role-locking safeguards that prevent agents from operating outside their designated scope. The system is controlled via a Telegram-based command interface for real-time oversight and manual overrides when needed.",
+            "technologies": [
+                "OpenClaw",
+                "Multi-Agent Systems",
+                "Cron Orchestration",
+                "Telegram API",
+                "Gateway Monitoring"
+            ],
+            "featured": true,
+            "image": "/projects/openclaw-dashboard.webp",
+            "imagePlaceholder": "OpenClaw System Diagram",
+            "highlights": [
+                "Multi-agent delegation (Coordinator, Coder, Researcher, Extractor)",
+                "Scheduled autonomous workflows via cron orchestration",
+                "Self-healing gateway monitoring & failure recovery",
+                "Prompt-injection resistance and role-locking safeguards",
+                "Telegram-based command control interface"
+            ],
+            "links": {}
+        },
+        {
+            "id": "mission-control",
+            "title": "Mission Control \u2013 Real-Time AI Operations Dashboard",
+            "description": "A production-grade monitoring and observability dashboard for autonomous AI agents.",
+            "longDescription": "Mission Control is a production-grade monitoring and observability dashboard purpose-built for autonomous AI agents. It provides a real-time agent activity feed that streams live updates on task execution, status changes, and inter-agent communication. The uptime and health monitoring module tracks service availability with automated alerting for degraded performance or outages. Event-driven updates are powered by Supabase Realtime, enabling instant UI synchronization without polling. A global search capability spans across logs, workflows, and agent metadata, making it easy to trace issues or audit agent behavior. The dashboard is built on a modular Next.js architecture with isolated components for each monitoring domain, allowing independent scaling and feature development.",
+            "technologies": [
+                "Next.js",
+                "Supabase Realtime",
+                "Event-Driven Architecture",
+                "Monitoring",
+                "TypeScript"
+            ],
+            "featured": true,
+            "image": "/projects/mission-control.webp",
+            "imagePlaceholder": "Mission Control Dashboard Screenshot",
+            "highlights": [
+                "Real-time agent activity feed",
+                "Uptime & health monitoring",
+                "Event-driven updates via Supabase Realtime",
+                "Global search across logs & workflows",
+                "Modular Next.js architecture"
+            ],
+            "links": {
+                "github": "https://github.com/nihar5hah/mission-control",
+                "demo": "https://mission-control-one-gold.vercel.app"
+            }
+        },
+        {
+            "id": "voiceserve",
+            "title": "VoiceServe for PetPooja \u2013 AI Voice Ordering & Analytics System",
+            "description": "An end-to-end voice AI ordering system with real-time upselling, order automation, and live restaurant analytics.",
+            "longDescription": "VoiceServe for PetPooja is a production-style Voice AI system that converts customer calls into structured, analytics-ready restaurant orders. A Retell voice agent handles live conversations, validates spoken menu items against the catalog, recommends high-confidence add-ons, and triggers order creation through FastAPI services. The backend exposes focused APIs for menu validation, order processing, and recommendation workflows, while Supabase PostgreSQL stores operational and analytics data. Upsell intelligence is powered by association rule mining on transaction patterns to surface combo opportunities in real time. A Next.js dashboard streams live updates with Supabase Realtime so owners can monitor order flow, conversion behavior, and recommendation impact without polling. The closed-loop architecture continuously learns from each completed order to improve future upsell relevance and decision quality.",
+            "technologies": [
+                "FastAPI",
+                "Next.js 14",
+                "Supabase",
+                "Retell AI",
+                "Association Rule Mining",
+                "PostgreSQL"
+            ],
+            "featured": true,
+            "image": "/projects/voiceserve.webp",
+            "imagePlaceholder": "VoiceServe Analytics Dashboard Screenshot",
+            "highlights": [
+                "AI-powered voice ordering with real-time upselling and order automation",
+                "FastAPI APIs for menu validation, order processing, and recommendations",
+                "Data-driven upsell engine using association rule mining",
+                "Real-time analytics dashboard with Next.js and Supabase",
+                "Closed-loop learning where each order improves future recommendations"
+            ],
+            "links": {
+                "github": "https://github.com/nihar5hah/VoiceServe-for-PetPooja",
+                "demo": "https://pet-pooja-kappa.vercel.app"
+            }
+        },
+        {
+            "id": "hireai",
+            "title": "HireAI",
+            "description": "AI-driven platform to evaluate candidates strictly based on job requirements.",
+            "longDescription": "HireAI is an AI-driven platform designed to evaluate candidates strictly based on job requirements, built during a 24-hour hackathon. The system takes a job description as input and automatically extracts key skills, qualifications, and role expectations. It then generates structured, role-specific assessments that include objective questions for knowledge testing, subjective questions for behavioral evaluation, and coding challenges for technical validation. Each assessment is calibrated to the specific skill requirements of the role, ensuring fair and consistent evaluation. The platform implements skill-based evaluation workflows that score and rank candidates transparently, reducing subjectivity in the hiring process.",
+            "technologies": [
+                "AI/ML",
+                "LLMs",
+                "Job Analysis",
+                "Assessment Generation",
+                "Rapid Prototyping"
+            ],
+            "featured": true,
+            "image": "/projects/hireai.webp",
+            "imagePlaceholder": "HireAI Interface",
+            "highlights": [
+                "Automated job description analysis",
+                "Structured assessment generation (objective, subjective, coding)",
+                "Skill-based evaluation workflows",
+                "Built in 24-hour hackathon"
+            ],
+            "links": {
+                "github": "https://github.com/nihar5hah/HireAI",
+                "demo": "https://hire-ai-phi.vercel.app"
+            }
+        },
+        {
+            "id": "healthcare-ai",
+            "title": "Healthcare AI Voice Assistant @ Confido Health",
+            "description": "Built at Confido Health \u2014 conversational AI systems for automated clinic call handling across multiple healthcare locations.",
+            "longDescription": "Built during my internship at Confido Health, this project involves designing and optimizing conversational AI systems for automated clinic call handling across multiple healthcare locations. The core innovation is a dynamic prompt generation system that creates location-specific AI voice configurations at scale using structured JSON templates. Each configuration supports parameter injection for clinic-specific details including operating hours, available procedures, insurance information, and call routing rules. The system handles patient calls end-to-end \u2014 from initial greeting through appointment scheduling, information delivery, and call resolution. Workflow optimization ensures high task completion rates while maintaining natural, empathetic conversational flow. The architecture supports multi-location deployment from a single configuration framework.",
+            "technologies": [
+                "Voice AI",
+                "Prompt Engineering",
+                "JSON Templates",
+                "Python",
+                "Webhooks"
+            ],
+            "featured": true,
+            "image": "/projects/healthcare-ai.webp",
+            "imagePlaceholder": "Voice Assistant Flow Diagram",
+            "highlights": [
+                "Built at Confido Health (active internship)",
+                "Dynamic prompt generation system",
+                "Location-specific AI voice configurations",
+                "Parameter injection (hours, procedures, routing)",
+                "Workflow optimization for task completion"
+            ],
+            "links": {}
+        },
+        {
+            "id": "faceattend",
+            "title": "FaceAttend",
+            "description": "Automated attendance system using computer vision and facial recognition.",
+            "longDescription": "FaceAttend is an automated attendance system built using computer vision and facial recognition techniques. The system performs real-time multi-face detection and recognition, capable of identifying multiple individuals simultaneously in a single camera frame. It uses OpenCV and deep learning models for accurate face encoding and matching against a registered database. All attendance records, user data, and face encodings are stored securely using Supabase with PostgreSQL, authentication, and storage services. The system is designed for classroom-scale deployment, handling the throughput demands of a typical class session with optimized recognition accuracy from iterative testing and parameter tuning.",
+            "technologies": [
+                "Python",
+                "OpenCV",
+                "Deep Learning",
+                "Supabase",
+                "PostgreSQL"
+            ],
+            "featured": true,
+            "image": "/projects/faceattend.webp",
+            "imagePlaceholder": "FaceAttend Demo",
+            "highlights": [
+                "Real-time multi-face detection",
+                "Supabase-backed data storage",
+                "Classroom-scale deployment design"
+            ],
+            "links": {
+                "github": "https://github.com/nihar5hah/FaceAttend"
+            }
+        }
+    ],
+    "experiences": [
+        {
+            "id": "confido",
+            "company": "Confido Health",
+            "role": "Product Intern (AI Voice Assistants)",
+            "period": "May 2025 - Present",
+            "location": "Remote",
+            "description": "Working on the development and optimization of AI voice assistants for healthcare clinics.",
+            "achievements": [
+                "Developing and optimizing AI voice assistants for healthcare clinics",
+                "Improved natural language understanding and conversational flows for patient interactions",
+                "Assisted in refining ML models and prompt logic to improve call accuracy",
+                "Collaborated with product and engineering teams to test and iterate AI call workflows",
+                "Gained hands-on experience with AI systems, prompt engineering, and healthcare use cases"
+            ],
+            "technologies": [
+                "AI Voice Assistants",
+                "Prompt Engineering",
+                "Conversational AI",
+                "Python"
+            ],
+            "current": true
+        },
+        {
+            "id": "crest",
+            "company": "Crest Data Systems",
+            "role": "Intern",
+            "period": "Jun 2023 - Jul 2023",
+            "location": "Ahmedabad, India",
+            "description": "Assisted in software development and data-related tasks under senior engineers.",
+            "achievements": [
+                "Gained exposure to real-world development workflows and corporate engineering practices",
+                "Worked with basic scripting, debugging, and documentation tasks",
+                "Collaborated with cross-functional engineering teams"
+            ],
+            "technologies": [
+                "Software Development",
+                "Scripting",
+                "Documentation"
+            ],
+            "current": false
+        }
+    ],
+    "skillCategories": [
+        {
+            "id": "ai-automation",
+            "title": "AI & Agent Systems",
+            "icon": "Brain",
+            "skills": [
+                {
+                    "name": "Multi-Agent Orchestration",
+                    "icon": "Network"
+                },
+                {
+                    "name": "RAG & Evaluation Systems",
+                    "icon": "LineChart"
+                },
+                {
+                    "name": "Conversational AI & Voice",
+                    "icon": "Mic"
+                },
+                {
+                    "name": "Prompt Engineering",
+                    "icon": "MessageSquare"
+                },
+                {
+                    "name": "AI Workflow Automation",
+                    "icon": "Workflow"
+                },
+                {
+                    "name": "Autonomous Architectures",
+                    "icon": "Bot"
+                }
+            ]
+        },
+        {
+            "id": "programming",
+            "title": "Languages",
+            "icon": "Code",
+            "skills": [
+                {
+                    "name": "Python",
+                    "icon": "FileCode"
+                },
+                {
+                    "name": "TypeScript",
+                    "icon": "Braces"
+                },
+                {
+                    "name": "JavaScript",
+                    "icon": "Braces"
+                },
+                {
+                    "name": "C / C++",
+                    "icon": "Cpu"
+                },
+                {
+                    "name": "Bash / Shell",
+                    "icon": "Terminal"
+                }
+            ]
+        },
+        {
+            "id": "ai-ml-cv",
+            "title": "ML & Computer Vision",
+            "icon": "Eye",
+            "skills": [
+                {
+                    "name": "OpenCV",
+                    "icon": "Scan"
+                },
+                {
+                    "name": "Deep Learning",
+                    "icon": "Layers"
+                },
+                {
+                    "name": "Face Recognition",
+                    "icon": "ScanFace"
+                },
+                {
+                    "name": "NLP",
+                    "icon": "Languages"
+                }
+            ]
+        },
+        {
+            "id": "databases",
+            "title": "Backend & Data",
+            "icon": "Database",
+            "skills": [
+                {
+                    "name": "Supabase",
+                    "icon": "Database"
+                },
+                {
+                    "name": "PostgreSQL",
+                    "icon": "Table"
+                },
+                {
+                    "name": "Next.js",
+                    "icon": "Globe"
+                },
+                {
+                    "name": "REST APIs",
+                    "icon": "Plug"
+                },
+                {
+                    "name": "Webhooks",
+                    "icon": "Webhook"
+                }
+            ]
+        },
+        {
+            "id": "systems-devops",
+            "title": "Systems & DevOps",
+            "icon": "Server",
+            "skills": [
+                {
+                    "name": "Linux",
+                    "icon": "Terminal"
+                },
+                {
+                    "name": "Docker",
+                    "icon": "Container"
+                },
+                {
+                    "name": "SSH",
+                    "icon": "Key"
+                },
+                {
+                    "name": "System Debugging",
+                    "icon": "Bug"
+                }
+            ]
+        },
+        {
+            "id": "tools",
+            "title": "Tools & Platforms",
+            "icon": "Wrench",
+            "skills": [
+                {
+                    "name": "Git & GitHub",
+                    "icon": "GitBranch"
+                },
+                {
+                    "name": "OpenClaw",
+                    "icon": "Bot"
+                },
+                {
+                    "name": "Retell AI",
+                    "icon": "Phone"
+                },
+                {
+                    "name": "Vocera",
+                    "icon": "Headphones"
+                }
+            ]
+        }
+    ],
+    "siteConfig": {
+        "name": "Nihar Shah",
+        "title": "Applied AI Systems Builder",
+        "email": "niharshah0405@gmail.com",
+        "location": "Ahmedabad, India",
+        "university": "Charotar University of Science And Technology",
+        "degree": "Bachelor of Technology: Computer Science",
+        "graduationYear": "2027"
+    },
+    "socialLinks": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/nihar5hah",
+            "icon": "Github"
+        },
+        {
+            "name": "LinkedIn",
+            "url": "https://linkedin.com/in/niharshah0405",
+            "icon": "Linkedin"
+        },
+        {
+            "name": "Email",
+            "url": "mailto:niharshah0405@gmail.com",
+            "icon": "Mail"
+        },
+        {
+            "name": "Phone",
+            "url": "tel:+919925016026",
+            "icon": "Phone"
+        }
+    ],
+    "education": [
+        {
+            "school": "Charotar University of Science And Technology",
+            "degree": "Bachelor of Technology: Computer Science",
+            "period": "2023 \u2014 2027",
+            "location": "Ahmedabad, India"
+        }
+    ],
+    "certifications": [
+        "OpenAI Prompt Engineering",
+        "NVIDIA Deep Learning Fundamentals"
+    ]
+}

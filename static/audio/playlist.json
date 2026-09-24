@@ -1,0 +1,574 @@
+{
+ "tracks": [
+  {
+   "title": "Dark Fantasy",
+   "src": "/audio/mbdtf/01-dark-fantasy.mp3",
+   "album": "mbdtf"
+  },
+  {
+   "title": "Gorgeous",
+   "src": "/audio/mbdtf/02-gorgeous.mp3",
+   "album": "mbdtf"
+  },
+  {
+   "title": "Power",
+   "src": "/audio/mbdtf/03-power.mp3",
+   "album": "mbdtf"
+  },
+  {
+   "title": "All of the Lights",
+   "src": "/audio/mbdtf/05-all-of-the-lights.mp3",
+   "album": "mbdtf"
+  },
+  {
+   "title": "Devil in a New Dress",
+   "src": "/audio/mbdtf/08-devil-in-a-new-dress.mp3",
+   "album": "mbdtf"
+  },
+  {
+   "title": "Runaway",
+   "src": "/audio/mbdtf/09-runaway.mp3",
+   "album": "mbdtf"
+  },
+  {
+   "title": "Hell of a Life",
+   "src": "/audio/mbdtf/10-hell-of-a-life.mp3",
+   "album": "mbdtf"
+  },
+  {
+   "title": "Lost in the World",
+   "src": "/audio/mbdtf/12-lost-in-the-world.mp3",
+   "album": "mbdtf"
+  },
+  {
+   "title": "HIGHEST IN THE ROOM (REMIX) [feat. ROSAL\u00cdA & Lil Baby]",
+   "album": "jackboys",
+   "src": "/audio/jackboys/01.mp3"
+  },
+  {
+   "title": "JACKBOYS",
+   "album": "jackboys",
+   "src": "/audio/jackboys/02.mp3"
+  },
+  {
+   "title": "GANG GANG",
+   "album": "jackboys",
+   "src": "/audio/jackboys/03.mp3"
+  },
+  {
+   "title": "OUT WEST (feat. Young Thug)",
+   "album": "jackboys",
+   "src": "/audio/jackboys/05.mp3"
+  },
+  {
+   "title": "WHAT TO DO? (feat. Don Toliver)",
+   "album": "jackboys",
+   "src": "/audio/jackboys/06.mp3"
+  },
+  {
+   "title": "3500 (feat. Future & 2 Chainz)",
+   "album": "rodeo",
+   "src": "/audio/rodeo/03.m4a"
+  },
+  {
+   "title": "90210 (feat. Kacy Hill)",
+   "album": "rodeo",
+   "src": "/audio/rodeo/05.m4a"
+  },
+  {
+   "title": "Pray 4 Love (feat. The Weeknd)",
+   "album": "rodeo",
+   "src": "/audio/rodeo/06.m4a"
+  },
+  {
+   "title": "Nightcrawler (feat. Swae Lee & Chief Keef)",
+   "album": "rodeo",
+   "src": "/audio/rodeo/07.m4a"
+  },
+  {
+   "title": "Impossible",
+   "album": "rodeo",
+   "src": "/audio/rodeo/10.m4a"
+  },
+  {
+   "title": "I Can Tell",
+   "album": "rodeo",
+   "src": "/audio/rodeo/13.m4a"
+  },
+  {
+   "title": "Apple Pie",
+   "album": "rodeo",
+   "src": "/audio/rodeo/14.m4a"
+  },
+  {
+   "title": "Never Catch Me",
+   "album": "rodeo",
+   "src": "/audio/rodeo/16.m4a"
+  },
+  {
+   "title": "Father Stretch My Hands Pt. 1",
+   "src": "/audio/tlop/02-father-stretch-my-hands-pt-1.mp3",
+   "album": "tlop"
+  },
+  {
+   "title": "Famous",
+   "src": "/audio/tlop/04-famous.mp3",
+   "album": "tlop"
+  },
+  {
+   "title": "Waves",
+   "src": "/audio/tlop/10-waves.mp3",
+   "album": "tlop"
+  },
+  {
+   "title": "No More Parties in LA",
+   "src": "/audio/tlop/17-no-more-parties-in-la.mp3",
+   "album": "tlop"
+  },
+  {
+   "title": "Saint Pablo",
+   "src": "/audio/tlop/20-saint-pablo.mp3",
+   "album": "tlop"
+  },
+  {
+   "title": "Heartless",
+   "src": "/audio/808s/03-heartless.mp3",
+   "album": "808s"
+  },
+  {
+   "title": "Street Lights",
+   "src": "/audio/808s/08-street-lights.mp3",
+   "album": "808s"
+  },
+  {
+   "title": "Bad News",
+   "src": "/audio/808s/09-bad-news.mp3",
+   "album": "808s"
+  },
+  {
+   "title": "Good Morning",
+   "src": "/audio/graduation/01-good-morning.mp3",
+   "album": "graduation"
+  },
+  {
+   "title": "Champion",
+   "src": "/audio/graduation/02-champion.mp3",
+   "album": "graduation"
+  },
+  {
+   "title": "Stronger",
+   "src": "/audio/graduation/03-stronger.mp3",
+   "album": "graduation"
+  },
+  {
+   "title": "I Wonder",
+   "src": "/audio/graduation/04-i-wonder.mp3",
+   "album": "graduation"
+  },
+  {
+   "title": "Good Life",
+   "src": "/audio/graduation/05-good-life.mp3",
+   "album": "graduation"
+  },
+  {
+   "title": "Can't Tell Me Nothing",
+   "src": "/audio/graduation/06-cant-tell-me-nothing.mp3",
+   "album": "graduation"
+  },
+  {
+   "title": "Flashing Lights",
+   "src": "/audio/graduation/09-flashing-lights.mp3",
+   "album": "graduation"
+  },
+  {
+   "title": "Everything I Am",
+   "src": "/audio/graduation/10-everything-i-am.mp3",
+   "album": "graduation"
+  },
+  {
+   "title": "Homecoming",
+   "src": "/audio/graduation/12-homecoming.mp3",
+   "album": "graduation"
+  },
+  {
+   "title": "Bound 2",
+   "src": "/audio/yeezus/10-bound-2.mp3",
+   "album": "yeezus"
+  },
+  {
+   "title": "range brothers (feat. Kendrick Lamar)",
+   "src": "/audio/melodicblue/01-range-brothers-feat-kendrick-lamar.mp3",
+   "album": "melodicblue"
+  },
+  {
+   "title": "issues",
+   "src": "/audio/melodicblue/02-issues.mp3",
+   "album": "melodicblue"
+  },
+  {
+   "title": "cocoa (feat. Don Toliver)",
+   "src": "/audio/melodicblue/03-cocoa-feat-don-toliver.mp3",
+   "album": "melodicblue"
+  },
+  {
+   "title": "family ties (feat. Kendrick Lamar)",
+   "src": "/audio/melodicblue/04-family-ties-feat-kendrick-lamar.mp3",
+   "album": "melodicblue"
+  },
+  {
+   "title": "booman",
+   "src": "/audio/melodicblue/05-booman.mp3",
+   "album": "melodicblue"
+  },
+  {
+   "title": "first order of business",
+   "src": "/audio/melodicblue/06-first-order-of-business.mp3",
+   "album": "melodicblue"
+  },
+  {
+   "title": "16",
+   "src": "/audio/melodicblue/07-16.mp3",
+   "album": "melodicblue"
+  },
+  {
+   "title": "lost souls (feat. Brent Faiyaz)",
+   "src": "/audio/melodicblue/08-lost-souls-feat-brent-faiyaz.mp3",
+   "album": "melodicblue"
+  },
+  {
+   "title": "no sense",
+   "src": "/audio/melodicblue/09-no-sense.mp3",
+   "album": "melodicblue"
+  },
+  {
+   "title": "killstreaks (feat. Don Toliver & PinkPantheress)",
+   "src": "/audio/melodicblue/10-killstreaks-feat-don-toliver-pinkpantheress.mp3",
+   "album": "melodicblue"
+  },
+  {
+   "title": "fine china",
+   "src": "/audio/melodicblue/11-fine-china.mp3",
+   "album": "melodicblue"
+  },
+  {
+   "title": "highway 95",
+   "src": "/audio/melodicblue/12-highway-95.mp3",
+   "album": "melodicblue"
+  },
+  {
+   "title": "Ivy",
+   "src": "/audio/blonde/01-ivy.mp3",
+   "album": "blonde"
+  },
+  {
+   "title": "Pink + White",
+   "src": "/audio/blonde/02-pink-white.mp3",
+   "album": "blonde"
+  },
+  {
+   "title": "Self Control",
+   "src": "/audio/blonde/03-self-control.mp3",
+   "album": "blonde"
+  },
+  {
+   "title": "Nights",
+   "src": "/audio/blonde/04-nights.mp3",
+   "album": "blonde"
+  },
+  {
+   "title": "White Ferrari",
+   "src": "/audio/blonde/05-white-ferrari.mp3",
+   "album": "blonde"
+  },
+  {
+   "title": "Seigfried",
+   "src": "/audio/blonde/06-seigfried.mp3",
+   "album": "blonde"
+  },
+  {
+   "title": "Let It Happen",
+   "src": "/audio/currents/01-let-it-happen.mp3",
+   "album": "currents"
+  },
+  {
+   "title": "Nangs",
+   "src": "/audio/currents/02-nangs.mp3",
+   "album": "currents"
+  },
+  {
+   "title": "Yes I'm Changing",
+   "src": "/audio/currents/03-yes-i-m-changing.mp3",
+   "album": "currents"
+  },
+  {
+   "title": "Eventually",
+   "src": "/audio/currents/04-eventually.mp3",
+   "album": "currents"
+  },
+  {
+   "title": "The Less I Know The Better",
+   "src": "/audio/currents/05-the-less-i-know-the-better.mp3",
+   "album": "currents"
+  },
+  {
+   "title": "Past Life",
+   "src": "/audio/currents/06-past-life.mp3",
+   "album": "currents"
+  },
+  {
+   "title": "LoveParanoia",
+   "src": "/audio/currents/07-loveparanoia.mp3",
+   "album": "currents"
+  },
+  {
+   "title": "New Person, Same Old Mistakes",
+   "src": "/audio/currents/08-new-person-same-old-mistakes.mp3",
+   "album": "currents"
+  },
+  {
+   "title": "Goldie",
+   "src": "/audio/longlive/01-goldie.mp3",
+   "album": "longlive"
+  },
+  {
+   "title": "LVL",
+   "src": "/audio/longlive/02-lvl.mp3",
+   "album": "longlive"
+  },
+  {
+   "title": "1Train",
+   "src": "/audio/longlive/03-1train.mp3",
+   "album": "longlive"
+  },
+  {
+   "title": "Fashion Killa",
+   "src": "/audio/longlive/04-fashion-killa.mp3",
+   "album": "longlive"
+  },
+  {
+   "title": "Phoenix",
+   "src": "/audio/longlive/05-phoenix.mp3",
+   "album": "longlive"
+  },
+  {
+   "title": "A Keeper",
+   "src": "/audio/honestly/01-a-keeper.mp3",
+   "album": "honestly"
+  },
+  {
+   "title": "Sticky",
+   "src": "/audio/honestly/02-sticky.mp3",
+   "album": "honestly"
+  },
+  {
+   "title": "Massive",
+   "src": "/audio/honestly/03-massive.mp3",
+   "album": "honestly"
+  },
+  {
+   "title": "Flight's Booked",
+   "src": "/audio/honestly/04-flight-s-booked.mp3",
+   "album": "honestly"
+  },
+  {
+   "title": "Overdrive",
+   "src": "/audio/honestly/05-overdrive.mp3",
+   "album": "honestly"
+  },
+  {
+   "title": "Jimmy Cooks (feat. 21 Savage)",
+   "src": "/audio/honestly/06-jimmy-cooks-feat-21-savage.mp3",
+   "album": "honestly"
+  },
+  {
+   "title": "Peso",
+   "src": "/audio/livelove/01-peso.mp3",
+   "album": "livelove"
+  },
+  {
+   "title": "Bass",
+   "src": "/audio/livelove/02-bass.mp3",
+   "album": "livelove"
+  },
+  {
+   "title": "Wassup",
+   "src": "/audio/livelove/03-wassup.mp3",
+   "album": "livelove"
+  },
+  {
+   "title": "Sandman",
+   "src": "/audio/livelove/04-sandman.mp3",
+   "album": "livelove"
+  },
+  {
+   "title": "I Smoked Away My Brain",
+   "src": "/audio/livelove/05-i-smoked-away-my-brain.mp3",
+   "album": "livelove"
+  },
+  {
+   "title": "Holy Ghost (feat. Joe Fox)",
+   "src": "/audio/atlonglast/01-holy-ghost-feat-joe-fox.mp3",
+   "album": "atlonglast"
+  },
+  {
+   "title": "L$D",
+   "src": "/audio/atlonglast/02-l-d.mp3",
+   "album": "atlonglast"
+  },
+  {
+   "title": "Excuse Me",
+   "src": "/audio/atlonglast/03-excuse-me.mp3",
+   "album": "atlonglast"
+  },
+  {
+   "title": "Jukebox Joints (feat. Joe Fox, Kanye West)",
+   "src": "/audio/atlonglast/04-jukebox-joints-feat-joe-fox-kanye-west.mp3",
+   "album": "atlonglast"
+  },
+  {
+   "title": "Pharsyde (feat. Joe Fox)",
+   "src": "/audio/atlonglast/05-pharsyde-feat-joe-fox.mp3",
+   "album": "atlonglast"
+  },
+  {
+   "title": "Everyday (feat. Rod Stewart, Miguel & Mark Ronson)",
+   "src": "/audio/atlonglast/06-everyday-feat-rod-stewart-miguel-mark-ronson.mp3",
+   "album": "atlonglast"
+  },
+  {
+   "title": "HYAENA",
+   "src": "/audio/utopia/01-hyaena.mp3",
+   "album": "utopia"
+  },
+  {
+   "title": "THANK GOD",
+   "src": "/audio/utopia/02-thank-god.mp3",
+   "album": "utopia"
+  },
+  {
+   "title": "MY EYES",
+   "src": "/audio/utopia/03-my-eyes.mp3",
+   "album": "utopia"
+  },
+  {
+   "title": "SIRENS",
+   "src": "/audio/utopia/04-sirens.mp3",
+   "album": "utopia"
+  },
+  {
+   "title": "MELTDOWN (feat. Drake)",
+   "src": "/audio/utopia/05-meltdown-feat-drake.mp3",
+   "album": "utopia"
+  },
+  {
+   "title": "I KNOW ?",
+   "src": "/audio/utopia/06-i-know.mp3",
+   "album": "utopia"
+  },
+  {
+   "title": "CIRCUS MAXIMUS (feat. The Weeknd & Swae Lee)",
+   "src": "/audio/utopia/07-circus-maximus-feat-the-weeknd-swae-lee.mp3",
+   "album": "utopia"
+  },
+  {
+   "title": "TELEKINESIS (feat. SZA & Future)",
+   "src": "/audio/utopia/08-telekinesis-feat-sza-future.mp3",
+   "album": "utopia"
+  },
+  {
+   "title": "TIL FURTHER NOTICE (feat. James Blake & 21 Savage)",
+   "src": "/audio/utopia/09-til-further-notice-feat-james-blake-21-savage.mp3",
+   "album": "utopia"
+  },
+  {
+   "title": "Fireworks",
+   "src": "/audio/thankmelater/01-fireworks.mp3",
+   "album": "thankmelater"
+  },
+  {
+   "title": "The Resistance",
+   "src": "/audio/thankmelater/02-the-resistance.mp3",
+   "album": "thankmelater"
+  },
+  {
+   "title": "Fancy",
+   "src": "/audio/thankmelater/03-fancy.mp3",
+   "album": "thankmelater"
+  },
+  {
+   "title": "STARGAZING",
+   "src": "/audio/astroworld/01-stargazing.mp3",
+   "album": "astroworld"
+  },
+  {
+   "title": "CAROUSEL",
+   "src": "/audio/astroworld/02-carousel.mp3",
+   "album": "astroworld"
+  },
+  {
+   "title": "SICKO MODE",
+   "src": "/audio/astroworld/03-sicko-mode.mp3",
+   "album": "astroworld"
+  },
+  {
+   "title": "STOP TRYING TO BE GOD",
+   "src": "/audio/astroworld/04-stop-trying-to-be-god.mp3",
+   "album": "astroworld"
+  },
+  {
+   "title": "NO BYSTANDERS",
+   "src": "/audio/astroworld/05-no-bystanders.mp3",
+   "album": "astroworld"
+  },
+  {
+   "title": "SKELETONS",
+   "src": "/audio/astroworld/06-skeletons.mp3",
+   "album": "astroworld"
+  },
+  {
+   "title": "ASTROTHUNDER",
+   "src": "/audio/astroworld/07-astrothunder.mp3",
+   "album": "astroworld"
+  },
+  {
+   "title": "YOSEMITE",
+   "src": "/audio/astroworld/08-yosemite.mp3",
+   "album": "astroworld"
+  },
+  {
+   "title": "CAN'T SAY",
+   "src": "/audio/astroworld/09-can-t-say.mp3",
+   "album": "astroworld"
+  },
+  {
+   "title": "BUTTERFLY EFFECT",
+   "src": "/audio/astroworld/10-butterfly-effect.mp3",
+   "album": "astroworld"
+  },
+  {
+   "title": "All Falls Down",
+   "src": "/audio/collegedropout/01-all-falls-down.mp3",
+   "album": "collegedropout"
+  },
+  {
+   "title": "Jesus Walks",
+   "src": "/audio/collegedropout/02-jesus-walks.mp3",
+   "album": "collegedropout"
+  },
+  {
+   "title": "Slow Jamz",
+   "src": "/audio/collegedropout/03-slow-jamz.mp3",
+   "album": "collegedropout"
+  },
+  {
+   "title": "Through The Wire",
+   "src": "/audio/collegedropout/04-through-the-wire.mp3",
+   "album": "collegedropout"
+  },
+  {
+   "title": "52 Bars",
+   "src": "/audio/fouryou/01-52-bars.mp3",
+   "album": "fouryou"
+  }
+ ]
+}

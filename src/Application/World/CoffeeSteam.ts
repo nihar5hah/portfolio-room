@@ -45,7 +45,7 @@ export default class CoffeeSteam {
 
         this.model.mesh = new THREE.Mesh(
             new THREE.PlaneGeometry(280, 700),
-            this.model.material
+            this.model.material,
         );
 
         this.model.mesh.position.copy(new THREE.Vector3(1670, 200, 900));
@@ -54,6 +54,7 @@ export default class CoffeeSteam {
     }
 
     update() {
-        this.model.material.uniforms.uTime.value = this.time.elapsed;
+        if (!this.application.reducedMotion.matches)
+            this.model.material.uniforms.uTime.value = this.time.elapsed;
     }
 }

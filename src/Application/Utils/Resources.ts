@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import Application from '../Application';
 import UIEventBus from '../UI/EventBus';
 import EventEmitter from './EventEmitter';
@@ -16,6 +17,7 @@ export default class Resources extends EventEmitter {
     };
     toLoad: number;
     loaded: number;
+    failed = false;
     loaders: {
         gltfLoader: GLTFLoader;
         textureLoader: THREE.TextureLoader;
@@ -42,7 +44,7 @@ export default class Resources extends EventEmitter {
 
     setLoaders() {
         this.loaders = {
-            gltfLoader: new GLTFLoader(),
+            gltfLoader: new GLTFLoader().setMeshoptDecoder(MeshoptDecoder),
             textureLoader: new THREE.TextureLoader(),
             cubeTextureLoader: new THREE.CubeTextureLoader(),
             audioLoader: new THREE.AudioLoader(),
@@ -53,23 +55,59 @@ export default class Resources extends EventEmitter {
         // Load each source
         for (const source of this.sources) {
             if (source.type === 'gltfModel') {
-                this.loaders.gltfLoader.load(source.path, (file) => {
-                    this.sourceLoaded(source, file);
-                });
+                this.loaders.gltfLoader.load(
+                    source.path,
+                    (file) => {
+                        this.sourceLoaded(source, file);
+                    },
+                    undefined,
+                    () => this.sourceFailed(source),
+                );
             } else if (source.type === 'texture') {
-                this.loaders.textureLoader.load(source.path, (file) => {
-                    file.encoding = THREE.sRGBEncoding;
-                    this.sourceLoaded(source, file);
-                });
+                this.loaders.textureLoader.load(
+                    source.path,
+                    (file) => {
+                        file.encoding = THREE.sRGBEncoding;
+                        this.sourceLoaded(source, file);
+                    },
+                    undefined,
+                    () => this.sourceFailed(source),
+                );
             } else if (source.type === 'cubeTexture') {
-                this.loaders.cubeTextureLoader.load(source.path, (file) => {
-                    this.sourceLoaded(source, file);
-                });
+                this.loaders.cubeTextureLoader.load(
+                    source.path,
+                    (file) => {
+                        this.sourceLoaded(source, file);
+                    },
+                    undefined,
+                    () => this.sourceFailed(source),
+                );
             } else if (source.type === 'audio') {
-                this.loaders.audioLoader.load(source.path, (buffer) => {
-                    this.sourceLoaded(source, buffer);
-                });
+                this.loaders.audioLoader.load(
+                    source.path,
+                    (buffer) => {
+                        this.sourceLoaded(source, buffer);
+                    },
+                    undefined,
+                    () => this.sourceFailed(source),
+                );
             }
+        }
+    }
+
+    sourceFailed(source: Resource) {
+        if (source.type === 'texture' && source.optional) {
+            const fallback = new THREE.DataTexture(
+                new Uint8Array([32, 33, 36, 255]),
+                1,
+                1,
+            );
+            fallback.encoding = THREE.sRGBEncoding;
+            fallback.needsUpdate = true;
+            this.sourceLoaded(source, fallback);
+        } else {
+            this.failed = true;
+            UIEventBus.dispatch('resourceError', {});
         }
     }
 

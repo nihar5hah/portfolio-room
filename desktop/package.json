@@ -1,0 +1,10 @@
+{
+    "name": "nihar-portfolio-desktop",
+    "private": true,
+    "description": "Adapted from henryjeff/portfolio-inner-site; built with the parent workspace.",
+    "scripts": {
+        "dev": "npm --prefix .. run dev",
+        "build": "npm --prefix .. run build",
+        "test": "npm --prefix .. test"
+    }
+}

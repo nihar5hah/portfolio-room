@@ -22,7 +22,6 @@ export default class Renderer {
     overlayInstance: THREE.WebGLRenderer;
     instance: THREE.WebGLRenderer;
     cssInstance: CSS3DRenderer;
-    raiseExposure: boolean;
     uniforms: {
         [uniform: string]: THREE.IUniform<any>;
     };
@@ -48,10 +47,16 @@ export default class Renderer {
         // Settings
         // this.instance.physicallyCorrectLights = true;
         this.instance.outputEncoding = THREE.sRGBEncoding;
-        // this.instance.toneMapping = THREE.ACESFilmicToneMapping;
-        // this.instance.toneMappingExposure = 0.9;
+        this.instance.shadowMap.enabled = true;
+        this.instance.shadowMap.type = THREE.PCFShadowMap;
+        // Shadow maps are re-rendered on our own cadence (see update()), not
+        // on every render() call.
+        this.instance.shadowMap.autoUpdate = false;
+        this.instance.shadowMap.needsUpdate = true;
+        this.instance.toneMapping = THREE.ACESFilmicToneMapping;
+        this.instance.toneMappingExposure = 0.85;
         this.instance.setSize(this.sizes.width, this.sizes.height);
-        this.instance.setPixelRatio(Math.min(this.sizes.pixelRatio, 2));
+        this.instance.setPixelRatio(this.sizes.pixelRatio);
         this.instance.setClearColor(0x000000, 0.0);
 
         // Style
@@ -63,10 +68,13 @@ export default class Renderer {
 
         this.overlayInstance = new THREE.WebGLRenderer();
         this.overlayInstance.setSize(this.sizes.width, this.sizes.height);
+        // Grain at 4.5% opacity doesn't need retina pixels; a full-res second
+        // canvas composited with soft-light is pure overhead on mobile GPUs.
+        this.overlayInstance.setPixelRatio(1);
         this.overlayInstance.domElement.style.position = 'absolute';
         this.overlayInstance.domElement.style.top = '0px';
         this.overlayInstance.domElement.style.mixBlendMode = 'soft-light';
-        this.overlayInstance.domElement.style.opacity = '0.12';
+        this.overlayInstance.domElement.style.opacity = '0.045';
         // this.overlayInstance.domElement.style.mixBlendMode = 'luminosity';
         // this.overlayInstance.domElement.style.opacity = '1';
         this.overlayInstance.domElement.style.pointerEvents = 'none';
@@ -96,28 +104,41 @@ export default class Renderer {
                 uniforms: this.uniforms,
                 depthTest: false,
                 depthWrite: false,
-            })
+            }),
         );
 
         this.overlayScene.add(this.overlay);
+
+        // Dim the room (not the CSS3D screen) while the visitor is on the Mac.
+        UIEventBus.on('enterMonitor', () => (this.targetExposure = 0.42));
+        UIEventBus.on('leftMonitor', () => (this.targetExposure = 0.85));
     }
+
+    targetExposure = 0.85;
 
     resize() {
         this.instance.setSize(this.sizes.width, this.sizes.height);
-        this.instance.setPixelRatio(Math.min(this.sizes.pixelRatio, 2));
+        this.instance.setPixelRatio(this.sizes.pixelRatio);
 
         this.cssInstance.setSize(this.sizes.width, this.sizes.height);
 
         this.overlayInstance.setSize(this.sizes.width, this.sizes.height);
-        this.overlayInstance.setPixelRatio(Math.min(this.sizes.pixelRatio, 2));
+        this.overlayInstance.setPixelRatio(1);
     }
+
+    frame = 0;
 
     update() {
         this.application.camera.instance.updateProjectionMatrix();
-        if (this.uniforms) {
+        if (this.uniforms && !this.application.reducedMotion.matches) {
             this.uniforms.u_time.value = Math.sin(this.time.current * 0.01);
         }
+        // Only Begu moves under the shadow lights; 20 Hz shadows read as smooth.
+        // ponytail: fixed cadence; upgrade path is "needsUpdate when Begu moved".
+        this.instance.shadowMap.needsUpdate = this.frame++ % 3 === 0;
 
+        this.instance.toneMappingExposure +=
+            (this.targetExposure - this.instance.toneMappingExposure) * 0.06;
         this.instance.render(this.scene, this.camera.instance);
         this.cssInstance.render(this.cssScene, this.camera.instance);
         this.overlayInstance.render(this.overlayScene, this.camera.instance);

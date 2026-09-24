@@ -19,24 +19,25 @@ export class CameraKeyframeInstance {
 
 const keys: { [key in CameraKey]: CameraKeyframe } = {
     idle: {
-        position: new THREE.Vector3(-20000, 12000, 20000),
+        position: new THREE.Vector3(-13500, 8500, 14500),
         focalPoint: new THREE.Vector3(0, -1000, 0),
     },
     monitor: {
-        position: new THREE.Vector3(0, 950, 2000),
-        focalPoint: new THREE.Vector3(0, 950, 0),
+        position: new THREE.Vector3(-350, 1450, 3000),
+        focalPoint: new THREE.Vector3(-350, 450, -730),
     },
     desk: {
-        position: new THREE.Vector3(0, 1800, 5500),
-        focalPoint: new THREE.Vector3(0, 500, 0),
+        position: new THREE.Vector3(-350, 2400, 7000),
+        focalPoint: new THREE.Vector3(-350, 50, 200),
     },
     loading: {
-        position: new THREE.Vector3(-35000, 35000, 35000),
-        focalPoint: new THREE.Vector3(0, -5000, 0),
+        // Establishing shot of the room; the login screen sits over this.
+        position: new THREE.Vector3(-12500, 7500, 15500),
+        focalPoint: new THREE.Vector3(-350, -600, 200),
     },
     orbitControlsStart: {
         position: new THREE.Vector3(-15000, 10000, 15000),
-        focalPoint: new THREE.Vector3(-100, 350, 0),
+        focalPoint: new THREE.Vector3(-100, 1250, 0),
     },
 };
 
@@ -57,8 +58,8 @@ export class MonitorKeyframe extends CameraKeyframeInstance {
 
     update() {
         const aspect = this.sizes.height / this.sizes.width;
-        const additionalZoom = this.sizes.width < 768 ? 0 : 600;
-        this.targetPos.z = this.origin.z + aspect * 1200 - additionalZoom;
+        const additionalZoom = this.sizes.width < 768 ? 0 : 1500;
+        this.targetPos.z = this.origin.z + aspect * 1800 - additionalZoom;
         this.position.copy(this.targetPos);
     }
 }
@@ -92,6 +93,7 @@ export class DeskKeyframe extends CameraKeyframeInstance {
     }
 
     update() {
+        if (this.application.reducedMotion.matches) return;
         this.targetFoc.x +=
             (this.mouse.x - this.sizes.width / 2 - this.targetFoc.x) * 0.05;
         this.targetFoc.y +=
@@ -112,6 +114,7 @@ export class DeskKeyframe extends CameraKeyframeInstance {
 }
 
 export class IdleKeyframe extends CameraKeyframeInstance {
+    application = new Application();
     time: Time;
     origin: THREE.Vector3;
 
@@ -119,17 +122,23 @@ export class IdleKeyframe extends CameraKeyframeInstance {
         const keyframe = keys.idle;
         super(keyframe);
         this.origin = new THREE.Vector3().copy(keyframe.position);
-        this.time = new Time();
+        this.time = this.application.time;
     }
 
     update() {
+        if (document.hidden) return;
+        if (this.application.reducedMotion.matches) {
+            this.position.copy(this.origin);
+            return;
+        }
+        // Original slow horizontal/vertical sine sweep (see room-camera test).
         this.position.x =
             Math.sin((this.time.elapsed + 19000) * 0.00008) * this.origin.x;
         this.position.y =
             Math.sin((this.time.elapsed + 1000) * 0.000004) * 4000 +
             this.origin.y -
             3000;
-        this.position.z = this.position.z;
+        this.position.z = this.origin.z;
     }
 }
 
