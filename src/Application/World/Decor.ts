@@ -147,11 +147,21 @@ export default class Decor {
             this.hover = hit(event);
             document.body.classList.toggle('over-begu', this.hover);
         });
+        // Greet on release without movement, so a drag that starts on Begu
+        // still turns the room instead of opening the chat.
+        let press: { x: number; y: number } | null = null;
         document.addEventListener('pointerdown', (event) => {
-            if (hit(event)) {
-                event.preventDefault(); // Keep the compatibility mousedown from zooming away mid-greeting.
+            press = hit(event) ? { x: event.clientX, y: event.clientY } : null;
+            if (press) event.preventDefault(); // Keep the compatibility mousedown from zooming away mid-greeting.
+        });
+        document.addEventListener('pointerup', (event) => {
+            if (
+                press &&
+                Math.hypot(event.clientX - press.x, event.clientY - press.y) <= 10 &&
+                hit(event)
+            )
                 this.openBegu();
-            }
+            press = null;
         });
     }
     makeBegu() {

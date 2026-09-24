@@ -401,3 +401,35 @@ body {
     font: 500 12px var(--sys);
     color: rgba(245, 245, 247, 0.75);
 }
+
+/* Touch: dragging the room already looks around, so the toggle is redundant. */
+@media (pointer: coarse) {
+    .room-controls .look-around {
+        display: none;
+    }
+    #object-label {
+        transform: translate(-50%, calc(-100% - 18px));
+    }
+}
+@media (max-width: 650px) {
+    .room-interface header {
+        gap: 8px;
+    }
+    .records-found {
+        font-size: 11px;
+        margin-right: 0;
+    }
+    .album-controls button {
+        max-width: 100%;
+    }
+    .login-clock span {
+        font-size: 18px;
+    }
+    .login-enter {
+        width: min(240px, 70vw);
+        height: 44px;
+    }
+    .boot-portfolio-link {
+        font-size: 12px;
+    }
+}

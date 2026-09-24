@@ -123,6 +123,7 @@ export default function InterfaceUI() {
                         {mute ? 'Sound off' : 'Sound on'}
                     </button>
                     <button
+                        className="look-around"
                         onClick={() => {
                             bus.dispatch('freeCamToggle', !free);
                             setFree(!free);

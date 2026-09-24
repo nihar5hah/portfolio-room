@@ -76,7 +76,20 @@ test('room objects open their apps; hidden records count once and persist', () =
     assert.equal(label.hidden, false);
     assert.equal(label.textContent, 'Music');
     listeners.pointerdown(centre);
-    assert.deepEqual(events.at(-1), ['enterMonitor', 'music', undefined], 'turntable opens Music');
+    listeners.pointerup({ ...centre, clientX: 560 });
+    assert.equal(events.length, 1, 'a drag that starts on an object never opens it');
+    listeners.pointerdown(centre);
+    listeners.pointerup(centre);
+    assert.deepEqual(events.at(-1), ['enterMonitor', 'music', undefined], 'a click on the turntable opens Music');
+    const tap = { ...centre, pointerType: 'touch' };
+    const before = events.length;
+    listeners.pointerdown(tap);
+    listeners.pointerup(tap);
+    assert.equal(events.length, before, 'first tap only shows the label');
+    assert.equal(label.textContent, 'Music · tap again');
+    listeners.pointerdown(tap);
+    listeners.pointerup(tap);
+    assert.deepEqual(events.at(-1), ['enterMonitor', 'music', undefined], 'second tap opens it');
 
     app.camera.currentKeyframe = 'monitor';
     listeners.pointermove(centre);

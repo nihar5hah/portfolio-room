@@ -201,6 +201,22 @@ export default class Camera extends EventEmitter {
 
     setPostLoadTransition() {
         UIEventBus.on('loadingScreenDone', () => {
+            // Phones and tablets explore by touch: one finger turns the room,
+            // two fingers pinch to zoom, and a slow drift runs until the
+            // first touch. The mouse sweep and hover-to-zoom stay on desktop.
+            if (window.matchMedia('(pointer: coarse)').matches) {
+                // A standing eye height reads better on a tall portrait screen
+                // than the high desktop orbit start.
+                if (this.instance.aspect < 1)
+                    this.keyframes.orbitControlsStart.position.set(-13000, 5200, 15500);
+                UIEventBus.dispatch('freeCamToggle', true);
+                this.orbitControls.autoRotate = true;
+                this.orbitControls.autoRotateSpeed = -0.35;
+                this.orbitControls.addEventListener('start', () => {
+                    this.orbitControls.autoRotate = false;
+                });
+                return;
+            }
             this.transition(CameraKey.IDLE, 2500, TWEEN.Easing.Exponential.Out);
         });
     }
@@ -237,11 +253,28 @@ export default class Camera extends EventEmitter {
         TWEEN.update();
 
         const key = this.targetKeyframe || this.currentKeyframe;
-        const fov = this.freeCam
+        const base = this.freeCam
             ? 55
             : key === CameraKey.IDLE || key === CameraKey.LOADING
               ? 44
               : 35;
+        // Lenses are vertical angles authored for landscape. On a portrait
+        // phone that crops the room to a sliver, so keep the same horizontal
+        // angle instead (capped short of fisheye).
+        const aspect = this.instance.aspect;
+        const fov =
+            aspect >= 1
+                ? base
+                : Math.min(
+                      90,
+                      THREE.MathUtils.radToDeg(
+                          2 *
+                              Math.atan(
+                                  Math.tan(THREE.MathUtils.degToRad(base / 2)) /
+                                      aspect,
+                              ),
+                      ),
+                  );
         if (this.instance.fov !== fov) {
             this.instance.fov = fov;
             this.instance.updateProjectionMatrix();

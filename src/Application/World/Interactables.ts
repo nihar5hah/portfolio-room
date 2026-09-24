@@ -66,6 +66,7 @@ export default class Interactables {
         document.body.append(label);
 
         document.addEventListener('pointermove', (event) => {
+            if (event.pointerType === 'touch') return; // labels come from taps
             const hit = this.hit(event);
             document.body.classList.toggle('over-object', !!hit);
             label.hidden = !hit;
@@ -75,10 +76,35 @@ export default class Interactables {
                 label.style.top = `${event.clientY}px`;
             }
         });
+        // Act on release, only if the pointer barely moved: dragging to look
+        // around must never open something. On touch there is no hover, so
+        // the first tap shows the label and a second tap on it opens it.
+        let pressed: { x: number; y: number; hit: Action } | null = null;
+        let armed: string | null = null;
         document.addEventListener('pointerdown', (event) => {
             const hit = this.hit(event);
-            if (!hit) return;
-            event.preventDefault(); // no compatibility mousedown camera move
+            pressed = hit ? { x: event.clientX, y: event.clientY, hit } : null;
+            if (hit) event.preventDefault(); // no compatibility mousedown camera move
+        });
+        document.addEventListener('pointerup', (event) => {
+            const press = pressed;
+            pressed = null;
+            if (
+                !press ||
+                Math.hypot(event.clientX - press.x, event.clientY - press.y) > 10
+            )
+                return;
+            const hit = this.hit(event);
+            if (!hit || hit.label !== press.hit.label) return;
+            if (event.pointerType === 'touch' && armed !== hit.label) {
+                armed = hit.label;
+                label.textContent = `${hit.label} · tap again`;
+                label.style.left = `${event.clientX}px`;
+                label.style.top = `${event.clientY}px`;
+                label.hidden = false;
+                return;
+            }
+            armed = null;
             label.hidden = true;
             hit.run();
         });
