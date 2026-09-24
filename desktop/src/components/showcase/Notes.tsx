@@ -15,12 +15,6 @@ export default function Notes() {
             </span>
             <h1>{note.title}</h1>
             <p className="page-lead">{note.excerpt}</p>
-            {note.category === 'Design archive' && (
-                <p className="archive-notice">
-                    From the archive: this article describes the previous
-                    version of my portfolio.
-                </p>
-            )}
             <div className="markdown">
                 <Markdown>{note.body}</Markdown>
             </div>

@@ -780,16 +780,6 @@ img {
     font-size: 11px;
     color: #6d8ead;
 }
-.archive-notice {
-    display: block !important;
-    padding: 14px 18px;
-    background: #eef2e9;
-    border-radius: 7px;
-    font-size: 11px;
-    line-height: 1.8;
-    color: #7e896e;
-    margin-bottom: 22px;
-}
 .markdown {
     display: block !important;
     max-width: 750px;
