@@ -13,7 +13,6 @@ export default class Resources extends EventEmitter {
         texture: { [name: string]: LoadedTexture };
         cubeTexture: { [name: string]: LoadedCubeTexture };
         gltfModel: { [name: string]: LoadedModel };
-        audio: { [name: string]: LoadedAudio };
     };
     toLoad: number;
     loaded: number;
@@ -22,7 +21,6 @@ export default class Resources extends EventEmitter {
         gltfLoader: GLTFLoader;
         textureLoader: THREE.TextureLoader;
         cubeTextureLoader: THREE.CubeTextureLoader;
-        audioLoader: THREE.AudioLoader;
     };
     application: Application;
     loading: Loading;
@@ -32,7 +30,7 @@ export default class Resources extends EventEmitter {
 
         this.sources = sources;
 
-        this.items = { texture: {}, cubeTexture: {}, gltfModel: {}, audio: {} };
+        this.items = { texture: {}, cubeTexture: {}, gltfModel: {} };
         this.toLoad = this.sources.length;
         this.loaded = 0;
         this.application = new Application();
@@ -47,7 +45,6 @@ export default class Resources extends EventEmitter {
             gltfLoader: new GLTFLoader().setMeshoptDecoder(MeshoptDecoder),
             textureLoader: new THREE.TextureLoader(),
             cubeTextureLoader: new THREE.CubeTextureLoader(),
-            audioLoader: new THREE.AudioLoader(),
         };
     }
 
@@ -86,15 +83,6 @@ export default class Resources extends EventEmitter {
                     source.path,
                     (file) => {
                         this.sourceLoaded(source, file);
-                    },
-                    undefined,
-                    () => this.sourceFailed(source),
-                );
-            } else if (source.type === 'audio') {
-                this.loaders.audioLoader.load(
-                    source.path,
-                    (buffer) => {
-                        this.sourceLoaded(source, buffer);
                     },
                     undefined,
                     () => this.sourceFailed(source),
