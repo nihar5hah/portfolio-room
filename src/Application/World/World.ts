@@ -69,5 +69,9 @@ export default class World {
         if (this.decor) this.decor.update();
         if (this.environment) this.environment.update();
         if (this.coffeeSteam) this.coffeeSteam.update();
+        if (this.audioManager)
+            this.audioManager.update(
+                this.application.camera.instance.position.length(),
+            );
     }
 }
