@@ -6,9 +6,8 @@
  */
 export const DESK_Z = -4650;
 
-
 /** Back edge of the Dune; it runs 2 m toward the TV (+Z), leaving the rug clear. */
 // x is offset toward the bed so the Dune never hides Begu from the main view.
 export const DUNE_AT = { x: 2500, z: 1500 };
-/** Fabric colour: Barça navy. Frank Ocean's famous Dune is teal, '#2f6f73'. */
-export const DUNE_COLOR = '#26375f';
+/** Muted navy wool; lighter than the old tint so the sewn panels remain legible. */
+export const DUNE_COLOR = '#42546b';

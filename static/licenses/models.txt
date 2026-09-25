@@ -102,3 +102,5 @@ These represent the named physical pressings at album level; they do not simulat
 The original MP3/M4A audio files were supplied and authorized for local website playback by Nihar.
 
 Dune sofa: an original procedural model written for this project (src/Application/World/Dune.ts), after Pierre Paulin's Dune ensemble (1968–72). No third-party mesh or texture is used. The design belongs to its rights holders; this is a homage, not a licensed reproduction.
+Rebuilt from the official Ensemble Dune photographs: https://paulinpaulinpaulin.com/en/designs/ensemble-dune-2/
+Reference photos are not bundled or redistributed. Upholstery geometry, wool texture and Duneside-style table are authored here. Dimensions are room-fitting estimates, not manufacturer CAD specifications. See docs/DUNE-MODEL.md.

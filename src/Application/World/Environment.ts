@@ -8,7 +8,6 @@ import MatchBoard from './MatchBoard';
 import bus from '../UI/EventBus';
 import { DESK_Z, DUNE_AT, DUNE_COLOR } from './Layout';
 import {
-    DUNE,
     DUNE_MODULES,
     DUNE_TABLE,
     duneKnit,
@@ -1436,25 +1435,25 @@ export default class Environment {
             }
             room.add(bag);
         }
-        // PlayStation lounge: Pierre Paulin's Dune (see Dune.ts), five fabric
-        // modules and an oasis table in the front-centre cell, backrests toward
-        // the desk and seats facing the TV. 3300 units per metre.
+        // Photo-referenced Dune recreation: six upholstered modules, backrests
+        // toward the desk and seats toward the TV. Room scale: 3300 units/metre.
         const S = 3300;
         const lounge = new THREE.Group();
         lounge.name = 'Dune sofa';
         lounge.position.set(DUNE_AT.x, FLOOR, DUNE_AT.z);
         lounge.scale.setScalar(S);
+        const wool = duneKnit();
         const duneFabric = new THREE.MeshPhysicalMaterial({
             color: DUNE_COLOR,
-            roughness: 0.9,
-            bumpMap: duneKnit(),
-            bumpScale: 0.0015,
-            sheen: 1,
-            sheenRoughness: 0.55,
-            sheenColor: new THREE.Color(DUNE_COLOR).lerp(
-                new THREE.Color('#ffffff'),
-                0.35,
-            ),
+            vertexColors: true,
+            roughness: 0.98,
+            map: wool,
+            bumpMap: wool,
+            // Bump displacement is in WORLD units (the furniture is scaled 3300x).
+            bumpScale: 2.0,
+            sheen: 0.24,
+            sheenRoughness: 0.95,
+            sheenColor: new THREE.Color(DUNE_COLOR).convertSRGBToLinear(),
         });
         for (const [column, row] of DUNE_MODULES) {
             const module = new THREE.Mesh(
@@ -1467,25 +1466,35 @@ export default class Environment {
             lounge.add(module);
         }
         room.add(lounge);
-        // Paulin designed low tables to nestle inside the Dune like oases;
-        // this one holds the controllers, a hand below the seats.
-        const [tableColumn, tableRow] = DUNE_TABLE;
-        const tableX =
-            DUNE_AT.x +
-            ((tableColumn + 0.5) * DUNE.module - DUNE.columns / 2) * S;
-        const tableZ = DUNE_AT.z + (tableRow + 0.5) * DUNE.module * S;
-        const tableTop = 0.24 * S;
-        const oasis = box(
-            0.84 * S,
-            tableTop,
-            0.84 * S,
-            wood,
-            tableX,
-            FLOOR + tableTop / 2,
-            tableZ,
-            160,
-        );
+        // Duneside-style disc at a FOUR-MODULE JOINT: seating continues below it.
+        // The 10 mm stem fits the 12 mm joint without piercing the upholstery.
+        const tableX = DUNE_AT.x + DUNE_TABLE.x * S;
+        const tableZ = DUNE_AT.z + DUNE_TABLE.z * S;
+        const tableTop = DUNE_TABLE.height * S;
+        const oasis = new THREE.Group();
         oasis.name = 'Match night controller table';
+        oasis.position.set(tableX, FLOOR, tableZ);
+        const lacquer = material('#d5d0c5', 0.62);
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.005 * S, 0.005 * S, tableTop - 30, 16), lacquer);
+        stem.position.y = (tableTop - 30) / 2;
+        stem.castShadow = true;
+        oasis.add(stem);
+        // Rounded disc edge from a lathed section rather than a thick slab.
+        const discProfile = [
+            new THREE.Vector2(0, -0.007),
+            new THREE.Vector2(DUNE_TABLE.radius - 0.004, -0.007),
+            new THREE.Vector2(DUNE_TABLE.radius, -0.003),
+            new THREE.Vector2(DUNE_TABLE.radius, 0.003),
+            new THREE.Vector2(DUNE_TABLE.radius - 0.004, 0.007),
+            new THREE.Vector2(0, 0.007),
+        ].map(p => p.multiplyScalar(S));
+        const disc = new THREE.Mesh(new THREE.LatheGeometry(discProfile, 64), lacquer);
+        disc.position.y = tableTop - 0.007 * S;
+        disc.castShadow = true;
+        disc.receiveShadow = true;
+        disc.name = 'Dune round tabletop';
+        oasis.add(disc);
+        room.add(oasis);
         for (const x of [-240, 240]) {
             const pad = new THREE.Group();
             pad.name = 'Match night gamepad';

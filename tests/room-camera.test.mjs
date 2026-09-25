@@ -463,29 +463,37 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
             .normalize();
         assert.ok(forward.dot(target) > 0.99999, 'seat opening faces TV');
     }
-    // Pierre Paulin's Dune: five modules on the floor, seat and backrest at
-    // real heights, clear of the rug, media console and Begu's desk corner.
+    // Photo-referenced Dune: six complete upholstered blocks, low seated
+    // junctions, level backrest edges and a slender disc table ABOVE the seats.
     const lounge = bounds('Dune sofa');
     const metre = 3300;
     assert.ok(Math.abs(lounge.min.y + 3015) < 1, 'Dune modules stand on the floor');
     assert.ok(
-        lounge.max.y + 3015 > 0.78 * metre && lounge.max.y + 3015 < 0.9 * metre,
-        'backrest peaks at Dune height',
+        lounge.max.y + 3015 > 0.69 * metre && lounge.max.y + 3015 < 0.74 * metre,
+        'level backrests replace the tall isolated peaks',
     );
-    assert.ok(Math.abs(dune.duneHeight(0.5, 1.5) - 0.36) < 0.005, 'seats at 36 cm');
-    assert.equal(
-        room.getObjectByName('Dune sofa').children.length,
-        5,
-        'five modules around the oasis table',
-    );
+    const modules = room.getObjectByName('Dune sofa').children;
+    assert.equal(modules.length, 6, 'no module-sized hole for the table');
+    for (const module of modules) {
+        const extent = new THREE.Box3().setFromObject(module);
+        assert.ok(Math.abs(extent.min.y + 3015) < 1, 'every block meets the floor');
+        for (const other of modules) {
+            if (module === other) continue;
+            assert.ok(!extent.intersectsBox(new THREE.Box3().setFromObject(other)), 'blocks do not overlap');
+        }
+    }
     assert.ok(!lounge.intersectsBox(bounds('Graduation album rug')), 'rug lies in front of the Dune');
+    assert.ok(!lounge.intersectsBox(bounds('Bed and walnut headboard')), 'Dune clears the bed');
     assert.ok(lounge.max.z < bounds('Media console').min.z - 6000, 'room to sit back from the TV');
     assert.ok(lounge.min.z > layout.DESK_Z + 5000, 'desk corner and Begu stay clear');
     const oasis = bounds('Match night controller table');
-    assert.ok(
-        oasis.max.y < -3015 + 0.36 * metre && Math.abs(oasis.min.y + 3015) < 1,
-        'oasis table stands below the seats',
-    );
+    const tabletop = bounds('Dune round tabletop');
+    assert.ok(Math.abs(oasis.min.y + 3015) < 1, 'table stem reaches the floor');
+    assert.ok(tabletop.min.y > -3015 + 0.50 * metre, 'disc floats above the low seat junction');
+    assert.ok(tabletop.getSize(new THREE.Vector3()).y < 0.02 * metre, 'tabletop is thin, not a slab');
+    const tabletopCenter = tabletop.getCenter(new THREE.Vector3());
+    assert.ok(Math.abs(tabletopCenter.x - (layout.DUNE_AT.x + dune.DUNE_TABLE.x * metre)) < 1);
+    assert.ok(Math.abs(tabletopCenter.z - (layout.DUNE_AT.z + dune.DUNE_TABLE.z * metre)) < 1);
     const cabinet = bounds('Display cabinet'),
         player = bounds('Walnut record player');
     assert.ok(

@@ -67,7 +67,7 @@ export default function Credits(props: WindowAppProps) {
                         built for this room from scratch; not affiliated with
                         Paulin, Paulin, Paulin.{' '}
                         <a
-                            href="https://www.paulinpaulinpaulin.com"
+                            href="https://paulinpaulinpaulin.com/en/designs/ensemble-dune-2/"
                             target="_blank"
                             rel="noreferrer"
                         >
