@@ -6,13 +6,49 @@
  */
 export const DESK_Z = -4650;
 
+/** Room units per metre. */
+export const METRE = 3300;
+
 /**
- * Conversation pit, in room units (3300 per metre): a 0.6 m deep opening in
- * the floor, centred on the TV. `z` is its back (desk-side) edge; it runs
- * `length` toward the TV, ending in one step up. The Dune fills it wall to wall.
+ * The Dune ensemble (static/models/Dune/dune-sofa.glb, authored in inches,
+ * Z-up): 16 modules, 2.79 × 2.81 m and 0.55 m to the backrest crests.
+ * Sizes below are its bounding box in room units.
  */
-export const PIT = { x: 0, z: 1600, width: 8000, length: 6600, drop: 1980 };
-/** Back edge of the Dune, 40 units inside the pit's back wall. */
-export const DUNE_AT = { x: PIT.x, z: PIT.z + 40 };
-/** Muted navy wool; lighter than the old tint so the sewn panels remain legible. */
+export const DUNE_SCALE = 0.0254 * METRE;
+export const DUNE_SIZE = {
+    x: 109.683 * DUNE_SCALE,
+    z: 110.438 * DUNE_SCALE,
+    y: 21.517 * DUNE_SCALE,
+};
+
+/**
+ * Leather tatami: the flat Dune module Paulin paired with the ensemble. Here
+ * it lines the pit's TV side at seat height, as the step down and as the
+ * surface the round table stands on.
+ */
+export const TATAMI = { depth: 2310, height: 900 };
+
+/**
+ * Conversation pit sized to the Dune: 40 units of clearance on every side
+ * plus the tatami. 0.52 m deep, so the backrests crest ~3 cm above the floor
+ * the way pit seating does. `z` is the back (desk-side) edge; the pit runs
+ * `length` toward the TV, centred on it. Begu's walk ends ~0.45 m short of it.
+ */
+const CLEAR = 40;
+export const PIT = {
+    x: 0,
+    z: 1250,
+    width: Math.ceil(DUNE_SIZE.x + 2 * CLEAR),
+    length: Math.ceil(DUNE_SIZE.z + 2 * CLEAR) + TATAMI.depth,
+    drop: 1716,
+};
+/** Centre of the Dune's footprint, in front of the tatami. */
+export const DUNE_AT = {
+    x: PIT.x,
+    z: PIT.z + (PIT.length - TATAMI.depth) / 2,
+};
+/** Muted navy wool, tinting the model's fabric. */
 export const DUNE_COLOR = '#42546b';
+
+/** The Graduation rug furnishes the window nook, beside the reading bench. */
+export const RUG_AT = { x: -11500, z: 6200 };

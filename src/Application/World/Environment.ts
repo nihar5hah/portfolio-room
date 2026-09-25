@@ -6,14 +6,15 @@ import { ALBUMS } from '../Audio/AlbumAudio';
 import BakedModel from '../Utils/BakedModel';
 import MatchBoard from './MatchBoard';
 import bus from '../UI/EventBus';
-import { DESK_Z, DUNE_AT, DUNE_COLOR, PIT } from './Layout';
 import {
-    DUNE,
-    DUNE_MODULES,
-    DUNE_TABLE,
-    duneKnit,
-    duneModuleGeometry,
-} from './Dune';
+    DESK_Z,
+    DUNE_AT,
+    DUNE_COLOR,
+    DUNE_SCALE,
+    PIT,
+    RUG_AT,
+    TATAMI,
+} from './Layout';
 type SkyPhase = 'day' | 'dusk' | 'night';
 const SKY: Record<
     SkyPhase,
@@ -269,9 +270,10 @@ export default class Environment {
             return mesh;
         };
 
-        // Conversation pit for the Dune (Layout.ts PIT): the boards stop at a
-        // walnut nosing around the opening; walls, a carpeted base and one
-        // step up on the TV side sit below. Floor spans x ±18000, z -11000..22000.
+        // Conversation pit sized to the Dune (Layout.ts PIT): the boards stop
+        // at a walnut nosing around the opening; walnut walls, a carpeted base
+        // and a leather tatami step on the TV side sit below.
+        // Floor spans x ±18000, z -11000..22000.
         const PIT_FLOOR = FLOOR - PIT.drop;
         const NOSING = 150;
         const pitX0 = PIT.x - PIT.width / 2;
@@ -361,20 +363,38 @@ export default class Environment {
             PIT_FLOOR - 50,
             pitZ0 + PIT.length / 2,
         ).name = 'Pit carpet';
-        // One step, at seat height, between the Dune's front row and the TV side.
-        const stepZ0 = DUNE_AT.z + DUNE.rows * DUNE.module * 3300 + 40;
-        const stepTop = FLOOR - PIT.drop / 2;
-        // A solid walnut tread, like the nosing, so it reads as a stair.
-        box(
-            PIT.width,
-            PIT.drop / 2,
-            pitZ1 - stepZ0,
-            walnut,
-            PIT.x,
-            PIT_FLOOR + PIT.drop / 4,
-            (stepZ0 + pitZ1) / 2,
-            18,
-        ).name = 'Pit step';
+        // Leather tatami along the TV side, at the Dune's seat height: four
+        // flat pads, one per Dune column, as the step down and a surface for
+        // the table. Seams of 12 units keep neighbouring faces apart.
+        const tatamiZ0 = pitZ1 - TATAMI.depth;
+        const tatamiTop = PIT_FLOOR + TATAMI.height;
+        const leather = new THREE.MeshStandardMaterial({
+            color: '#7a4a2e',
+            roughness: 0.5,
+        });
+        const tatami = new THREE.Group();
+        tatami.name = 'Dune tatami';
+        const pad = PIT.width / 4;
+        for (let i = 0; i < 4; i++) {
+            const mat = new THREE.Mesh(
+                new RoundedBoxGeometry(
+                    pad - 12,
+                    TATAMI.height,
+                    TATAMI.depth - 12,
+                    3,
+                    45,
+                ),
+                leather,
+            );
+            mat.position.set(
+                pitX0 + pad * (i + 0.5),
+                PIT_FLOOR + TATAMI.height / 2,
+                tatamiZ0 + TATAMI.depth / 2,
+            );
+            mat.castShadow = mat.receiveShadow = true;
+            tatami.add(mat);
+        }
+        room.add(tatami);
         // The camera is constrained inside these four walls and ceiling.
         const back = new THREE.Mesh(
             new THREE.PlaneGeometry(36000, 16000),
@@ -868,12 +888,12 @@ export default class Environment {
             ['poster_jackboys', 17500, FLOOR + 310, -2400, -Math.PI / 2, -0.18], // skirting, by the mirror
             [
                 'poster_livelove',
-                pitX1 - 450,
-                stepTop + 310,
-                (stepZ0 + pitZ1) / 2,
-                -Math.PI / 2,
+                pitX0 + 450,
+                tatamiTop + 310,
+                tatamiZ0 + TATAMI.depth / 2,
+                Math.PI / 2,
                 -0.18,
-            ], // pit step, against the pit wall
+            ], // leather tatami, against the pit's window-side wall
             ['poster_mbdtf', -15600, FLOOR + 310, -4230, 0.12, -0.2], // floor, against the display cabinet
         ] as const) {
             const sleeve = box(SLEEVE, SLEEVE, 46, black, x, y, z, 10);
@@ -1295,8 +1315,8 @@ export default class Environment {
         graduation.name = 'Graduation album rug';
         graduation.rotation.x = -Math.PI / 2;
         // Underside sits 2 units over the boards; the mat is ~13 mm thick.
-        // Under the lounge, between the sofa and the TV.
-        graduation.position.set(DUNE_AT.x, FLOOR + 22, 12500);
+        // In the window nook beside the reading bench; the pit takes the centre.
+        graduation.position.set(RUG_AT.x, FLOOR + 22, RUG_AT.z);
         graduation.receiveShadow = true;
         room.add(graduation);
 
@@ -1488,12 +1508,12 @@ export default class Environment {
         room.add(sleeve);
         label('ON ROTATION', 1950, 220, -12050, FLOOR + 1260, -4390);
 
-        // Two sculpted bean bags face the TV, with space between them for controllers.
+        // Two sculpted bean bags face the TV from either side of the pit's
+        // TV end, off the walkway between the pit and the media console.
         for (const [x, color, name] of [
-            [DUNE_AT.x - 6200, '#33425d', 'Blue match night bean bag'],
-            [DUNE_AT.x + 6200, '#793e49', 'Burgundy match night bean bag'],
+            [PIT.x - 8000, '#33425d', 'Blue match night bean bag'],
+            [PIT.x + 8000, '#793e49', 'Burgundy match night bean bag'],
         ] as const) {
-            // They flank the Graduation rug, angled in toward the screen.
             const bag = new THREE.Group();
             bag.name = name;
             bag.position.set(x, FLOOR, 13200);
@@ -1546,46 +1566,102 @@ export default class Environment {
             }
             room.add(bag);
         }
-        // Photo-referenced Dune recreation sunk into the conversation pit: six
-        // upholstered modules fill it wall to wall, backrests toward the desk
-        // cresting just above the floor, seats toward the TV. 3300 units/metre.
+        // The Dune (qasimroy, CC BY 4.0; static/licenses/models.txt), sunk into
+        // the conversation pit. Its continuous backrest runs along the desk and
+        // window sides and a double-backed spine splits the seating, so the
+        // front row faces the TV across the tatami. Authored Z-up in inches.
         const S = 3300;
         const lounge = new THREE.Group();
         lounge.name = 'Dune sofa';
         lounge.position.set(DUNE_AT.x, PIT_FLOOR, DUNE_AT.z);
-        lounge.scale.setScalar(S);
-        const wool = duneKnit();
-        const duneFabric = new THREE.MeshPhysicalMaterial({
-            color: DUNE_COLOR,
-            vertexColors: true,
-            roughness: 0.98,
-            map: wool,
-            bumpMap: wool,
-            // Bump displacement is in WORLD units (the furniture is scaled 3300x).
-            bumpScale: 2.0,
-            sheen: 0.24,
-            sheenRoughness: 0.95,
-            sheenColor: new THREE.Color(DUNE_COLOR).convertSRGBToLinear(),
-        });
-        for (const [column, row] of DUNE_MODULES) {
-            const module = new THREE.Mesh(
-                duneModuleGeometry(column, row),
-                duneFabric,
-            );
-            module.name = `Dune module ${column + 1}-${row + 1}`;
-            module.castShadow = true;
-            module.receiveShadow = true;
-            lounge.add(module);
+        // Backrests to the desk (-Z) and window (-X); open toward TV and bed.
+        lounge.rotation.y = Math.PI;
+        const duneModel = app.resources.items.gltfModel.duneModel;
+        if (duneModel) {
+            const sofa = duneModel.scene;
+            // The GLB is Meshopt-quantized (normalized ints). This three.js
+            // reads those raw in raycasts and precise bounds, so expand them
+            // to floats once; the node transforms still scale them correctly.
+            sofa.traverse((part: THREE.Object3D) => {
+                if (!(part instanceof THREE.Mesh)) return;
+                const geometry = part.geometry as THREE.BufferGeometry;
+                for (const name of Object.keys(geometry.attributes)) {
+                    const source = geometry.getAttribute(name);
+                    if (!source.normalized) continue;
+                    const array = (source as THREE.BufferAttribute).array;
+                    const data =
+                        'data' in source
+                            ? (source as THREE.InterleavedBufferAttribute).data
+                                  .array
+                            : array;
+                    const max =
+                        data instanceof Int8Array
+                            ? 127
+                            : data instanceof Uint8Array
+                              ? 255
+                              : data instanceof Int16Array
+                                ? 32767
+                                : 65535;
+                    const size = source.itemSize;
+                    const out = new Float32Array(source.count * size);
+                    const read = ['getX', 'getY', 'getZ', 'getW'] as const;
+                    for (let i = 0; i < source.count; i++)
+                        for (let c = 0; c < size; c++)
+                            out[i * size + c] = Math.max(
+                                source[read[c]](i) / max,
+                                -1,
+                            );
+                    geometry.setAttribute(
+                        name,
+                        new THREE.BufferAttribute(out, size),
+                    );
+                }
+                geometry.computeBoundingBox();
+                geometry.computeBoundingSphere();
+            });
+            sofa.rotation.x = -Math.PI / 2;
+            sofa.scale.setScalar(DUNE_SCALE);
+            sofa.updateMatrixWorld(true);
+            // Centre the footprint on DUNE_AT and stand the hem on the pit floor.
+            const extent = new THREE.Box3().setFromObject(sofa);
+            const centre = extent.getCenter(new THREE.Vector3());
+            sofa.position.set(-centre.x, -extent.min.y, -centre.z);
+            const bump = app.resources.items.texture.duneFabricBump;
+            if (bump) {
+                bump.encoding = THREE.LinearEncoding;
+                bump.wrapS = bump.wrapT = THREE.RepeatWrapping;
+                // UVs span the whole ensemble once: ~28 cm twill repeats.
+                bump.repeat.set(10, 10);
+                bump.needsUpdate = true;
+            }
+            const duneFabric = new THREE.MeshPhysicalMaterial({
+                color: DUNE_COLOR,
+                roughness: 0.96,
+                bumpMap: bump,
+                bumpScale: 1.2,
+                sheen: 0.25,
+                sheenRoughness: 0.9,
+                sheenColor: new THREE.Color(DUNE_COLOR).convertSRGBToLinear(),
+            });
+            sofa.traverse((part: THREE.Object3D) => {
+                if (!(part instanceof THREE.Mesh)) return;
+                part.material = duneFabric;
+                part.castShadow = true;
+                part.receiveShadow = true;
+            });
+            lounge.add(sofa);
         }
         room.add(lounge);
-        // Duneside-style disc at a FOUR-MODULE JOINT: seating continues below it.
-        // The 10 mm stem fits the 12 mm joint without piercing the upholstery.
-        const tableX = DUNE_AT.x + DUNE_TABLE.x * S;
-        const tableZ = DUNE_AT.z + DUNE_TABLE.z * S;
-        const tableTop = DUNE_TABLE.height * S;
+        // Duneside-style round table standing on the tatami, clear of the
+        // cushions, in front of the TV-facing seats; its top sits just below
+        // the room floor, in easy reach from the front row.
+        const tableX = DUNE_AT.x + 1700;
+        const tableZ = tatamiZ0 + TATAMI.depth / 2;
+        const tableTop = PIT.drop - TATAMI.height - 40;
+        const tableRadius = 0.24;
         const oasis = new THREE.Group();
         oasis.name = 'Match night controller table';
-        oasis.position.set(tableX, PIT_FLOOR, tableZ);
+        oasis.position.set(tableX, tatamiTop, tableZ);
         const lacquer = material('#d5d0c5', 0.62);
         const stem = new THREE.Mesh(
             new THREE.CylinderGeometry(0.005 * S, 0.005 * S, tableTop - 30, 16),
@@ -1597,10 +1673,10 @@ export default class Environment {
         // Rounded disc edge from a lathed section rather than a thick slab.
         const discProfile = [
             new THREE.Vector2(0, -0.007),
-            new THREE.Vector2(DUNE_TABLE.radius - 0.004, -0.007),
-            new THREE.Vector2(DUNE_TABLE.radius, -0.003),
-            new THREE.Vector2(DUNE_TABLE.radius, 0.003),
-            new THREE.Vector2(DUNE_TABLE.radius - 0.004, 0.007),
+            new THREE.Vector2(tableRadius - 0.004, -0.007),
+            new THREE.Vector2(tableRadius, -0.003),
+            new THREE.Vector2(tableRadius, 0.003),
+            new THREE.Vector2(tableRadius - 0.004, 0.007),
             new THREE.Vector2(0, 0.007),
         ].map((p) => p.multiplyScalar(S));
         const disc = new THREE.Mesh(
@@ -1616,7 +1692,8 @@ export default class Environment {
         for (const x of [-240, 240]) {
             const pad = new THREE.Group();
             pad.name = 'Match night gamepad';
-            pad.position.set(tableX + x, PIT_FLOOR + tableTop + 45, tableZ);
+            // Grips reach 50 below the pad's centre: rest them on the disc.
+            pad.position.set(tableX + x, tatamiTop + tableTop + 52, tableZ);
             pad.rotation.y = x < 0 ? -0.22 : 0.22;
             pad.add(box(390, 80, 210, cream, 0, 0, 0, 65));
             for (const side of [-1, 1]) {

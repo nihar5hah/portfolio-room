@@ -101,6 +101,9 @@ https://creators-images-production.fra1.cdn.digitaloceanspaces.com/releases/2364
 These represent the named physical pressings at album level; they do not simulate changing record sides for each digital track. Artwork remains owned by its respective rights holders. No claim of a Creative Commons artwork license is made.
 The original MP3/M4A audio files were supplied and authorized for local website playback by Nihar.
 
-Dune sofa: an original procedural model written for this project (src/Application/World/Dune.ts), after Pierre Paulin's Dune ensemble (1968–72). No third-party mesh or texture is used. The design belongs to its rights holders; this is a homage, not a licensed reproduction.
-Rebuilt from the official Ensemble Dune photographs: https://paulinpaulinpaulin.com/en/designs/ensemble-dune-2/
-Reference photos are not bundled or redistributed. Upholstery geometry, wool texture and Duneside-style table are authored here. Dimensions are room-fitting estimates, not manufacturer CAD specifications. See docs/DUNE-MODEL.md.
+"Dune_sofa_ARobj" by qasimroy. Licensed CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+Source: https://sketchfab.com/3d-models/dune-sofa-arobj-be4fe0bcfc2e4138b63effbd3f756252
+Files: static/models/Dune/dune-sofa.glb, static/models/Dune/fabric-bump.webp.
+Changes: flat beige base-colour texture removed (the fabric is tinted navy at runtime), geometry welded and Meshopt-compressed with glTF-Transform (1.59 MB → 235 KB); the model's twill bump map converted to a 512 px greyscale WebP and tiled. Credit is also embedded in the GLB's asset.copyright.
+Provenance note: the local copy came from Sketchfab's viewer stream, not the site's Download button. Before publishing, re-download it through the official Download button (free account) and rebuild with the same steps so the file's source is clean.
+The Dune design is by Pierre Paulin (1968–72), produced by Paulin, Paulin, Paulin; this room is not affiliated with them. The leather tatami, pit and table are built in src/Application/World/Environment.ts. See docs/DUNE-MODEL.md.

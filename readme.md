@@ -40,7 +40,7 @@ Begu’s chat uses the original Gemini model and falls back to `gemini-2.5-flash
 
 ## Mobile, weather and extras
 
-Touch devices explore the room with drag and pinch; objects open on a second tap. The lock screen and Mac menu bar show the weather in Ahmedabad and Bengaluru. The bed toggles Good night. The TV opens full screen; paste a live stream link into `MATCH_STREAM_URL` in `src/Application/config.ts` to show it during matches. Room staging lives in `src/Application/World/Layout.ts`; the TV lounge is a Pierre Paulin Dune modelled in `src/Application/World/Dune.ts` (colour: `DUNE_COLOR`), sunk into a conversation pit (`PIT`); see [Dune notes](docs/DUNE-MODEL.md).
+Touch devices explore the room with drag and pinch; objects open on a second tap. The lock screen and Mac menu bar show the weather in Ahmedabad and Bengaluru. The bed toggles Good night. The TV opens full screen; paste a live stream link into `MATCH_STREAM_URL` in `src/Application/config.ts` to show it during matches. Room staging lives in `src/Application/World/Layout.ts`; the TV lounge is a Pierre Paulin Dune (qasimroy's CC BY model, `static/models/Dune/`, colour `DUNE_COLOR`) sunk into a conversation pit sized to it (`PIT`, `TATAMI`); see [Dune notes](docs/DUNE-MODEL.md).
 
 ## Editing map
 
@@ -71,7 +71,7 @@ The original room assets remain on disk for provenance; the CRT and old desk/pla
 - The room MIT notice is retained. The companion desktop checkout supplies no separate license file. Original attribution is available from Portfolio menu → About this workspace. Pixel art still used by the optional original game retains its attribution.
 - Self-hosted Manrope and IBM Plex Mono notices are under `static/licenses/`.
 
-- MacBook Pro M3: jackbaeten, via Origami’s optimized GLB (CC BY 4.0). Husky: Quaternius via Poly Pizza (CC0 1.0). The retired Shiba asset retains its original attribution. Sources, adaptation notes and license links are in [model credits](static/licenses/models.txt), with historical asset hashes in [models-v4.json](docs/models-v4.json). The Barça crest comes from the official club sprite; the framed shirt photographs come from Legacy Football Shirts (Barcelona) and Classic Football Shirts (Argentina). Original image ownership is retained.
+- MacBook Pro M3: jackbaeten, via Origami’s optimized GLB (CC BY 4.0). Husky: Quaternius via Poly Pizza (CC0 1.0). Dune sofa: qasimroy via Sketchfab (CC BY 4.0). The retired Shiba asset retains its original attribution. Sources, adaptation notes and license links are in [model credits](static/licenses/models.txt), with historical asset hashes in [models-v4.json](docs/models-v4.json). The Barça crest comes from the official club sprite; the framed shirt photographs come from Legacy Football Shirts (Barcelona) and Classic Football Shirts (Argentina). Original image ownership is retained.
 - [Emanuele-web04/macbook-studio](https://github.com/Emanuele-web04/macbook-studio) was evaluated as requested. Its current main branch constructs an independent model in code; no geometry, code or separately licensed SF Symbols were copied from it.
 
 See [base design](docs/DESIGN-v3.md) and [current validation](docs/VALIDATION.md).

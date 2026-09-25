@@ -61,11 +61,22 @@ export default function Credits(props: WindowAppProps) {
                             Origami credits ↗
                         </a>
                     </dd>
+                    <dt>qasimroy</dt>
+                    <dd>
+                        The Dune sofa model in the conversation pit (CC BY 4.0),
+                        compressed and tinted navy.{' '}
+                        <a
+                            href="https://sketchfab.com/3d-models/dune-sofa-arobj-be4fe0bcfc2e4138b63effbd3f756252"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Model page ↗
+                        </a>
+                    </dd>
                     <dt>Pierre Paulin</dt>
                     <dd>
-                        The TV lounge is modelled after his Dune (1968–72),
-                        built for this room from scratch; not affiliated with
-                        Paulin, Paulin, Paulin.{' '}
+                        Designer of the Dune (1968–72) and its leather tatami;
+                        not affiliated with Paulin, Paulin, Paulin.{' '}
                         <a
                             href="https://paulinpaulinpaulin.com/en/designs/ensemble-dune-2/"
                             target="_blank"

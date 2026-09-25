@@ -4,8 +4,26 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import layout, { dune } from './layout.mjs';
+import layout from './layout.mjs';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 const require = createRequire(import.meta.url);
+
+// The shipped Dune GLB (geometry only; Meshopt-compressed, quantized).
+async function duneModel() {
+    const bytes = fs.readFileSync(
+        new URL('../static/models/Dune/dune-sofa.glb', import.meta.url),
+    );
+    const length = bytes.readUInt32LE(12);
+    const json = JSON.parse(bytes.subarray(20, 20 + length));
+    json.buffers[0].uri = `data:application/octet-stream;base64,${bytes.subarray(28 + length).toString('base64')}`;
+    globalThis.ProgressEvent ??= class extends Event {};
+    return new Promise((resolve, reject) =>
+        new GLTFLoader()
+            .setMeshoptDecoder(MeshoptDecoder)
+            .parse(JSON.stringify(json), '', resolve, reject),
+    );
+}
 
 test('idle camera follows the original automatic sweep and respects reduced motion', () => {
     globalThis.document = { hidden: false };
@@ -179,7 +197,9 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         time: { delta: 16 },
         resources: {
             items: {
+                gltfModel: { duneModel: await duneModel() },
                 texture: {
+                    duneFabricBump: new THREE.Texture(),
                     messiJersey: new THREE.Texture(),
                     argentinaJersey: new THREE.Texture(),
                     barcaCrest: new THREE.Texture(),
@@ -269,7 +289,6 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
                 },
             };
         if (name === './Layout') return layout;
-        if (name === './Dune') return dune;
         if (name === './MatchBoard')
             return {
                 default: class {
@@ -471,12 +490,13 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
             .normalize();
         assert.ok(forward.dot(target) > 0.99999, 'seat opening faces TV');
     }
-    // Photo-referenced Dune sunk into a conversation pit: six complete blocks
-    // on the pit floor, backrests cresting just above the room floor, a
-    // slender disc table above the seats, and floor boards that stop at the pit.
+    // The downloaded Dune model sunk into a conversation pit sized to it:
+    // boards stop at the opening, the hem stands on the pit floor, crests
+    // just clear the floor, and a leather tatami on the TV side carries the
+    // round table clear of every cushion.
     const lounge = bounds('Dune sofa');
     const metre = 3300;
-    const { PIT } = layout;
+    const { PIT, TATAMI, DUNE_SIZE } = layout;
     const pitFloor = -3015 - PIT.drop;
     const opening = new THREE.Box3(
         new THREE.Vector3(PIT.x - PIT.width / 2, -3100, PIT.z),
@@ -491,90 +511,122 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         Math.abs(bounds('Pit carpet').max.y - pitFloor) < 1,
         'carpeted pit floor at pit depth',
     );
+    const loungeSize = lounge.getSize(new THREE.Vector3());
+    assert.ok(
+        Math.abs(loungeSize.x - DUNE_SIZE.x) < 2 &&
+            Math.abs(loungeSize.z - DUNE_SIZE.z) < 2 &&
+            Math.abs(loungeSize.y - DUNE_SIZE.y) < 2,
+        'model keeps its authored 2.79 × 2.81 m footprint, lying flat',
+    );
     assert.ok(
         Math.abs(lounge.min.y - pitFloor) < 1,
         'Dune stands on the pit floor',
     );
     assert.ok(
-        lounge.max.y > -3015 && lounge.max.y < -3015 + 0.15 * metre,
+        lounge.max.y > -3015 && lounge.max.y < -3015 + 0.05 * metre,
         'backrests crest just above the room floor',
     );
+    const tatami = bounds('Dune tatami');
     assert.ok(
-        lounge.min.x >= opening.min.x &&
-            lounge.max.x <= opening.max.x &&
-            lounge.min.z >= opening.min.z &&
-            lounge.max.z <= opening.max.z,
-        'Dune fits inside the pit',
+        lounge.min.x >= opening.min.x + 30 &&
+            lounge.max.x <= opening.max.x - 30 &&
+            lounge.min.z >= opening.min.z + 30 &&
+            lounge.max.z <= tatami.min.z - 30,
+        'Dune fills the pit with clearance to the walls and the tatami',
     );
-    const step = bounds('Pit step');
-    assert.ok(!step.intersectsBox(lounge), 'step clears the front seats');
+    assert.equal(
+        room.getObjectByName('Dune tatami').children.length,
+        4,
+        'one tatami per Dune column',
+    );
     assert.ok(
-        Math.abs(step.max.y - (-3015 - PIT.drop / 2)) < 1,
-        'one even step: half the pit depth',
+        Math.abs(tatami.max.y - (pitFloor + TATAMI.height)) < 1 &&
+            Math.abs(tatami.max.z - (PIT.z + PIT.length)) < 10,
+        'tatami lines the TV side at seat height',
     );
+    // The backrest runs along the desk side: the highest cushions sit there.
+    const positions = [];
+    room.getObjectByName('Dune sofa').traverse((part) => {
+        if (!part.isMesh) return;
+        const p = part.geometry.getAttribute('position');
+        const v = new THREE.Vector3();
+        for (let i = 0; i < p.count; i += 7) {
+            v.fromBufferAttribute(p, i);
+            positions.push(v.clone().applyMatrix4(part.matrixWorld));
+        }
+    });
+    const crest = (inZone) =>
+        Math.max(...positions.filter(inZone).map((v) => v.y));
+    const EDGE = 0.15 * metre;
+    const deskEdge = crest((v) => v.z < lounge.min.z + EDGE);
+    const windowEdge = crest((v) => v.x < lounge.min.x + EDGE);
+    // Right half of the TV edge, and the bed edge past the back corner.
+    const tvEdge = crest((v) => v.z > lounge.max.z - EDGE && v.x > PIT.x);
+    const bedEdge = crest(
+        (v) => v.x > lounge.max.x - EDGE && v.z > lounge.min.z + 0.5 * metre,
+    );
+    assert.ok(
+        deskEdge > -3015 && windowEdge > -3015,
+        'backrests line the desk and window sides',
+    );
+    assert.ok(tvEdge < pitFloor + 0.35 * metre, 'seats open toward the TV');
+    assert.ok(bedEdge < pitFloor + 0.35 * metre, 'seats open toward the bed');
     // Begu's walk (Husky.ts) stays on the boards, a clear margin from the edge.
     assert.ok(
         PIT.z - 150 > layout.DESK_Z + 4201 + 1500,
         'pit edge clears Begu',
     );
-    const modules = room.getObjectByName('Dune sofa').children;
-    assert.equal(modules.length, 6, 'no module-sized hole for the table');
-    for (const module of modules) {
-        const extent = new THREE.Box3().setFromObject(module);
+    for (const name of [
+        'Blue match night bean bag',
+        'Burgundy match night bean bag',
+        'Graduation album rug',
+        'Bed and walnut headboard',
+        'Ahmedabad night window',
+    ])
         assert.ok(
-            Math.abs(extent.min.y - pitFloor) < 1,
-            'every block meets the pit floor',
+            !bounds(name).intersectsBox(opening.clone().expandByScalar(150)),
+            `${name} clears the pit`,
         );
-        for (const other of modules) {
-            if (module === other) continue;
-            assert.ok(
-                !extent.intersectsBox(new THREE.Box3().setFromObject(other)),
-                'blocks do not overlap',
-            );
-        }
-    }
     assert.ok(
-        !lounge.intersectsBox(bounds('Graduation album rug')),
-        'rug lies in front of the Dune',
+        bounds('Match night media wall').min.z - lounge.max.z > 2 * metre,
+        'front row sits over 2 m from the screen',
     );
     assert.ok(
-        !lounge.intersectsBox(bounds('Bed and walnut headboard')),
-        'Dune clears the bed',
-    );
-    assert.ok(
-        lounge.max.z < bounds('Media console').min.z - 6000,
-        'room to sit back from the TV',
-    );
-    assert.ok(
-        lounge.min.z > layout.DESK_Z + 5000,
-        'desk corner and Begu stay clear',
+        bounds('Media console').min.z - (PIT.z + PIT.length + 150) >
+            0.9 * metre,
+        'walkway between the pit and the TV',
     );
     const oasis = bounds('Match night controller table');
     const tabletop = bounds('Dune round tabletop');
     assert.ok(
-        Math.abs(oasis.min.y - pitFloor) < 1,
-        'table stem reaches the pit floor',
+        !oasis.intersectsBox(lounge),
+        'table stands clear of the cushions',
     );
     assert.ok(
-        tabletop.min.y > pitFloor + 0.5 * metre,
-        'disc floats above the low seat junction',
+        oasis.min.x > tatami.min.x &&
+            oasis.max.x < tatami.max.x &&
+            oasis.min.z > tatami.min.z &&
+            oasis.max.z < tatami.max.z,
+        'table footprint sits on the tatami',
+    );
+    assert.ok(
+        Math.abs(oasis.min.y - tatami.max.y) < 1,
+        'table stands on the tatami',
     );
     assert.ok(tabletop.max.y < -3015, 'tabletop stays below the room floor');
     assert.ok(
         tabletop.getSize(new THREE.Vector3()).y < 0.02 * metre,
         'tabletop is thin, not a slab',
     );
-    const tabletopCenter = tabletop.getCenter(new THREE.Vector3());
-    assert.ok(
-        Math.abs(
-            tabletopCenter.x - (layout.DUNE_AT.x + dune.DUNE_TABLE.x * metre),
-        ) < 1,
-    );
-    assert.ok(
-        Math.abs(
-            tabletopCenter.z - (layout.DUNE_AT.z + dune.DUNE_TABLE.z * metre),
-        ) < 1,
-    );
+    for (const pad of room.children.filter(
+        (p) => p.name === 'Match night gamepad',
+    )) {
+        const b = new THREE.Box3().setFromObject(pad);
+        assert.ok(
+            b.min.y >= tabletop.max.y - 5 && b.min.y < tabletop.max.y + 20,
+            'controllers rest on the tabletop',
+        );
+    }
     const cabinet = bounds('Display cabinet'),
         player = bounds('Walnut record player');
     assert.ok(

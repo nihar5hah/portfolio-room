@@ -35,6 +35,12 @@ const sources: Resource[] = [
         path: 'models/MacBook/macbook-pro-m3.glb',
     },
     { name: 'beguModel', type: 'gltfModel', path: 'models/Begu/husky.glb' },
+    { name: 'duneModel', type: 'gltfModel', path: 'models/Dune/dune-sofa.glb' },
+    {
+        name: 'duneFabricBump',
+        type: 'texture',
+        path: 'models/Dune/fabric-bump.webp',
+    },
     {
         name: 'environmentModel',
         type: 'gltfModel',
