@@ -260,8 +260,12 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         if (name.includes('EventBus'))
             return {
                 default: {
-                    on: (event, fn) => ((busHandlers[event] ??= []).push(fn), () => {}),
-                    dispatch: (event, data) => busHandlers[event]?.forEach((fn) => fn(data)),
+                    on: (event, fn) => (
+                        (busHandlers[event] ??= []).push(fn),
+                        () => {}
+                    ),
+                    dispatch: (event, data) =>
+                        busHandlers[event]?.forEach((fn) => fn(data)),
                 },
             };
         if (name === './Layout') return layout;
@@ -298,7 +302,11 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
     const sleeves = room.children.filter((part) =>
         part.name.startsWith('Album sleeve:'),
     );
-    assert.equal(sleeves.length, 11, 'only the original sleeves are left out; new albums stay in the shuffle pool');
+    assert.equal(
+        sleeves.length,
+        11,
+        'only the original sleeves are left out; new albums stay in the shuffle pool',
+    );
     for (let i = 0; i < sleeves.length; i++) {
         assert.ok(
             bounds(sleeves[i].name).getSize(new THREE.Vector3()).y < 800,
@@ -463,37 +471,110 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
             .normalize();
         assert.ok(forward.dot(target) > 0.99999, 'seat opening faces TV');
     }
-    // Photo-referenced Dune: six complete upholstered blocks, low seated
-    // junctions, level backrest edges and a slender disc table ABOVE the seats.
+    // Photo-referenced Dune sunk into a conversation pit: six complete blocks
+    // on the pit floor, backrests cresting just above the room floor, a
+    // slender disc table above the seats, and floor boards that stop at the pit.
     const lounge = bounds('Dune sofa');
     const metre = 3300;
-    assert.ok(Math.abs(lounge.min.y + 3015) < 1, 'Dune modules stand on the floor');
+    const { PIT } = layout;
+    const pitFloor = -3015 - PIT.drop;
+    const opening = new THREE.Box3(
+        new THREE.Vector3(PIT.x - PIT.width / 2, -3100, PIT.z),
+        new THREE.Vector3(PIT.x + PIT.width / 2, -3000, PIT.z + PIT.length),
+    );
+    for (const part of room.children.filter((p) => p.name === 'Wood floor'))
+        assert.ok(
+            !new THREE.Box3().setFromObject(part).intersectsBox(opening),
+            'no floor board spans the pit opening',
+        );
     assert.ok(
-        lounge.max.y + 3015 > 0.69 * metre && lounge.max.y + 3015 < 0.74 * metre,
-        'level backrests replace the tall isolated peaks',
+        Math.abs(bounds('Pit carpet').max.y - pitFloor) < 1,
+        'carpeted pit floor at pit depth',
+    );
+    assert.ok(
+        Math.abs(lounge.min.y - pitFloor) < 1,
+        'Dune stands on the pit floor',
+    );
+    assert.ok(
+        lounge.max.y > -3015 && lounge.max.y < -3015 + 0.15 * metre,
+        'backrests crest just above the room floor',
+    );
+    assert.ok(
+        lounge.min.x >= opening.min.x &&
+            lounge.max.x <= opening.max.x &&
+            lounge.min.z >= opening.min.z &&
+            lounge.max.z <= opening.max.z,
+        'Dune fits inside the pit',
+    );
+    const step = bounds('Pit step');
+    assert.ok(!step.intersectsBox(lounge), 'step clears the front seats');
+    assert.ok(
+        Math.abs(step.max.y - (-3015 - PIT.drop / 2)) < 1,
+        'one even step: half the pit depth',
+    );
+    // Begu's walk (Husky.ts) stays on the boards, a clear margin from the edge.
+    assert.ok(
+        PIT.z - 150 > layout.DESK_Z + 4201 + 1500,
+        'pit edge clears Begu',
     );
     const modules = room.getObjectByName('Dune sofa').children;
     assert.equal(modules.length, 6, 'no module-sized hole for the table');
     for (const module of modules) {
         const extent = new THREE.Box3().setFromObject(module);
-        assert.ok(Math.abs(extent.min.y + 3015) < 1, 'every block meets the floor');
+        assert.ok(
+            Math.abs(extent.min.y - pitFloor) < 1,
+            'every block meets the pit floor',
+        );
         for (const other of modules) {
             if (module === other) continue;
-            assert.ok(!extent.intersectsBox(new THREE.Box3().setFromObject(other)), 'blocks do not overlap');
+            assert.ok(
+                !extent.intersectsBox(new THREE.Box3().setFromObject(other)),
+                'blocks do not overlap',
+            );
         }
     }
-    assert.ok(!lounge.intersectsBox(bounds('Graduation album rug')), 'rug lies in front of the Dune');
-    assert.ok(!lounge.intersectsBox(bounds('Bed and walnut headboard')), 'Dune clears the bed');
-    assert.ok(lounge.max.z < bounds('Media console').min.z - 6000, 'room to sit back from the TV');
-    assert.ok(lounge.min.z > layout.DESK_Z + 5000, 'desk corner and Begu stay clear');
+    assert.ok(
+        !lounge.intersectsBox(bounds('Graduation album rug')),
+        'rug lies in front of the Dune',
+    );
+    assert.ok(
+        !lounge.intersectsBox(bounds('Bed and walnut headboard')),
+        'Dune clears the bed',
+    );
+    assert.ok(
+        lounge.max.z < bounds('Media console').min.z - 6000,
+        'room to sit back from the TV',
+    );
+    assert.ok(
+        lounge.min.z > layout.DESK_Z + 5000,
+        'desk corner and Begu stay clear',
+    );
     const oasis = bounds('Match night controller table');
     const tabletop = bounds('Dune round tabletop');
-    assert.ok(Math.abs(oasis.min.y + 3015) < 1, 'table stem reaches the floor');
-    assert.ok(tabletop.min.y > -3015 + 0.50 * metre, 'disc floats above the low seat junction');
-    assert.ok(tabletop.getSize(new THREE.Vector3()).y < 0.02 * metre, 'tabletop is thin, not a slab');
+    assert.ok(
+        Math.abs(oasis.min.y - pitFloor) < 1,
+        'table stem reaches the pit floor',
+    );
+    assert.ok(
+        tabletop.min.y > pitFloor + 0.5 * metre,
+        'disc floats above the low seat junction',
+    );
+    assert.ok(tabletop.max.y < -3015, 'tabletop stays below the room floor');
+    assert.ok(
+        tabletop.getSize(new THREE.Vector3()).y < 0.02 * metre,
+        'tabletop is thin, not a slab',
+    );
     const tabletopCenter = tabletop.getCenter(new THREE.Vector3());
-    assert.ok(Math.abs(tabletopCenter.x - (layout.DUNE_AT.x + dune.DUNE_TABLE.x * metre)) < 1);
-    assert.ok(Math.abs(tabletopCenter.z - (layout.DUNE_AT.z + dune.DUNE_TABLE.z * metre)) < 1);
+    assert.ok(
+        Math.abs(
+            tabletopCenter.x - (layout.DUNE_AT.x + dune.DUNE_TABLE.x * metre),
+        ) < 1,
+    );
+    assert.ok(
+        Math.abs(
+            tabletopCenter.z - (layout.DUNE_AT.z + dune.DUNE_TABLE.z * metre),
+        ) < 1,
+    );
     const cabinet = bounds('Display cabinet'),
         player = bounds('Walnut record player');
     assert.ok(
@@ -621,12 +702,27 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         assert.ok(room.getObjectByName(name), name);
     const rug = room.getObjectByName('Graduation album rug');
     const [rugPrint, rugBinding] = rug.material;
-    assert.ok(rugPrint.bumpMap && rugPrint.sheen > 0, 'rug has tufted pile relief');
-    assert.ok(rugBinding && !rugBinding.map, 'rug edge is a plain bound fabric');
+    assert.ok(
+        rugPrint.bumpMap && rugPrint.sheen > 0,
+        'rug has tufted pile relief',
+    );
+    assert.ok(
+        rugBinding && !rugBinding.map,
+        'rug edge is a plain bound fabric',
+    );
     const rugUv = rug.geometry.getAttribute('uv');
-    const rugPrintFaces = rug.geometry.groups.find((g) => g.materialIndex === 0);
-    let uMin = 1, uMax = 0, vMin = 1, vMax = 0;
-    for (let i = rugPrintFaces.start; i < rugPrintFaces.start + rugPrintFaces.count; i++) {
+    const rugPrintFaces = rug.geometry.groups.find(
+        (g) => g.materialIndex === 0,
+    );
+    let uMin = 1,
+        uMax = 0,
+        vMin = 1,
+        vMax = 0;
+    for (
+        let i = rugPrintFaces.start;
+        i < rugPrintFaces.start + rugPrintFaces.count;
+        i++
+    ) {
         const index = rug.geometry.index ? rug.geometry.index.getX(i) : i;
         uMin = Math.min(uMin, rugUv.getX(index));
         uMax = Math.max(uMax, rugUv.getX(index));
@@ -637,9 +733,15 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         uMin < 0.01 && uMax > 0.99 && vMin < 0.01 && vMax > 0.99,
         'rug shows the complete, uncropped print',
     );
-    const rugHeight = bounds('Graduation album rug').getSize(new THREE.Vector3()).y;
+    const rugHeight = bounds('Graduation album rug').getSize(
+        new THREE.Vector3(),
+    ).y;
     assert.ok(rugHeight > 25 && rugHeight < 60, 'rug is a thin printed mat');
-    assert.equal(room.getObjectByName('Woven rug fringe'), undefined, 'no fringe, like the real rug');
+    assert.equal(
+        room.getObjectByName('Woven rug fringe'),
+        undefined,
+        'no fringe, like the real rug',
+    );
     const flagLight = environment.flagLights[0];
     busHandlers.enterMonitor.forEach((fn) => fn());
     assert.ok(
@@ -655,8 +757,15 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         ['night', 'dusk', 'day', 'day', 'dusk', 'night'],
         'the window follows the visitor’s local time',
     );
-    for (const name of ['Walnut record player', 'Bookshelf', 'Graduation album rug'])
-        assert.ok(room.getObjectByName(name), `${name} is named so it can be clicked`);
+    for (const name of [
+        'Walnut record player',
+        'Bookshelf',
+        'Graduation album rug',
+    ])
+        assert.ok(
+            room.getObjectByName(name),
+            `${name} is named so it can be clicked`,
+        );
     assert.equal(
         room.getObjectByName('Wall mounted TV frame').castShadow,
         false,

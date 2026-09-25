@@ -6,8 +6,9 @@ import { ALBUMS } from '../Audio/AlbumAudio';
 import BakedModel from '../Utils/BakedModel';
 import MatchBoard from './MatchBoard';
 import bus from '../UI/EventBus';
-import { DESK_Z, DUNE_AT, DUNE_COLOR } from './Layout';
+import { DESK_Z, DUNE_AT, DUNE_COLOR, PIT } from './Layout';
 import {
+    DUNE,
     DUNE_MODULES,
     DUNE_TABLE,
     duneKnit,
@@ -268,9 +269,112 @@ export default class Environment {
             return mesh;
         };
 
-        box(36000, 100, 33000, wood, 0, FLOOR - 50, 5500).name = 'Wood floor';
+        // Conversation pit for the Dune (Layout.ts PIT): the boards stop at a
+        // walnut nosing around the opening; walls, a carpeted base and one
+        // step up on the TV side sit below. Floor spans x ±18000, z -11000..22000.
+        const PIT_FLOOR = FLOOR - PIT.drop;
+        const NOSING = 150;
+        const pitX0 = PIT.x - PIT.width / 2;
+        const pitX1 = PIT.x + PIT.width / 2;
+        const pitZ0 = PIT.z;
+        const pitZ1 = PIT.z + PIT.length;
+        const [holeX0, holeX1] = [pitX0 - NOSING, pitX1 + NOSING];
+        const [holeZ0, holeZ1] = [pitZ0 - NOSING, pitZ1 + NOSING];
+        const slab = (x0: number, x1: number, z0: number, z1: number) => {
+            const piece = box(
+                x1 - x0,
+                100,
+                z1 - z0,
+                wood,
+                (x0 + x1) / 2,
+                FLOOR - 50,
+                (z0 + z1) / 2,
+            );
+            piece.name = 'Wood floor';
+        };
+        slab(-18000, holeX0, -11000, 22000);
+        slab(holeX1, 18000, -11000, 22000);
+        slab(holeX0, holeX1, -11000, holeZ0);
+        slab(holeX0, holeX1, holeZ1, 22000);
+        const seam = (x: number, z0: number, z1: number) =>
+            box(7, 3, z1 - z0, black, x, FLOOR + 1, (z0 + z1) / 2);
         for (let x = -18000; x <= 18000; x += 900)
-            box(7, 3, 33000, black, x, FLOOR + 1, 5500);
+            if (x > holeX0 && x < holeX1) {
+                seam(x, -11000, holeZ0);
+                seam(x, holeZ1, 22000);
+            } else seam(x, -11000, 22000);
+        const walnut = material('#6a4a33', 0.55);
+        const pitWall = material('#3b2b21', 0.7);
+        const carpet = material('#20252f', 1);
+        // Nosing sits 12 units proud of the boards so its top never z-fights them.
+        const nose = (w: number, d: number, x: number, z: number) =>
+            box(w, 60, d, walnut, x, FLOOR - 18, z, 18);
+        nose(holeX1 - holeX0, NOSING, PIT.x, pitZ0 - NOSING / 2).name =
+            'Pit nosing';
+        nose(holeX1 - holeX0, NOSING, PIT.x, pitZ1 + NOSING / 2);
+        nose(NOSING, PIT.length, pitX0 - NOSING / 2, pitZ0 + PIT.length / 2);
+        nose(NOSING, PIT.length, pitX1 + NOSING / 2, pitZ0 + PIT.length / 2);
+        const wallH = PIT.drop - 48;
+        const wallY = PIT_FLOOR + wallH / 2;
+        box(
+            holeX1 - holeX0,
+            wallH,
+            NOSING,
+            pitWall,
+            PIT.x,
+            wallY,
+            pitZ0 - NOSING / 2,
+        );
+        box(
+            holeX1 - holeX0,
+            wallH,
+            NOSING,
+            pitWall,
+            PIT.x,
+            wallY,
+            pitZ1 + NOSING / 2,
+        );
+        box(
+            NOSING,
+            wallH,
+            PIT.length,
+            pitWall,
+            pitX0 - NOSING / 2,
+            wallY,
+            pitZ0 + PIT.length / 2,
+        );
+        box(
+            NOSING,
+            wallH,
+            PIT.length,
+            pitWall,
+            pitX1 + NOSING / 2,
+            wallY,
+            pitZ0 + PIT.length / 2,
+        );
+        box(
+            PIT.width,
+            100,
+            PIT.length,
+            carpet,
+            PIT.x,
+            PIT_FLOOR - 50,
+            pitZ0 + PIT.length / 2,
+        ).name = 'Pit carpet';
+        // One step, at seat height, between the Dune's front row and the TV side.
+        const stepZ0 = DUNE_AT.z + DUNE.rows * DUNE.module * 3300 + 40;
+        const stepTop = FLOOR - PIT.drop / 2;
+        // A solid walnut tread, like the nosing, so it reads as a stair.
+        box(
+            PIT.width,
+            PIT.drop / 2,
+            pitZ1 - stepZ0,
+            walnut,
+            PIT.x,
+            PIT_FLOOR + PIT.drop / 4,
+            (stepZ0 + pitZ1) / 2,
+            18,
+        ).name = 'Pit step';
         // The camera is constrained inside these four walls and ceiling.
         const back = new THREE.Mesh(
             new THREE.PlaneGeometry(36000, 16000),
@@ -762,7 +866,14 @@ export default class Environment {
             ['poster_blonde', 17520, 2360, 5600, -Math.PI / 2, -0.15], // right-wall ledge
             ['poster_808s', 15480, FLOOR + 310, 1410, -Math.PI / 2, -0.18], // floor, against the bedside table
             ['poster_jackboys', 17500, FLOOR + 310, -2400, -Math.PI / 2, -0.18], // skirting, by the mirror
-            ['poster_livelove', DUNE_AT.x - 5400, FLOOR + 310, 4200, -Math.PI / 2, -0.18], // floor, against the Dune's outer arm
+            [
+                'poster_livelove',
+                pitX1 - 450,
+                stepTop + 310,
+                (stepZ0 + pitZ1) / 2,
+                -Math.PI / 2,
+                -0.18,
+            ], // pit step, against the pit wall
             ['poster_mbdtf', -15600, FLOOR + 310, -4230, 0.12, -0.2], // floor, against the display cabinet
         ] as const) {
             const sleeve = box(SLEEVE, SLEEVE, 46, black, x, y, z, 10);
@@ -1435,12 +1546,13 @@ export default class Environment {
             }
             room.add(bag);
         }
-        // Photo-referenced Dune recreation: six upholstered modules, backrests
-        // toward the desk and seats toward the TV. Room scale: 3300 units/metre.
+        // Photo-referenced Dune recreation sunk into the conversation pit: six
+        // upholstered modules fill it wall to wall, backrests toward the desk
+        // cresting just above the floor, seats toward the TV. 3300 units/metre.
         const S = 3300;
         const lounge = new THREE.Group();
         lounge.name = 'Dune sofa';
-        lounge.position.set(DUNE_AT.x, FLOOR, DUNE_AT.z);
+        lounge.position.set(DUNE_AT.x, PIT_FLOOR, DUNE_AT.z);
         lounge.scale.setScalar(S);
         const wool = duneKnit();
         const duneFabric = new THREE.MeshPhysicalMaterial({
@@ -1473,9 +1585,12 @@ export default class Environment {
         const tableTop = DUNE_TABLE.height * S;
         const oasis = new THREE.Group();
         oasis.name = 'Match night controller table';
-        oasis.position.set(tableX, FLOOR, tableZ);
+        oasis.position.set(tableX, PIT_FLOOR, tableZ);
         const lacquer = material('#d5d0c5', 0.62);
-        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.005 * S, 0.005 * S, tableTop - 30, 16), lacquer);
+        const stem = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.005 * S, 0.005 * S, tableTop - 30, 16),
+            lacquer,
+        );
         stem.position.y = (tableTop - 30) / 2;
         stem.castShadow = true;
         oasis.add(stem);
@@ -1487,8 +1602,11 @@ export default class Environment {
             new THREE.Vector2(DUNE_TABLE.radius, 0.003),
             new THREE.Vector2(DUNE_TABLE.radius - 0.004, 0.007),
             new THREE.Vector2(0, 0.007),
-        ].map(p => p.multiplyScalar(S));
-        const disc = new THREE.Mesh(new THREE.LatheGeometry(discProfile, 64), lacquer);
+        ].map((p) => p.multiplyScalar(S));
+        const disc = new THREE.Mesh(
+            new THREE.LatheGeometry(discProfile, 64),
+            lacquer,
+        );
         disc.position.y = tableTop - 0.007 * S;
         disc.castShadow = true;
         disc.receiveShadow = true;
@@ -1498,7 +1616,7 @@ export default class Environment {
         for (const x of [-240, 240]) {
             const pad = new THREE.Group();
             pad.name = 'Match night gamepad';
-            pad.position.set(tableX + x, FLOOR + tableTop + 45, tableZ);
+            pad.position.set(tableX + x, PIT_FLOOR + tableTop + 45, tableZ);
             pad.rotation.y = x < 0 ? -0.22 : 0.22;
             pad.add(box(390, 80, 210, cream, 0, 0, 0, 65));
             for (const side of [-1, 1]) {

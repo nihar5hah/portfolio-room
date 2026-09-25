@@ -34,21 +34,30 @@ in the references. It has been removed entirely.
 
 ## Room integration
 
-`DUNE_AT` remains `(2500, 1500)` in room X/Z coordinates. Scale is 3300 room units
-per metre. Approximate footprint is 3 × 2 m; back height is 0.70 m and front rim is
-0.30 m. The tabletop is 0.48 m across, 14 mm thick and 0.53 m high.
+The Dune is sunk into a conversation pit (`PIT` in `Layout.ts`): built-in seating
+in a depressed section of floor, the setting Dune ensembles are often shown in.
+Scale is 3300 room units per metre.
 
-The layout stays facing the TV, with the existing rug, bean bags and hidden record
-in place. It remains clear of the bed and rug. Begu stays visible at his desk spot
-from the sampled default camera view. No production camera/sweep code changed.
+- Modules are 0.8 m, so the ensemble is 2.4 × 1.6 m; back height 0.70 m, front
+  rim 0.30 m, unchanged.
+- The pit is 0.6 m deep, centred on the TV, and filled wall to wall. The backrests
+  crest ~10 cm above the floor, like cushions overflowing the pit.
+- The floor boards stop at a walnut nosing around the opening. Below it: walnut
+  walls, a carpeted pit floor, and one walnut step on the TV side at seat height.
+- The Duneside-style table (0.48 m, 0.53 m high) stays just below the floor,
+  holding the controllers.
+- The rug and bean bags sit between the pit and the TV. The LIVE.LOVE.A$AP
+  sleeve leans on the pit step. Begu's walk stays on the boards, clear of the edge.
 
 ## Validation
 
 - `tests/dune.test.mjs`: module layout/control profiles; fully closed, consistently
   wound meshes; positive volume; no collapsed triangles or non-finite attributes;
   unit normals; grounded hems; bounded triangle count; deterministic filtered wool.
-- `tests/room-camera.test.mjs`: six grounded, nonintersecting blocks; bed/rug/desk/TV
-  clearance; thin raised tabletop positioned at the shared junction.
+- `tests/room-camera.test.mjs`: no floor board spans the pit opening; carpet at
+  pit depth; six nonintersecting blocks on the pit floor, inside the pit; crest
+  just above the floor; step clears the seats at half depth; Begu and bed/rug/TV
+  clearance; thin tabletop at the shared junction, below floor level.
 - Manual WebGL render checks: front three-quarter, default room view, rear/side,
   close upholstery/table view. These are canvas render exports, not OS screenshots.
 - Full room/desktop type checks, test suite and production build must pass.

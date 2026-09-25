@@ -6,8 +6,13 @@
  */
 export const DESK_Z = -4650;
 
-/** Back edge of the Dune; it runs 2 m toward the TV (+Z), leaving the rug clear. */
-// x is offset toward the bed so the Dune never hides Begu from the main view.
-export const DUNE_AT = { x: 2500, z: 1500 };
+/**
+ * Conversation pit, in room units (3300 per metre): a 0.6 m deep opening in
+ * the floor, centred on the TV. `z` is its back (desk-side) edge; it runs
+ * `length` toward the TV, ending in one step up. The Dune fills it wall to wall.
+ */
+export const PIT = { x: 0, z: 1600, width: 8000, length: 6600, drop: 1980 };
+/** Back edge of the Dune, 40 units inside the pit's back wall. */
+export const DUNE_AT = { x: PIT.x, z: PIT.z + 40 };
 /** Muted navy wool; lighter than the old tint so the sewn panels remain legible. */
 export const DUNE_COLOR = '#42546b';

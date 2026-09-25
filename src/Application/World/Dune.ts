@@ -10,7 +10,7 @@ import * as THREE from 'three';
  * Coordinates are metres: +Z faces the TV, X is centred on the ensemble.
  */
 export const DUNE = {
-    module: 1,
+    module: 0.8, // sized to fill the conversation pit (Layout.ts PIT)
     gap: 0.012,
     edge: 0.032,
     seat: 0.3,
@@ -29,7 +29,12 @@ export const DUNE_MODULES: [number, number][] = [
 ];
 
 /** A slender Duneside-style table at the junction of four upholstered modules. */
-export const DUNE_TABLE = { x: 0.5, z: 1, height: 0.53, radius: 0.24 };
+export const DUNE_TABLE = {
+    x: DUNE.module / 2,
+    z: DUNE.module,
+    height: 0.53,
+    radius: 0.24,
+};
 
 type Point = [number, number, number];
 

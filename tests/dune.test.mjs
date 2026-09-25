@@ -37,8 +37,13 @@ test('Dune uses repeatable level-backed, corner and low upholstered modules', ()
         right = duneControlPoints(2, 1);
     assert.equal(left[0][1], right[1][1], 'outer corner profiles mirror');
     assert.equal(left[1][1], right[0][1]);
-    assert.equal(DUNE_TABLE.x, 0.5, 'stem belongs at a four-module junction');
-    assert.equal(DUNE_TABLE.z, 1);
+    // Column joints sit at ±module/2 about the centre; the row joint at one module.
+    assert.equal(
+        DUNE_TABLE.x,
+        DUNE.module / 2,
+        'stem belongs at a four-module junction',
+    );
+    assert.equal(DUNE_TABLE.z, DUNE.module);
     assert.ok(DUNE_TABLE.height > DUNE.seat + 0.15);
 });
 
