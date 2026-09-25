@@ -7,5 +7,8 @@
 export const DESK_Z = -4650;
 
 
-/** Where the imported corner sofa stands, facing the TV (+Z). */
-export const SOFA_AT = { x: 0, z: 6800, turn: 0 };
+/** Back edge of the Dune; it runs 2 m toward the TV (+Z), leaving the rug clear. */
+// x is offset toward the bed so the Dune never hides Begu from the main view.
+export const DUNE_AT = { x: 2500, z: 1500 };
+/** Fabric colour: Barça navy. Frank Ocean's famous Dune is teal, '#2f6f73'. */
+export const DUNE_COLOR = '#26375f';

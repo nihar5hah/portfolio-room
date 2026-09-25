@@ -40,7 +40,7 @@ Begu’s chat uses the original Gemini model and falls back to `gemini-2.5-flash
 
 ## Mobile, weather and extras
 
-Touch devices explore the room with drag and pinch; objects open on a second tap. The lock screen and Mac menu bar show the weather in Ahmedabad and Bengaluru. The bed toggles Good night. The TV opens full screen; paste a live stream link into `MATCH_STREAM_URL` in `src/Application/config.ts` to show it during matches. Room staging lives in `src/Application/World/Layout.ts`.
+Touch devices explore the room with drag and pinch; objects open on a second tap. The lock screen and Mac menu bar show the weather in Ahmedabad and Bengaluru. The bed toggles Good night. The TV opens full screen; paste a live stream link into `MATCH_STREAM_URL` in `src/Application/config.ts` to show it during matches. Room staging lives in `src/Application/World/Layout.ts`; the TV lounge is a Pierre Paulin Dune modelled in `src/Application/World/Dune.ts` (colour: `DUNE_COLOR`).
 
 ## Editing map
 

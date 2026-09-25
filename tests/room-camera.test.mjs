@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import layout from './layout.mjs';
+import layout, { dune } from './layout.mjs';
 const require = createRequire(import.meta.url);
 
 test('idle camera follows the original automatic sweep and respects reduced motion', () => {
@@ -265,6 +265,7 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
                 },
             };
         if (name === './Layout') return layout;
+        if (name === './Dune') return dune;
         if (name === './MatchBoard')
             return {
                 default: class {
@@ -462,6 +463,29 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
             .normalize();
         assert.ok(forward.dot(target) > 0.99999, 'seat opening faces TV');
     }
+    // Pierre Paulin's Dune: five modules on the floor, seat and backrest at
+    // real heights, clear of the rug, media console and Begu's desk corner.
+    const lounge = bounds('Dune sofa');
+    const metre = 3300;
+    assert.ok(Math.abs(lounge.min.y + 3015) < 1, 'Dune modules stand on the floor');
+    assert.ok(
+        lounge.max.y + 3015 > 0.78 * metre && lounge.max.y + 3015 < 0.9 * metre,
+        'backrest peaks at Dune height',
+    );
+    assert.ok(Math.abs(dune.duneHeight(0.5, 1.5) - 0.36) < 0.005, 'seats at 36 cm');
+    assert.equal(
+        room.getObjectByName('Dune sofa').children.length,
+        5,
+        'five modules around the oasis table',
+    );
+    assert.ok(!lounge.intersectsBox(bounds('Graduation album rug')), 'rug lies in front of the Dune');
+    assert.ok(lounge.max.z < bounds('Media console').min.z - 6000, 'room to sit back from the TV');
+    assert.ok(lounge.min.z > layout.DESK_Z + 5000, 'desk corner and Begu stay clear');
+    const oasis = bounds('Match night controller table');
+    assert.ok(
+        oasis.max.y < -3015 + 0.36 * metre && Math.abs(oasis.min.y + 3015) < 1,
+        'oasis table stands below the seats',
+    );
     const cabinet = bounds('Display cabinet'),
         player = bounds('Walnut record player');
     assert.ok(

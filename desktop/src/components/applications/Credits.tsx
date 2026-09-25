@@ -61,16 +61,17 @@ export default function Credits(props: WindowAppProps) {
                             Origami credits ↗
                         </a>
                     </dd>
-                    <dt>Heliona</dt>
+                    <dt>Pierre Paulin</dt>
                     <dd>
-                        The corner sofa in the TV lounge (CC BY 4.0), with
-                        textures resized, compressed and the fabric tinted navy.{' '}
+                        The TV lounge is modelled after his Dune (1968–72),
+                        built for this room from scratch; not affiliated with
+                        Paulin, Paulin, Paulin.{' '}
                         <a
-                            href="https://sketchfab.com/3d-models/corner-sofa-9cef8fd19dd84684b91830f35cc54d4f"
+                            href="https://www.paulinpaulinpaulin.com"
                             target="_blank"
                             rel="noreferrer"
                         >
-                            Model page ↗
+                            Paulin, Paulin, Paulin ↗
                         </a>
                     </dd>
                     <dt>Quaternius</dt>

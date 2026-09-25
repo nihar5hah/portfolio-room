@@ -6,7 +6,14 @@ import { ALBUMS } from '../Audio/AlbumAudio';
 import BakedModel from '../Utils/BakedModel';
 import MatchBoard from './MatchBoard';
 import bus from '../UI/EventBus';
-import { DESK_Z, SOFA_AT } from './Layout';
+import { DESK_Z, DUNE_AT, DUNE_COLOR } from './Layout';
+import {
+    DUNE,
+    DUNE_MODULES,
+    DUNE_TABLE,
+    duneKnit,
+    duneModuleGeometry,
+} from './Dune';
 type SkyPhase = 'day' | 'dusk' | 'night';
 const SKY: Record<
     SkyPhase,
@@ -756,7 +763,7 @@ export default class Environment {
             ['poster_blonde', 17520, 2360, 5600, -Math.PI / 2, -0.15], // right-wall ledge
             ['poster_808s', 15480, FLOOR + 310, 1410, -Math.PI / 2, -0.18], // floor, against the bedside table
             ['poster_jackboys', 17500, FLOOR + 310, -2400, -Math.PI / 2, -0.18], // skirting, by the mirror
-            ['poster_livelove', -6350, FLOOR + 310, 6500, -Math.PI / 2, -0.18], // floor, against the sofa's outer arm
+            ['poster_livelove', DUNE_AT.x - 5400, FLOOR + 310, 4200, -Math.PI / 2, -0.18], // floor, against the Dune's outer arm
             ['poster_mbdtf', -15600, FLOOR + 310, -4230, 0.12, -0.2], // floor, against the display cabinet
         ] as const) {
             const sleeve = box(SLEEVE, SLEEVE, 46, black, x, y, z, 10);
@@ -1179,7 +1186,7 @@ export default class Environment {
         graduation.rotation.x = -Math.PI / 2;
         // Underside sits 2 units over the boards; the mat is ~13 mm thick.
         // Under the lounge, between the sofa and the TV.
-        graduation.position.set(0, FLOOR + 22, 12500);
+        graduation.position.set(DUNE_AT.x, FLOOR + 22, 12500);
         graduation.receiveShadow = true;
         room.add(graduation);
 
@@ -1373,8 +1380,8 @@ export default class Environment {
 
         // Two sculpted bean bags face the TV, with space between them for controllers.
         for (const [x, color, name] of [
-            [-6200, '#33425d', 'Blue match night bean bag'],
-            [6200, '#793e49', 'Burgundy match night bean bag'],
+            [DUNE_AT.x - 6200, '#33425d', 'Blue match night bean bag'],
+            [DUNE_AT.x + 6200, '#793e49', 'Burgundy match night bean bag'],
         ] as const) {
             // They flank the Graduation rug, angled in toward the screen.
             const bag = new THREE.Group();
@@ -1429,48 +1436,60 @@ export default class Environment {
             }
             room.add(bag);
         }
-        // PlayStation lounge: a real L-shaped corner sofa (Heliona, CC BY 4.0,
-        // see static/licenses/models.txt) at true scale, 3300 units per metre,
-        // with its chaise toward the TV. The imported model is authored in
-        // metres, seats facing +Z.
+        // PlayStation lounge: Pierre Paulin's Dune (see Dune.ts), five fabric
+        // modules and an oasis table in the front-centre cell, backrests toward
+        // the desk and seats facing the TV. 3300 units per metre.
+        const S = 3300;
         const lounge = new THREE.Group();
-        lounge.name = 'Blaugrana gaming sectional';
-        const sofaModel = app.resources.items.gltfModel?.sofaModel;
-        if (sofaModel) {
-            const sofa = sofaModel.scene;
-            sofa.scale.setScalar(3300);
-            sofa.traverse((part: THREE.Object3D) => {
-                if (!(part instanceof THREE.Mesh)) return;
-                part.castShadow = true;
-                part.receiveShadow = true;
-                const materials = Array.isArray(part.material)
-                    ? part.material
-                    : [part.material];
-                materials.forEach((m: THREE.MeshStandardMaterial) => {
-                    m.userData.linearColor = true; // glTF colours are already linear
-                    // Pull the grey-blue fabric toward the room's navy.
-                    if (m.name === 'm_sofa_up' || m.name === 'm_sofa_bottom')
-                        m.color.set('#6f86b8').convertSRGBToLinear();
-                });
-            });
-            lounge.add(sofa);
+        lounge.name = 'Dune sofa';
+        lounge.position.set(DUNE_AT.x, FLOOR, DUNE_AT.z);
+        lounge.scale.setScalar(S);
+        const duneFabric = new THREE.MeshPhysicalMaterial({
+            color: DUNE_COLOR,
+            roughness: 0.9,
+            bumpMap: duneKnit(),
+            bumpScale: 0.0015,
+            sheen: 1,
+            sheenRoughness: 0.55,
+            sheenColor: new THREE.Color(DUNE_COLOR).lerp(
+                new THREE.Color('#ffffff'),
+                0.35,
+            ),
+        });
+        for (const [column, row] of DUNE_MODULES) {
+            const module = new THREE.Mesh(
+                duneModuleGeometry(column, row),
+                duneFabric,
+            );
+            module.name = `Dune module ${column + 1}-${row + 1}`;
+            module.castShadow = true;
+            module.receiveShadow = true;
+            lounge.add(module);
         }
-        lounge.position.set(SOFA_AT.x, FLOOR, SOFA_AT.z);
-        lounge.rotation.y = SOFA_AT.turn;
         room.add(lounge);
-        const navyDeep = material('#141c2f', 1);
-        // Ottoman in front of the sofa holds the controllers.
-        // Sits on the rug's top face (~FLOOR + 50) instead of cutting through it:
-        // coplanar/intersecting surfaces there were what flickered.
-        const ottoman = box(2600, 1150, 1500, navyDeep, 2700, FLOOR + 625, 10300,
-            220,
+        // Paulin designed low tables to nestle inside the Dune like oases;
+        // this one holds the controllers, a hand below the seats.
+        const [tableColumn, tableRow] = DUNE_TABLE;
+        const tableX =
+            DUNE_AT.x +
+            ((tableColumn + 0.5) * DUNE.module - DUNE.columns / 2) * S;
+        const tableZ = DUNE_AT.z + (tableRow + 0.5) * DUNE.module * S;
+        const tableTop = 0.24 * S;
+        const oasis = box(
+            0.84 * S,
+            tableTop,
+            0.84 * S,
+            wood,
+            tableX,
+            FLOOR + tableTop / 2,
+            tableZ,
+            160,
         );
-        ottoman.name = 'Match night controller table';
-        box(1500, 40, 1000, wood, 2700, FLOOR + 1220, 10300, 20);
+        oasis.name = 'Match night controller table';
         for (const x of [-240, 240]) {
             const pad = new THREE.Group();
             pad.name = 'Match night gamepad';
-            pad.position.set(2700 + x, FLOOR + 1290, 10300);
+            pad.position.set(tableX + x, FLOOR + tableTop + 45, tableZ);
             pad.rotation.y = x < 0 ? -0.22 : 0.22;
             pad.add(box(390, 80, 210, cream, 0, 0, 0, 65));
             for (const side of [-1, 1]) {

@@ -101,6 +101,4 @@ https://creators-images-production.fra1.cdn.digitaloceanspaces.com/releases/2364
 These represent the named physical pressings at album level; they do not simulate changing record sides for each digital track. Artwork remains owned by its respective rights holders. No claim of a Creative Commons artwork license is made.
 The original MP3/M4A audio files were supplied and authorized for local website playback by Nihar.
 
-Corner Sofa by Heliona. Licensed CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
-Source: https://sketchfab.com/3d-models/corner-sofa-9cef8fd19dd84684b91830f35cc54d4f
-Changes: textures resized to 1024 px and re-encoded as WebP, geometry Meshopt-compressed (glTF-Transform), fabric colour tinted navy at runtime. File: static/models/corner-sofa.glb.
+Dune sofa: an original procedural model written for this project (src/Application/World/Dune.ts), after Pierre Paulin's Dune ensemble (1968–72). No third-party mesh or texture is used. The design belongs to its rights holders; this is a homage, not a licensed reproduction.
