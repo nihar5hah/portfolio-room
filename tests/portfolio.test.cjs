@@ -76,3 +76,34 @@ test('readable resume preview stays paired with the downloadable PDF', () => {
         'production HTML minification preserves the complete résumé',
     );
 });
+
+test('sidebar icons stay visible in dark mode and the laptop screen avoids blur seams', () => {
+    const css = fs.readFileSync(
+        path.join(__dirname, '../desktop/src/index.css'),
+        'utf8',
+    );
+    // Icons are drawn in currentColor; inverting them turned light strokes black.
+    assert.doesNotMatch(css, /\.nav-links svg[^{]*\{[^}]*invert\(/);
+    assert.match(css, /\.nav-links svg \{[^}]*color: #007aff/);
+    assert.match(
+        css,
+        /html\[data-theme='dark'\] \.nav-links svg \{[^}]*color: #0a84ff/,
+    );
+    // On the room's 3D-tilted laptop, backdrop-filter left light seams.
+    assert.match(
+        css,
+        /html\[data-embedded\] \*,[\s\S]*?backdrop-filter: none !important/,
+    );
+    assert.match(
+        css,
+        /html\[data-embedded\]\[data-theme='dark'\] \.os-window \{\s*background: #1e1e1e/,
+    );
+    const entry = fs.readFileSync(
+        path.join(__dirname, '../desktop/src/index.tsx'),
+        'utf8',
+    );
+    assert.match(
+        entry,
+        /if \(window\.parent !== window\) \{[\s\S]*?dataset\.embedded = 'room'/,
+    );
+});

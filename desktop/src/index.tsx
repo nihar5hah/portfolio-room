@@ -8,6 +8,9 @@ import { applyTheme, initialTheme } from './hooks/useTheme';
 applyTheme(initialTheme());
 // The original room listens to input from its physical CSS3D monitor.
 if (window.parent !== window) {
+    // Inside the room this page is drawn on a 3D-transformed laptop screen;
+    // index.css drops effects that Chrome renders with seams there.
+    document.documentElement.dataset.embedded = 'room';
     for (const type of [
         'mousemove',
         'mousedown',

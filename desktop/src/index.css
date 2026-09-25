@@ -1545,6 +1545,10 @@ img {
     width: 18px;
     height: 18px;
 }
+.nav-links svg {
+    flex: none;
+    color: #007aff; /* macOS accent, like Finder's sidebar */
+}
 .nav-links a:hover,
 .nav-links button:hover {
     background: rgba(0, 0, 0, 0.05);
@@ -2534,9 +2538,10 @@ html[data-theme='dark'] .nav-links a:hover,
 html[data-theme='dark'] .nav-links button:hover {
     background: rgba(255, 255, 255, 0.07);
 }
-html[data-theme='dark'] .nav-links img,
+/* Sidebar symbols are drawn in currentColor, so they already follow the theme;
+   they take the macOS accent blue, as Finder's sidebar does. */
 html[data-theme='dark'] .nav-links svg {
-    filter: invert(1) brightness(0.95);
+    color: #0a84ff;
 }
 html[data-theme='dark'] .portfolio-page {
     background: #1e1e1e;
@@ -2696,4 +2701,42 @@ html[data-theme='dark'] {
     --tile-correct: #538d4e;
     --tile-present: #b59f3b;
     --tile-absent: #3a3a3c;
+}
+
+/* ───────────── Desktop drawn on the room's 3D laptop screen ─────────────
+   Inside the room, this page renders in an iframe that CSS3D tilts onto the
+   laptop. Chrome composites backdrop-filter there in a screen-aligned layer,
+   which leaves thin light seams along the blurred element's top and left edges
+   (worst on dark windows, and redrawn on every scroll). The frosted blur adds
+   almost nothing at these opacities, so it is dropped on the laptop only and the
+   glass is made a little more opaque; /desktop/ on its own keeps the blur. */
+html[data-embedded] *,
+html[data-embedded] *::before,
+html[data-embedded] *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+html[data-embedded] .os-window {
+    background: #ffffff;
+}
+html[data-embedded][data-theme='dark'] .os-window {
+    background: #1e1e1e;
+}
+html[data-embedded] .system-menu {
+    background: rgba(30, 30, 34, 0.72);
+}
+html[data-embedded][data-theme='dark'] .system-menu {
+    background: rgba(24, 24, 28, 0.78);
+}
+html[data-embedded] .start-menu {
+    background: rgba(246, 246, 248, 0.98);
+}
+html[data-embedded][data-theme='dark'] .start-menu {
+    background: rgba(40, 40, 44, 0.98);
+}
+html[data-embedded] .os-dock {
+    background: rgba(255, 255, 255, 0.3);
+}
+html[data-embedded][data-theme='dark'] .os-dock {
+    background: rgba(30, 30, 34, 0.6);
 }
