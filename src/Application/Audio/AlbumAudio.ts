@@ -43,6 +43,7 @@ export default class AlbumAudio {
     muted = true;
     error = false;
     failures = 0; // consecutive tracks that failed to load since the last one played
+    userPaused = false; // the visitor pressed pause (not Sound off): stay paused
 
     constructor() {
         this.audio.id = 'album-audio';
@@ -143,6 +144,7 @@ export default class AlbumAudio {
 
     play() {
         if (!this.entered || this.muted || !this.tracks.length) return;
+        this.userPaused = false;
         if (this.error) this.audio.src = this.tracks[this.index].src;
         this.error = false;
         this.failures = 0;
@@ -156,7 +158,16 @@ export default class AlbumAudio {
 
     toggle() {
         if (this.audio.paused || this.error) bus.dispatch('muteToggle', false);
-        else this.audio.pause();
+        else {
+            this.userPaused = true;
+            this.audio.pause();
+        }
+    }
+
+    /** The browser paused playback (hidden page, back/forward cache): continue. */
+    resume() {
+        if (this.userPaused || this.error || !this.audio.paused) return;
+        this.play();
     }
 
     next(skipping = false) {

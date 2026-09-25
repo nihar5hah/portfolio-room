@@ -2,223 +2,142 @@ import AlbumAudio from './AlbumAudio';
 import bus from '../UI/EventBus';
 
 /**
- * Room ambience and computer feedback, built so a screech is impossible.
+ * Room ambience and computer feedback on plain <audio> elements: the same
+ * playback path as the music, and no Web Audio (AudioContext) anywhere.
  *
- * The old graph retuned a live BiquadFilterNode from the camera every frame.
- * Chrome's biquad could then run away into a full-scale screech whose huge/NaN
- * samples also silenced the page's music. Now:
- * - every decoded sound is sanitized once (finite, within -1..1);
- * - the muffled ambience is rendered ONCE offline, then sanitized;
- * - the live graph is only buffer players and gains. Neither has feedback or
- *   internal state, so the output is bounded by the sum of gains (< 1) and can
- *   never run away, whatever the camera does.
+ * Why: the room first used a Three/Web Audio graph whose lowpass filter was
+ * retuned from the camera every frame. It ran away into a full-scale screech
+ * that also silenced the music. A rebuilt, bounded Web Audio graph still drew
+ * screech reports around laptop open/close in the embedded browser, while the
+ * music element never did. So every room sound now plays the way the music
+ * does: decoded by the media pipeline, with only element volumes changing.
+ * "Muffled at the Mac" is a pre-rendered file (600 Hz lowpass of the loop),
+ * crossfaded by volume; nothing is ever filtered live.
  */
-const SOUNDS = {
-    office: ['atmosphere/office.mp3'],
+const EFFECTS = {
     startup: ['startup/startup.mp3'],
     mouseDown: ['mouse/mouse_down.mp3'],
     mouseUp: ['mouse/mouse_up.mp3'],
     keyboardKeydown: [1, 2, 3, 4, 5, 6].map((n) => `keyboard/key_${n}.mp3`),
     ccType: ['cc/type.mp3'],
 };
-type SoundName = keyof typeof SOUNDS;
-const MUFFLE_HZ = 600;
+type Effect = keyof typeof EFFECTS;
 const MAX_EFFECTS = 4;
 const clamp = (value: number, min: number, max: number) =>
     Math.min(max, Math.max(min, value));
 
-/** Replace anything speakers must never receive: NaN, ±Infinity, > full scale. */
-export function sanitize<T extends AudioBuffer>(buffer: T): T {
-    for (let c = 0; c < buffer.numberOfChannels; c++) {
-        const data = buffer.getChannelData(c);
-        for (let i = 0; i < data.length; i++) {
-            const v = data[i];
-            // NaN fails every comparison and becomes silence.
-            data[i] = v > 1 ? 1 : v < -1 ? -1 : v === v ? v : 0;
-        }
-    }
-    return buffer;
+function element(file: string, loop = false) {
+    const el = document.createElement('audio');
+    el.src = `/audio/${file}`;
+    el.preload = 'auto';
+    el.loop = loop;
+    return el;
 }
-
-/** Fixed lowpass applied offline, once; the live graph never holds a filter. */
-async function renderMuffled(buffer: AudioBuffer): Promise<AudioBuffer> {
-    const Offline =
-        window.OfflineAudioContext || (window as any).webkitOfflineAudioContext;
-    if (!Offline) return buffer;
-    const offline: OfflineAudioContext = new Offline(
-        buffer.numberOfChannels,
-        buffer.length,
-        buffer.sampleRate,
-    );
-    const source = offline.createBufferSource();
-    source.buffer = buffer;
-    const lowpass = offline.createBiquadFilter();
-    lowpass.type = 'lowpass';
-    lowpass.frequency.value = MUFFLE_HZ;
-    source.connect(lowpass);
-    lowpass.connect(offline.destination);
-    source.start();
-    return sanitize(await offline.startRendering());
-}
-
-type Ambience = {
-    dry: GainNode;
-    wet: GainNode;
-    level: GainNode;
-    muffle: number;
-    volume: number;
-};
 
 export default class AudioManager {
     readonly album = new AlbumAudio();
-    context?: AudioContext;
-    master?: GainNode;
-    buffers: { [name: string]: AudioBuffer[] } = {};
-    muffledOffice?: AudioBuffer;
-    ambience?: Ambience;
+    /** Same 22.07 s loop, plain and pre-muffled, kept in step. */
+    readonly dry = element('atmosphere/office.mp3', true);
+    readonly wet = element('atmosphere/office-muffled.mp3', true);
+    templates = {} as Record<Effect, HTMLAudioElement[]>;
+    playing = new Set<HTMLAudioElement>();
     entered = false;
-    effects = 0;
+    muted = true;
+    muffle = 0;
+    level = 0.075;
     lastKey = '';
 
     constructor() {
-        const Context =
-            window.AudioContext || (window as any).webkitAudioContext;
-        try {
-            if (Context) this.context = new Context();
-        } catch {
-            // No Web Audio: the room stays silent, music still plays.
-        }
-        if (this.context) {
-            this.master = this.context.createGain();
-            this.master.gain.value = 0; // silent until Enter/Sound on
-            this.master.connect(this.context.destination);
-            void this.load();
-        }
+        for (const name of Object.keys(EFFECTS) as Effect[])
+            this.templates[name] = EFFECTS[name].map((file) => element(file));
+        this.applyMix();
         bus.on('muteToggle', (muted: boolean) => this.setMuted(muted));
         bus.on('loadingScreenDone', () => {
             this.entered = true;
             this.startAmbience();
             this.play('startup', 0.25);
         });
+        // The browser pauses media in hidden or back/forward-cached pages;
+        // pick the room (and the music) back up when the page returns.
+        window.addEventListener('pageshow', () => this.resume());
+        document.addEventListener('resume', () => this.resume()); // unfrozen
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) this.resume();
+        });
         this.listenForInput();
     }
 
-    async load() {
-        const context = this.context!;
-        await Promise.all(
-            (Object.keys(SOUNDS) as SoundName[]).map(async (name) => {
-                const decoded = await Promise.all(
-                    SOUNDS[name].map(async (file) => {
-                        try {
-                            const response = await fetch(`/audio/${file}`);
-                            if (!response.ok) return undefined;
-                            const data = await response.arrayBuffer();
-                            // Callback form also works on older Safari.
-                            const buffer = await new Promise<AudioBuffer>(
-                                (resolve, reject) =>
-                                    context.decodeAudioData(
-                                        data,
-                                        resolve,
-                                        reject,
-                                    ),
-                            );
-                            return sanitize(buffer);
-                        } catch {
-                            return undefined; // a missing effect is just silent
-                        }
-                    }),
-                );
-                this.buffers[name] = decoded.filter(
-                    (b): b is AudioBuffer => !!b,
-                );
-            }),
-        );
-        const office = this.buffers.office?.[0];
-        if (office)
-            this.muffledOffice = await renderMuffled(office).catch(
-                () => office,
-            );
-        this.startAmbience();
-    }
-
     setMuted(muted: boolean) {
-        if (!this.context || !this.master) return;
-        const now = this.context.currentTime;
-        this.master.gain.cancelScheduledValues(now);
-        this.master.gain.setTargetAtTime(muted ? 0 : 1, now, 0.05);
-        if (!muted) void this.context.resume().catch(() => undefined);
+        this.muted = muted;
+        if (!muted) return this.startAmbience();
+        this.dry.pause();
+        this.wet.pause();
+        for (const el of Array.from(this.playing)) this.release(el);
     }
 
-    /** Office loop: dry and pre-muffled copies, sample-aligned, crossfaded. */
     startAmbience() {
-        const context = this.context;
-        const dryBuffer = this.buffers.office?.[0];
-        const wetBuffer = this.muffledOffice;
-        if (!context || !this.master || !this.entered || this.ambience) return;
-        if (!dryBuffer || !wetBuffer) return; // starts when loading finishes
-        const level = context.createGain();
-        level.gain.value = 0.075;
-        level.connect(this.master);
-        const dry = context.createGain();
-        const wet = context.createGain();
-        dry.gain.value = 1;
-        wet.gain.value = 0;
-        dry.connect(level);
-        wet.connect(level);
-        const at = context.currentTime + 0.05;
-        for (const [buffer, gain] of [
-            [dryBuffer, dry],
-            [wetBuffer, wet],
-        ] as const) {
-            const source = context.createBufferSource();
-            source.buffer = buffer;
-            source.loop = true;
-            source.connect(gain);
-            source.start(at);
-        }
-        this.ambience = { dry, wet, level, muffle: 0, volume: 0.075 };
+        if (!this.entered || this.muted) return;
+        this.applyMix();
+        if (Math.abs(this.wet.currentTime - this.dry.currentTime) > 0.05)
+            this.wet.currentTime = this.dry.currentTime;
+        for (const el of [this.dry, this.wet])
+            if (el.paused) void el.play().catch(() => undefined);
+    }
+
+    resume() {
+        if (!this.entered || this.muted) return;
+        this.startAmbience();
+        this.album.resume();
     }
 
     /** Muffled and quieter at the Mac, open across the room. Every frame. */
     update(distance: number) {
-        const ambience = this.ambience;
-        if (!ambience || !this.context || !Number.isFinite(distance)) return;
+        if (!Number.isFinite(distance)) return;
         const muffle = 1 - clamp((distance - 1500) / 9500, 0, 1);
-        const volume = clamp(((distance - 1200) / 8800) * 0.15, 0.0375, 0.075);
-        const now = this.context.currentTime;
-        if (Math.abs(muffle - ambience.muffle) >= 0.01) {
-            ambience.muffle = muffle;
-            ambience.dry.gain.setTargetAtTime(1 - muffle, now, 0.08);
-            ambience.wet.gain.setTargetAtTime(muffle, now, 0.08);
-        }
-        if (Math.abs(volume - ambience.volume) >= 0.001) {
-            ambience.volume = volume;
-            ambience.level.gain.setTargetAtTime(volume, now, 0.1);
-        }
+        const level = clamp(((distance - 1200) / 8800) * 0.15, 0.0375, 0.075);
+        if (
+            Math.abs(muffle - this.muffle) < 0.01 &&
+            Math.abs(level - this.level) < 0.001
+        )
+            return;
+        this.muffle = muffle;
+        this.level = level;
+        this.applyMix();
+    }
+
+    applyMix() {
+        this.dry.volume = clamp(this.level * (1 - this.muffle), 0, 1);
+        this.wet.volume = clamp(this.level * this.muffle, 0, 1);
     }
 
     /** One-shot effect; excess overlapping input is dropped, not queued. */
-    play(name: SoundName, volume: number, cents = 0) {
-        const context = this.context;
-        const variants = this.buffers[name];
-        if (!context || !this.master || !variants?.length) return;
-        if (this.effects >= MAX_EFFECTS) return;
-        if (context.state === 'suspended')
-            void context.resume().catch(() => undefined);
-        const source = context.createBufferSource();
-        source.buffer = variants[Math.floor(Math.random() * variants.length)];
-        if (cents) source.playbackRate.value = 2 ** (cents / 1200);
-        const gain = context.createGain();
-        gain.gain.value = clamp(volume, 0, 1);
-        source.connect(gain);
-        gain.connect(this.master);
-        this.effects++;
-        source.onended = () => {
-            this.effects--;
-            source.disconnect();
-            gain.disconnect();
-        };
-        source.start();
+    play(name: Effect, volume: number, cents = 0) {
+        if (!this.entered || this.muted) return;
+        if (this.playing.size >= MAX_EFFECTS) return;
+        const variants = this.templates[name];
+        const template = variants[Math.floor(Math.random() * variants.length)];
+        // Clones share the template's already-fetched media resource.
+        const el = template.cloneNode() as HTMLAudioElement;
+        el.volume = clamp(volume, 0, 1);
+        if (cents) {
+            const rate = 2 ** (cents / 1200);
+            el.defaultPlaybackRate = el.playbackRate = rate;
+            el.preservesPitch = false; // pitch up, as the original did
+            (el as any).webkitPreservesPitch = false;
+        }
+        this.playing.add(el);
+        const release = () => this.release(el);
+        el.onended = release;
+        el.onerror = release;
+        void el.play().catch(release);
+    }
+
+    release(el: HTMLAudioElement) {
+        if (!this.playing.delete(el)) return;
+        el.onended = el.onerror = null;
+        el.pause();
+        el.removeAttribute('src');
+        el.load(); // frees the player
     }
 
     /** Clicks and keys inside the Mac (the iframe forwards them as inComputer). */

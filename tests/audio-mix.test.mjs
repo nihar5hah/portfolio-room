@@ -22,124 +22,56 @@ function load(path, dependencies) {
     return exports;
 }
 const flush = async () => {
-    for (let i = 0; i < 20; i++) await new Promise(setImmediate);
+    for (let i = 0; i < 10; i++) await new Promise(setImmediate);
 };
 
-/**
- * A fake Web Audio engine. The live context throws on every node that has
- * internal state or feedback (the class of node that screeched); decoded
- * buffers deliberately contain NaN, ±Infinity and over-full-scale samples.
- */
-function fakeWebAudio() {
-    const live = [],
-        offline = [];
-    const param = (value) => ({
-        value,
-        targets: [],
-        setTargetAtTime(target) {
-            this.targets.push(target);
-        },
-        setValueAtTime(target) {
-            this.value = target;
-        },
-        cancelScheduledValues() {},
-    });
-    const node = (kind, list) => {
-        const n = {
-            kind,
-            connections: new Set(),
-            gain: param(1),
-            playbackRate: param(1),
-            connect(target) {
-                this.connections.add(target);
-                return target;
-            },
-            disconnect() {
-                this.connections.clear();
-            },
-            start() {
-                this.started = true;
-            },
-        };
-        list.push(n);
-        return n;
-    };
-    const corrupt = [0.5, NaN, Infinity, -Infinity, 5, -5, 0, -0.25];
-    const buffer = () => {
-        const channels = [
-            Float32Array.from(corrupt),
-            Float32Array.from(corrupt),
-        ];
-        return {
-            numberOfChannels: 2,
-            length: corrupt.length,
-            sampleRate: 44100,
-            getChannelData: (c) => channels[c],
-        };
-    };
-    class Context {
-        currentTime = 0;
-        state = 'suspended';
-        destination = { kind: 'destination' };
-        resumes = 0;
-        createGain() {
-            return node('gain', live);
-        }
-        createBufferSource() {
-            return node('source', live);
-        }
-        resume() {
-            this.resumes++;
-            this.state = 'running';
-            return Promise.resolve();
-        }
-        decodeAudioData(_data, resolve) {
-            resolve(buffer());
-        }
+/** A minimal HTMLAudioElement: enough to observe what the room plays. */
+class Media {
+    attrs = {};
+    paused = true;
+    ended = false;
+    currentTime = 0;
+    volume = 1;
+    loop = false;
+    preload = '';
+    playbackRate = 1;
+    defaultPlaybackRate = 1;
+    preservesPitch = true;
+    plays = 0;
+    pauses = 0;
+    set src(value) {
+        this.attrs.src = value;
+        this.paused = true;
+        this.ended = false;
     }
-    for (const forbidden of [
-        'createBiquadFilter',
-        'createIIRFilter',
-        'createDelay',
-        'createOscillator',
-        'createPanner',
-        'createConvolver',
-        'createWaveShaper',
-        'createDynamicsCompressor',
-        'createMediaElementSource',
-        'createScriptProcessor',
-    ])
-        Context.prototype[forbidden] = () => {
-            throw new Error(`live room audio must not use ${forbidden}`);
-        };
-    class Offline {
-        destination = { kind: 'offline-destination' };
-        createBufferSource() {
-            return node('source', offline);
-        }
-        createBiquadFilter() {
-            const filter = node('biquad', offline);
-            let frequency = 350;
-            filter.writes = 0;
-            filter.frequency = {
-                get value() {
-                    return frequency;
-                },
-                set value(v) {
-                    filter.writes++;
-                    frequency = v;
-                },
-            };
-            return filter;
-        }
-        startRendering() {
-            return Promise.resolve(buffer());
-        }
+    get src() {
+        return this.attrs.src ?? '';
     }
-    return { live, offline, Context, Offline };
+    removeAttribute(name) {
+        delete this.attrs[name];
+    }
+    load() {}
+    cloneNode() {
+        const copy = new Media();
+        copy.attrs = { ...this.attrs };
+        copy.preload = this.preload;
+        copy.loop = this.loop;
+        return copy;
+    }
+    play() {
+        this.paused = false;
+        this.plays++;
+        this.onplaying?.();
+        return Promise.resolve();
+    }
+    pause() {
+        this.paused = true;
+        this.pauses++;
+        this.onpause?.();
+    }
 }
 
-function roomGlobals({ Context, Offline }) {
+function room() {
     const listeners = new Map();
     const bus = {
         on(name, callback) {
@@ -149,62 +81,48 @@ function roomGlobals({ Context, Offline }) {
             for (const callback of listeners.get(name) || []) callback(value);
         },
     };
-    const input = {};
+    const docEvents = {},
+        winEvents = {};
     const elements = [];
-    class Media {
-        paused = true;
-        currentTime = 0;
-        plays = 0;
-        pauses = 0;
-        play() {
-            this.paused = false;
-            this.plays++;
-            this.onplaying?.();
-            return Promise.resolve();
-        }
-        pause() {
-            this.paused = true;
-            this.pauses++;
-            this.onpause?.();
-        }
-    }
     const saved = Object.fromEntries(
         ['window', 'document', 'location', 'fetch'].map((key) => [
             key,
             globalThis[key],
         ]),
     );
-    const requests = [];
-    globalThis.window = { AudioContext: Context, OfflineAudioContext: Offline };
+    const forbidden = class {
+        constructor() {
+            throw new Error('Room audio must not create an AudioContext');
+        }
+    };
+    globalThis.window = {
+        AudioContext: forbidden,
+        webkitAudioContext: forbidden,
+        OfflineAudioContext: forbidden,
+        addEventListener: (type, cb) =>
+            (winEvents[type] = [...(winEvents[type] || []), cb]),
+    };
     globalThis.document = {
+        hidden: false,
         createElement(tag) {
-            assert.equal(tag, 'audio');
+            assert.equal(tag, 'audio', 'only <audio> elements make sound');
             const el = new Media();
             elements.push(el);
             return el;
         },
         body: { append() {} },
-        addEventListener: (type, callback) =>
-            (input[type] = [...(input[type] || []), callback]),
+        addEventListener: (type, cb) =>
+            (docEvents[type] = [...(docEvents[type] || []), cb]),
     };
     globalThis.location = { origin: 'http://localhost:5181' };
-    globalThis.fetch = async (url) => {
-        requests.push(url);
-        if (url === '/audio/playlist.json')
-            return {
-                ok: true,
-                json: async () => ({
-                    tracks: [
-                        {
-                            title: 'Track',
-                            album: 'mbdtf',
-                            src: '/audio/mbdtf/1.m4a',
-                        },
-                    ],
-                }),
-            };
-        return { ok: true, arrayBuffer: async () => new ArrayBuffer(8) };
-    };
+    globalThis.fetch = async () => ({
+        ok: true,
+        json: async () => ({
+            tracks: [
+                { title: 'Track', album: 'mbdtf', src: '/audio/mbdtf/1.m4a' },
+            ],
+        }),
+    });
     const albumModule = load('../src/Application/Audio/AlbumAudio.ts', {
         '../UI/EventBus': { default: bus },
     });
@@ -212,176 +130,189 @@ function roomGlobals({ Context, Offline }) {
         './AlbumAudio': albumModule,
         '../UI/EventBus': { default: bus },
     }).default;
-    const fire = (type, event) =>
-        (input[type] || []).forEach((callback) => callback(event));
+    const fire = (type, event = {}) =>
+        (docEvents[type] || []).forEach((cb) => cb(event));
+    const fireWindow = (type) => (winEvents[type] || []).forEach((cb) => cb());
     const restore = () => {
         for (const [key, value] of Object.entries(saved)) {
             if (value === undefined) delete globalThis[key];
             else globalThis[key] = value;
         }
     };
-    return { Manager, bus, fire, elements, requests, restore };
+    return { Manager, bus, fire, fireWindow, elements, restore };
 }
 
-test('ambience and effects play through players and gains only, never a live filter', async () => {
-    const audio = fakeWebAudio();
-    const room = roomGlobals(audio);
+test('room ambience and effects play on <audio> elements, never Web Audio', async () => {
+    const r = room();
     try {
-        const manager = new room.Manager();
+        const manager = new r.Manager();
         await flush();
-        const context = manager.context;
+        const { dry, wet, album } = manager;
+        const music = album.audio;
+        assert.match(dry.src, /\/audio\/atmosphere\/office\.mp3$/);
+        assert.match(wet.src, /\/audio\/atmosphere\/office-muffled\.mp3$/);
+        assert.ok(dry.loop && wet.loop);
+        assert.equal(Object.keys(manager.templates.keyboardKeydown).length, 6);
 
-        // Every decoded sound is clean before it can reach the speakers.
-        for (const name of [
-            'office',
-            'startup',
-            'mouseDown',
-            'mouseUp',
-            'keyboardKeydown',
-            'ccType',
-        ]) {
-            assert.ok(manager.buffers[name].length, `${name} loaded`);
-            for (const buffer of manager.buffers[name])
-                for (let c = 0; c < buffer.numberOfChannels; c++)
-                    for (const v of buffer.getChannelData(c))
-                        assert.ok(Number.isFinite(v) && Math.abs(v) <= 1);
-        }
-        assert.equal(manager.buffers.keyboardKeydown.length, 6);
-        // The muffle is rendered once, offline, and sanitized too.
-        const biquads = audio.offline.filter((n) => n.kind === 'biquad');
-        assert.equal(biquads.length, 1);
-        assert.equal(biquads[0].frequency.value, 600);
-        assert.equal(biquads[0].writes, 1, 'cutoff set once, never automated');
-        for (let c = 0; c < 2; c++)
-            for (const v of manager.muffledOffice.getChannelData(c))
-                assert.ok(Number.isFinite(v) && Math.abs(v) <= 1);
+        // Nothing plays before Enter, even with input.
+        r.fire('mousedown', { inComputer: true });
+        assert.ok(r.elements.every((el) => el.paused));
+        assert.equal(manager.playing.size, 0);
 
-        // Silent until Enter.
-        assert.equal(manager.master.gain.value, 0);
-        assert.equal(manager.ambience, undefined);
-        room.bus.dispatch('loadingScreenDone');
-        assert.ok(manager.ambience, 'office ambience starts on Enter');
-        const loops = audio.live.filter((n) => n.kind === 'source' && n.loop);
-        assert.equal(loops.length, 2, 'dry and pre-muffled loops');
-        assert.ok(loops.every((n) => n.started));
-        assert.equal(manager.effects, 1, 'startup chime plays');
-        assert.deepEqual(manager.master.gain.targets.at(-1), 1, 'sound on');
-        assert.ok(context.resumes > 0);
-        assert.equal(room.elements[0].paused, false, 'music plays too');
+        r.bus.dispatch('loadingScreenDone');
+        assert.equal(dry.paused, false, 'office ambience plays');
+        assert.equal(wet.paused, false, 'muffled copy runs alongside');
+        assert.equal(music.paused, false, 'music plays');
+        const [startup] = manager.playing;
+        assert.match(startup.src, /startup\.mp3$/);
+        assert.equal(startup.volume, 0.25);
 
-        // Sweep the camera to the Mac and back many times, plus garbage.
-        for (let frame = 0; frame < 2000; frame++)
+        // The camera drives the mix, volume only.
+        for (let frame = 0; frame < 2000; frame++) {
             manager.update(800 + ((Math.sin(frame / 15) + 1) / 2) * 20000);
-        for (const bad of [NaN, Infinity, -Infinity, -1e9, 1e12])
-            manager.update(bad);
-        const at = (d) => {
-            manager.update(d);
-            return manager.ambience;
-        };
-        assert.equal(at(1000).muffle, 1, 'muffled at the Mac');
-        assert.equal(at(1000).volume, 0.0375, 'quieter at the Mac');
-        assert.equal(at(20000).muffle, 0, 'open across the room');
-        assert.equal(at(20000).volume, 0.075);
-        for (const n of audio.live)
-            for (const value of [...n.gain.targets, n.gain.value])
-                assert.ok(
-                    Number.isFinite(value) && value >= 0 && value <= 1,
-                    `gain ${value} stays within 0..1`,
-                );
-
-        // Clicks and keys inside the Mac: subtle, bounded, and released.
-        for (let i = 0; i < 30; i++) {
-            room.fire('mousedown', { inComputer: true });
-            room.fire('keydown', { inComputer: true, key: `k${i}` });
+            for (const el of [dry, wet])
+                assert.ok(el.volume >= 0 && el.volume <= 0.075);
+            assert.ok(Math.abs(dry.volume + wet.volume - manager.level) < 1e-9);
         }
-        assert.equal(manager.effects, 4, 'overlap capped at four');
-        const oneShots = audio.live.filter(
-            (n) => n.kind === 'source' && !n.loop && n.started,
-        );
-        for (const shot of oneShots) shot.onended();
-        assert.equal(manager.effects, 0);
-        assert.ok(oneShots.every((n) => n.connections.size === 0));
-        room.fire('keydown', { inComputer: true, key: 'a' });
-        room.fire('keydown', { inComputer: true, key: 'a' });
-        assert.equal(manager.effects, 1, 'held keys do not repeat clicks');
-        room.fire('keydown', { key: 'x_AUTO_' });
-        const typed = audio.live.filter((n) => n.kind === 'source').at(-1);
-        assert.ok(typed.playbackRate.value > 3, 'typing effect is pitched up');
-        room.fire('mousedown', { inComputer: false });
-        assert.equal(manager.effects, 2, 'clicks outside the Mac are silent');
+        for (const bad of [NaN, Infinity, -Infinity]) manager.update(bad);
+        assert.ok(Number.isFinite(dry.volume) && Number.isFinite(wet.volume));
+        manager.update(1000);
+        assert.equal(dry.volume, 0, 'fully muffled at the Mac');
+        assert.equal(wet.volume, 0.0375, 'and quieter');
+        manager.update(20000);
+        assert.equal(dry.volume, 0.075, 'open across the room');
+        assert.equal(wet.volume, 0);
 
-        room.bus.dispatch('muteToggle', true);
-        assert.equal(manager.master.gain.targets.at(-1), 0, 'sound off');
-        assert.equal(room.elements[0].paused, true);
+        // Clicks and keys: subtle, capped, released.
+        for (let i = 0; i < 30; i++) {
+            r.fire('mousedown', { inComputer: true });
+            r.fire('keydown', { inComputer: true, key: `k${i}` });
+        }
+        assert.equal(manager.playing.size, 4, 'overlap capped at four');
+        for (const el of [...manager.playing]) el.onended();
+        assert.equal(manager.playing.size, 0);
+        r.fire('keydown', { inComputer: true, key: 'a' });
+        r.fire('keydown', { inComputer: true, key: 'a' });
+        assert.equal(manager.playing.size, 1, 'held keys do not repeat');
+        const [click] = manager.playing;
+        assert.equal(click.volume, 0.16);
+        r.fire('keydown', { key: 'x_AUTO_' });
+        const typed = [...manager.playing].at(-1);
+        assert.ok(typed.playbackRate > 3 && typed.preservesPitch === false);
+        r.fire('mousedown', { inComputer: false });
+        assert.equal(
+            manager.playing.size,
+            2,
+            'clicks outside the Mac are silent',
+        );
+
+        // Sound off silences everything; on brings the room back, in step.
+        r.bus.dispatch('muteToggle', true);
+        assert.ok(dry.paused && wet.paused && music.paused);
+        assert.equal(manager.playing.size, 0);
+        assert.equal(click.src, '', 'released effects free their player');
+        r.fire('mousedown', { inComputer: true });
+        assert.equal(manager.playing.size, 0, 'muted input is silent');
+        dry.currentTime = 7.5;
+        r.bus.dispatch('muteToggle', false);
+        assert.ok(!dry.paused && !wet.paused && !music.paused);
+        assert.equal(wet.currentTime, 7.5, 'copies realigned');
     } finally {
-        room.restore();
+        r.restore();
     }
 });
 
-test('laptop open/close and input leave the same music element playing; mute still works', async () => {
-    const audio = fakeWebAudio();
-    const room = roomGlobals(audio);
+test('media the browser paused resumes when the page returns; a chosen pause does not', async () => {
+    const r = room();
     try {
-        const manager = new room.Manager();
+        const manager = new r.Manager();
         await flush();
+        r.bus.dispatch('loadingScreenDone');
         const music = manager.album.audio;
+        // Browser-initiated pause (hidden page / back-forward cache).
+        for (const el of [manager.dry, manager.wet, music]) el.paused = true;
+        r.fireWindow('pageshow');
+        assert.ok(!manager.dry.paused && !manager.wet.paused && !music.paused);
+        for (const el of [manager.dry, music]) el.paused = true;
+        r.fire('visibilitychange');
+        assert.ok(!manager.dry.paused && !music.paused);
+        for (const el of [manager.wet, music]) el.paused = true;
+        r.fire('resume'); // a frozen page wakes
+        assert.ok(!manager.wet.paused && !music.paused);
+        // The visitor pauses the music: returning keeps it paused.
+        manager.album.toggle();
         assert.equal(music.paused, true);
-        room.bus.dispatch('loadingScreenDone');
+        r.fireWindow('pageshow');
+        assert.equal(music.paused, true, 'a chosen pause is respected');
+        assert.equal(manager.dry.paused, false, 'ambience still resumes');
+        manager.album.toggle();
         assert.equal(music.paused, false);
+        // Sound off stays off.
+        r.bus.dispatch('muteToggle', true);
+        r.fireWindow('pageshow');
+        assert.ok(manager.dry.paused && music.paused);
+    } finally {
+        r.restore();
+    }
+});
+
+test('laptop open/close and input never interrupt music or ambience', async () => {
+    const r = room();
+    try {
+        const manager = new r.Manager();
+        await flush();
+        r.bus.dispatch('loadingScreenDone');
+        const music = manager.album.audio;
         const url = music.src;
         for (let cycle = 0; cycle < 100; cycle++) {
-            room.bus.dispatch('enterMonitor');
+            r.bus.dispatch('enterMonitor');
             manager.update(1600);
-            room.fire('keydown', { inComputer: true, key: `k${cycle}` });
-            room.fire('mousedown', { inComputer: true });
-            room.bus.dispatch('leftMonitor');
+            r.fire('keydown', { inComputer: true, key: `k${cycle}` });
+            r.fire('mousedown', { inComputer: true });
+            for (const el of [...manager.playing]) el.onended?.();
+            r.bus.dispatch('leftMonitor');
             manager.update(19000);
             music.currentTime++;
-            assert.equal(music.paused, false);
+            assert.ok(
+                !music.paused && !manager.dry.paused && !manager.wet.paused,
+            );
             assert.equal(music.src, url);
         }
-        assert.equal(room.elements.length, 1);
         assert.equal(music.plays, 1, 'no transition-triggered restarts');
         assert.equal(music.pauses, 0, 'no transition-triggered pauses');
+        assert.equal(manager.dry.pauses + manager.wet.pauses, 0);
         assert.equal(music.volume, 0.06);
-        room.bus.dispatch('muteToggle', true);
-        room.bus.dispatch('enterMonitor');
-        room.bus.dispatch('leftMonitor');
-        assert.equal(music.paused, true, 'laptop never overrides mute');
-        room.bus.dispatch('muteToggle', false);
-        assert.equal(music.paused, false);
-        assert.equal(music.currentTime, 100, 'unmute resumes, not restarts');
     } finally {
-        room.restore();
+        r.restore();
     }
 });
 
-test('without Web Audio the room stays usable and music still plays', async () => {
-    const room = roomGlobals({ Context: undefined, Offline: undefined });
-    try {
-        const manager = new room.Manager();
-        await flush();
-        room.bus.dispatch('loadingScreenDone');
-        manager.update(5000);
-        room.fire('mousedown', { inComputer: true });
-        assert.equal(manager.context, undefined);
-        assert.equal(room.elements[0].paused, false);
-    } finally {
-        room.restore();
-    }
-});
-
-test('room resources stay light: sounds load inside AudioManager, not the loader', () => {
+test('no Web Audio anywhere in room audio, and the muffled loop ships', () => {
+    for (const file of [
+        '../src/Application/Audio/AudioManager.ts',
+        '../src/Application/Audio/AlbumAudio.ts',
+        '../src/Application/Utils/Resources.ts',
+    ])
+        assert.doesNotMatch(
+            source(file),
+            /new\s+\w*AudioContext|createBiquadFilter|decodeAudioData|AudioLoader|AudioListener/,
+            file,
+        );
+    assert.doesNotMatch(
+        source('../src/Application/Audio/AudioManager.ts'),
+        /from 'three'/,
+    );
+    const muffled = new URL(
+        '../static/audio/atmosphere/office-muffled.mp3',
+        import.meta.url,
+    );
+    assert.ok(fs.statSync(muffled).size > 100_000);
     const { default: resources } = load('../src/Application/sources.ts', {
         './Audio/AlbumAudio': { ALBUMS: { mbdtf: 'MBDTF' } },
     });
     assert.ok(resources.every((r) => r.type !== 'audio'));
-    const loader = source('../src/Application/Utils/Resources.ts');
-    assert.doesNotMatch(loader, /AudioLoader|AudioContext|decodeAudioData/);
     assert.match(
         source('../src/Application/World/World.ts'),
         /audioManager\.update\(\s*this\.application\.camera\.instance\.position\.length\(\)/,
     );
-    const manager = source('../src/Application/Audio/AudioManager.ts');
-    assert.doesNotMatch(manager, /from 'three'|setInterval/);
 });
