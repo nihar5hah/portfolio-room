@@ -5,12 +5,28 @@ import UIEventBus from '../UI/EventBus';
 import AlbumAudio from './AlbumAudio';
 
 const DEFAULT_REF_DISTANCE = 10000;
+/**
+ * A muffle is a FIXED lowpass in parallel with the dry signal, crossfaded by
+ * two gains. Retuning a BiquadFilterNode every frame from the camera (the old
+ * approach) drove it unstable in Chrome: a runaway full-scale screech whose
+ * huge/NaN samples then silenced the page's whole audio output, music included.
+ * A biquad whose coefficients never change is always stable, and gains cannot
+ * go unstable, so the crossfade is safe to move every frame.
+ */
+type Muffle = {
+    context: BaseAudioContext;
+    lowpass: BiquadFilterNode;
+    dry: GainNode;
+    wet: GainNode;
+    amount: number;
+};
 export default class Audio {
     application: Application;
     listener: THREE.AudioListener;
     context: AudioContext;
     loadedAudio: { [key in string]: LoadedAudio };
     audioPool: { [key in string]: THREE.PositionalAudio | THREE.Audio };
+    muffles: { [key in string]: Muffle };
     audioSources: {
         computer: ComputerAudio;
         ambience: AmbienceAudio;
@@ -47,10 +63,8 @@ export default class Audio {
             volume?: number;
             randDetuneScale?: number;
             loop?: boolean;
-            filter?: {
-                type: BiquadFilterType;
-                frequency: number;
-            };
+            /** Fixed lowpass cutoff for setAudioMuffle; starts fully dry. */
+            muffle?: { frequency: number };
             position?: THREE.Vector3;
             refDistance?: number;
             pitch?: number;
@@ -85,17 +99,22 @@ export default class Audio {
         }
         audio.setBuffer(buffer);
 
-        if (options.filter) {
+        let muffle: Muffle | undefined;
+        if (options.muffle) {
             const ac = audio.context;
-            const filter = ac.createBiquadFilter();
-            filter.type = options.filter.type; // Low pass filter
-            filter.frequency.setValueAtTime(
-                options.filter.frequency,
-                ac.currentTime,
-            );
-            // filter.frequency.linearRampToValueAtTime(2400, ac.currentTime + 2);
-
-            audio.setFilter(filter);
+            const lowpass = ac.createBiquadFilter();
+            lowpass.type = 'lowpass';
+            // Set once and never automated (see Muffle above).
+            lowpass.frequency.value = options.muffle.frequency;
+            const dry = ac.createGain();
+            const wet = ac.createGain();
+            dry.gain.value = 1;
+            wet.gain.value = 0;
+            lowpass.connect(wet);
+            wet.connect(audio.getOutput());
+            // Three wires source → dry → output when it plays.
+            audio.setFilter(dry);
+            muffle = { context: ac, lowpass, dry, wet, amount: 0 };
         }
 
         // Set options
@@ -108,8 +127,11 @@ export default class Audio {
         );
 
         audio.play();
-
-        // add a filter to the audio
+        // The muffled branch taps the source Three just created.
+        if (muffle && audio.source) {
+            audio.source.connect(muffle.lowpass);
+            (this.muffles ??= {})[poolKey] = muffle;
+        }
 
         // Calculate detune
         const detuneAmount =
@@ -131,6 +153,11 @@ export default class Audio {
                 audio.disconnect();
                 audio.getOutput().disconnect();
                 audio.gain.disconnect();
+                if (muffle) {
+                    muffle.lowpass.disconnect();
+                    muffle.wet.disconnect();
+                    delete this.muffles[poolKey];
+                }
                 delete this.audioPool[poolKey];
             };
             this.audioPool[poolKey] = audio;
@@ -138,17 +165,19 @@ export default class Audio {
         return poolKey;
     }
 
-    setAudioFilterFrequency(audio: string, frequency: number) {
-        const a = this.audioPool[audio];
-
-        if (a) {
-            const ac = a.context;
-            const filter = a.getFilter() as BiquadFilterNode;
-            // clamp the frequency between 0 and 22500
-            const f = Math.max(0, Math.min(22050, frequency));
-
-            filter.frequency.setValueAtTime(f, ac.currentTime);
-        }
+    /** 0 = dry, 1 = fully through the fixed lowpass. Safe to call every frame. */
+    setAudioMuffle(audio: string, amount: number) {
+        const muffle = this.muffles?.[audio];
+        if (!muffle) return;
+        const a = Number.isFinite(amount)
+            ? THREE.MathUtils.clamp(amount, 0, 1)
+            : 0;
+        if (Math.abs(a - muffle.amount) < 0.01) return;
+        muffle.amount = a;
+        const now = muffle.context.currentTime;
+        // Linear: the branches are correlated, so this keeps the low end level.
+        muffle.dry.gain.setTargetAtTime(1 - a, now, 0.08);
+        muffle.wet.gain.setTargetAtTime(a, now, 0.08);
     }
 
     setAudioVolume(audio: string, volume: number) {

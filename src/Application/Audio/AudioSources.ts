@@ -74,10 +74,7 @@ export class AmbienceAudio extends AudioSource {
                 volume: 0.075,
                 loop: true,
                 randDetuneScale: 0,
-                filter: {
-                    type: 'lowpass',
-                    frequency: 1000,
-                },
+                muffle: { frequency: 600 },
             });
             this.manager.playAudio('startup', {
                 volume: 0.25,
@@ -89,7 +86,9 @@ export class AmbienceAudio extends AudioSource {
     update() {
         const distance =
             this.manager.application.camera.instance.position.length();
-        const freq = THREE.MathUtils.mapLinear(distance, 0, 10000, 100, 22000);
+        // Muffled at the Mac, open across the room (as the old cutoff sweep was).
+        const muffle =
+            1 - THREE.MathUtils.clamp((distance - 1500) / 9500, 0, 1);
         const volume = THREE.MathUtils.mapLinear(
             distance,
             1200,
@@ -99,7 +98,7 @@ export class AmbienceAudio extends AudioSource {
         );
         const volumeClamped = THREE.MathUtils.clamp(volume, 0.0375, 0.075);
 
-        this.manager.setAudioFilterFrequency(this.poolKey, freq - 3000);
+        this.manager.setAudioMuffle(this.poolKey, muffle);
         this.manager.setAudioVolume(this.poolKey, volumeClamped);
     }
 }

@@ -24,7 +24,7 @@ function load(path, dependencies) {
 test('ambience starts quietly and remains slightly softer at every camera distance', () => {
     const events = {},
         starts = [];
-    let volume;
+    let volume, muffle;
     const { AmbienceAudio } = load('../src/Application/Audio/AudioSources.ts', {
         three: THREE,
         '../UI/EventBus': {
@@ -35,15 +35,23 @@ test('ambience starts quietly and remains slightly softer at every camera distan
     const ambience = new AmbienceAudio({
         application: { camera: { instance: { position } } },
         playAudio: (name, options) => starts.push({ name, options }),
-        setAudioFilterFrequency() {},
+        setAudioMuffle: (_key, value) => (muffle = value),
         setAudioVolume: (_key, value) => (volume = value),
     });
     events.loadingScreenDone();
-    assert.equal(starts.find((s) => s.name === 'office').options.volume, 0.075);
+    const office = starts.find((s) => s.name === 'office').options;
+    assert.equal(office.volume, 0.075);
+    assert.equal(office.filter, undefined, 'no retunable filter on the loop');
+    assert.ok(office.muffle.frequency > 100 && office.muffle.frequency < 5000);
     assert.equal(starts.find((s) => s.name === 'startup').options.volume, 0.25);
+    let previousMuffle = Infinity;
     for (const distance of [0, 1200, 4000, 10000, 40000]) {
         position.set(distance, 0, 0);
         ambience.update();
+        assert.ok(muffle >= 0 && muffle <= 1 && muffle <= previousMuffle);
+        previousMuffle = muffle;
+        if (distance <= 1200) assert.equal(muffle, 1, 'muffled at the Mac');
+        if (distance >= 40000) assert.equal(muffle, 0, 'open across the room');
         const previous = THREE.MathUtils.clamp(
             THREE.MathUtils.mapLinear(distance, 1200, 10000, 0, 0.2),
             0.05,
@@ -204,6 +212,104 @@ test('sustained input has bounded overlap and releases the entire Three audio gr
             'finished sources, panners and gains must all be disconnected',
         );
     }
+});
+
+test('ambience muffling crossfades gains and never retunes a live biquad', () => {
+    // Retuning the ambience lowpass every frame made Chrome's biquad run away
+    // (a full-scale screech, then silence for all page audio, music included).
+    const nodes = [];
+    const param = (initial = 1) => ({
+        value: initial,
+        targets: [],
+        setValueAtTime(value) {
+            this.value = value;
+        },
+        setTargetAtTime(value) {
+            this.targets.push(value);
+        },
+    });
+    const node = (extra = {}) => {
+        const n = {
+            connections: new Set(),
+            gain: param(),
+            playbackRate: param(),
+            detune: param(),
+            connect(target) {
+                this.connections.add(target);
+            },
+            disconnect() {
+                this.connections.clear();
+            },
+            start() {},
+            ...extra,
+        };
+        nodes.push(n);
+        return n;
+    };
+    let frequencyWrites = 0;
+    const context = {
+        currentTime: 0,
+        createGain: () => node(),
+        createPanner: () => node(),
+        createBufferSource: () => node(),
+        createBiquadFilter: () => {
+            const f = node();
+            let frequency = 350;
+            f.frequency = {
+                get value() {
+                    return frequency;
+                },
+                set value(v) {
+                    frequencyWrites++;
+                    frequency = v;
+                },
+                setValueAtTime: () => frequencyWrites++,
+                setTargetAtTime: () => frequencyWrites++,
+                linearRampToValueAtTime: () => frequencyWrites++,
+                exponentialRampToValueAtTime: () => frequencyWrites++,
+            };
+            return f;
+        },
+        resume() {},
+    };
+    const Manager = load('../src/Application/Audio/AudioManager.ts', {
+        three: THREE,
+    }).default;
+    const manager = Object.assign(Object.create(Manager.prototype), {
+        loadedAudio: { office: {} },
+        context,
+        audioPool: {},
+        scene: new THREE.Scene(),
+        listener: { context, getInput: () => node() },
+    });
+    const key = manager.playAudio('office', {
+        loop: true,
+        volume: 0.075,
+        muffle: { frequency: 600 },
+    });
+    const muffle = manager.muffles[key];
+    assert.equal(muffle.lowpass.frequency.value, 600);
+    assert.equal(frequencyWrites, 1, 'cutoff is set exactly once');
+    assert.ok(
+        manager.audioPool[key].source.connections.has(muffle.lowpass),
+        'the muffled branch taps the live source',
+    );
+    // Sweep the camera in and out many times, plus garbage input.
+    for (let frame = 0; frame < 600; frame++)
+        manager.setAudioMuffle(key, (Math.sin(frame / 20) + 1) / 2);
+    manager.setAudioMuffle(key, NaN);
+    manager.setAudioMuffle(key, Infinity);
+    manager.setAudioMuffle(key, -5);
+    assert.equal(frequencyWrites, 1, 'the biquad is never retuned');
+    for (const value of [
+        ...muffle.dry.gain.targets,
+        ...muffle.wet.gain.targets,
+    ])
+        assert.ok(value >= 0 && value <= 1, 'crossfade gains stay in 0..1');
+    manager.audioPool[key].source.onended();
+    assert.equal(manager.muffles[key], undefined);
+    assert.equal(muffle.lowpass.connections.size, 0);
+    assert.equal(muffle.wet.connections.size, 0);
 });
 
 test('computer feedback stays quiet and avoids spatial audio processing', () => {
