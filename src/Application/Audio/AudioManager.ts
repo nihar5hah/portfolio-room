@@ -49,6 +49,7 @@ export default class Audio {
         };
 
         this.context = this.listener.context;
+        this.startWatchdog();
 
         UIEventBus.on('muteToggle', (mute: boolean) => {
             this.listener.setMasterVolume(mute ? 0 : 1);
@@ -147,7 +148,7 @@ export default class Audio {
 
         // Add to pool
         if (audio.source) {
-            audio.source.onended = () => {
+            const release = () => {
                 audio.onEnded();
                 audio.removeFromParent();
                 audio.disconnect();
@@ -159,10 +160,57 @@ export default class Audio {
                     delete this.muffles[poolKey];
                 }
                 delete this.audioPool[poolKey];
+                delete this.releases[poolKey];
             };
+            audio.source.onended = release;
             this.audioPool[poolKey] = audio;
+            (this.releases ??= {})[poolKey] = release;
         }
         return poolKey;
+    }
+
+    /**
+     * Safety net for the room's Web Audio. A runaway node (non-finite or far
+     * past full scale) screeches, and its samples can silence the page's whole
+     * output, music included. Watch the master mix and, if it ever runs away,
+     * stop every effect at once and restart the ambience from fresh nodes.
+     */
+    startWatchdog() {
+        const probe = this.context.createAnalyser();
+        probe.fftSize = 512;
+        // Analysers are pulled without reaching the speakers; nothing is added.
+        this.listener.getInput().connect(probe);
+        this.probe = probe;
+        this.probeData = new Float32Array(probe.fftSize);
+        window.setInterval(() => this.checkForRunaway(), 250);
+    }
+
+    probe?: AnalyserNode;
+    probeData?: Float32Array;
+    releases: { [key in string]: () => void };
+    lastReset?: number;
+
+    checkForRunaway() {
+        if (!this.probe || !this.probeData) return false;
+        this.probe.getFloatTimeDomainData(this.probeData);
+        // NaN fails every comparison, so `!(|v| <= 4)` catches it too.
+        if (this.probeData.every((v) => Math.abs(v) <= 4)) return false;
+        console.warn('Room audio ran away; resetting effects and ambience.');
+        for (const key of Object.keys(this.audioPool)) {
+            try {
+                this.audioPool[key].source?.stop();
+            } catch {
+                // Already stopped.
+            }
+            this.releases?.[key]?.();
+        }
+        // At most one fresh ambience per 5 s, so an unknown source that keeps
+        // running away can never cause a restart storm.
+        const now = performance.now();
+        if (!(now - (this.lastReset ?? -Infinity) < 5000))
+            this.audioSources.ambience.start();
+        this.lastReset = now;
+        return true;
     }
 
     /** 0 = dry, 1 = fully through the fixed lowpass. Safe to call every frame. */

@@ -312,6 +312,68 @@ test('ambience muffling crossfades gains and never retunes a live biquad', () =>
     assert.equal(muffle.wet.connections.size, 0);
 });
 
+test('a runaway master mix stops every effect and restarts the ambience', () => {
+    const Manager = load('../src/Application/Audio/AudioManager.ts', {
+        three: THREE,
+    }).default;
+    let samples = new Float32Array(512).fill(0.2);
+    const stopped = [],
+        released = [];
+    let restarts = 0;
+    const manager = Object.assign(Object.create(Manager.prototype), {
+        probe: { getFloatTimeDomainData: (out) => out.set(samples) },
+        probeData: new Float32Array(512),
+        audioSources: { ambience: { start: () => restarts++ } },
+    });
+    const arm = () => {
+        manager.audioPool = {
+            office_1: { source: { stop: () => stopped.push('office') } },
+            mouseDown_2: { source: { stop: () => stopped.push('mouse') } },
+        };
+        manager.releases = {};
+        for (const key of Object.keys(manager.audioPool))
+            manager.releases[key] = () => {
+                released.push(key);
+                delete manager.audioPool[key];
+            };
+    };
+    const warn = console.warn;
+    console.warn = () => {};
+    try {
+        arm();
+        assert.equal(
+            manager.checkForRunaway(),
+            false,
+            'normal audio is left alone',
+        );
+        assert.equal(restarts, 0);
+        assert.equal(Object.keys(manager.audioPool).length, 2);
+        for (const bad of [NaN, Infinity, -1e6]) {
+            samples = new Float32Array(512).fill(0.1);
+            samples[300] = bad;
+            arm();
+            manager.lastReset = -Infinity; // outside the restart cooldown
+            assert.equal(manager.checkForRunaway(), true, `${bad} is caught`);
+            assert.equal(
+                Object.keys(manager.audioPool).length,
+                0,
+                'every effect stops',
+            );
+        }
+        assert.equal(restarts, 3, 'ambience restarts from fresh nodes');
+        arm();
+        assert.equal(manager.checkForRunaway(), true);
+        assert.equal(restarts, 3, 'no restart storm within the cooldown');
+        assert.equal(Object.keys(manager.audioPool).length, 0);
+        assert.ok(stopped.includes('office') && stopped.includes('mouse'));
+        assert.ok(
+            released.includes('office_1') && released.includes('mouseDown_2'),
+        );
+    } finally {
+        console.warn = warn;
+    }
+});
+
 test('computer feedback stays quiet and avoids spatial audio processing', () => {
     const listeners = {},
         starts = [];
