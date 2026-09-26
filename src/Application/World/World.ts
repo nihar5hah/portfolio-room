@@ -68,11 +68,12 @@ export default class World {
                                 bus.dispatch('muteToggle', false);
                             },
                         }));
-                        // The Graduation-era bear plays Graduation.
+                        // Click the bear: his shutter shades light up.
                         if (bear)
                             interact.add(bear, () => ({
-                                label: 'The Graduation Bear · play Graduation',
-                                run: () => album().playAlbum('graduation'),
+                                label: 'The Graduation Bear',
+                                run: () => this.reward.toggleGlow(),
+                                instant: true,
                             }));
                     },
                     this.resources.items.gltfModel.dropoutBearModel?.scene ??

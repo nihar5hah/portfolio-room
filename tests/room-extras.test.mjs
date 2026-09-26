@@ -319,12 +319,38 @@ test('finding every record puts up a gold record and the Graduation Bear', async
     assert.equal(reward.plaque.scale.x, 1);
     assert.equal(reward.bear.scale.x, 1);
     reward.bear.updateMatrixWorld(true);
-    const bear = new THREE.Box3().setFromObject(reward.bear, true);
+    // The plush itself (not the shades' halo sprite).
+    const bear = new THREE.Box3();
+    reward.bear.traverse((o) => o.isMesh && bear.expandByObject(o, true));
     assert.ok(Math.abs(bear.min.y - (-3015 + 965)) < 5, 'sits on the bench');
     const size = bear.getSize(new THREE.Vector3());
     assert.ok(Math.abs(size.y - 1150) < 5, 'plush sized (about 35 cm)');
     // The packed model's integer vertices are unpacked, so a click lands.
     assert.ok(clickable(reward.bear), 'clicking the bear hits him');
+    // Clicking him lights his shutter shades (and only them); again, off.
+    const shades = reward.bear.getObjectByName('glasses');
+    let sharing = 0;
+    reward.bear.traverse((o) => {
+        if (o.isMesh && o !== shades && o.material === shades.material)
+            sharing++;
+    });
+    assert.equal(sharing, 0, 'the glow is on the shades alone');
+    assert.equal(shades.material.emissiveIntensity, 0);
+    assert.equal(reward.toggleGlow(), true);
+    for (let i = 0; i < 30; i++) reward.update(1 / 30, false);
+    assert.ok(shades.material.emissiveIntensity > 1, 'the shades light up');
+    assert.ok(reward.glow.halo.visible, 'with a halo');
+    const lit = shades.material.emissive.clone();
+    for (let i = 0; i < 45; i++) reward.update(1 / 30, false);
+    assert.ok(
+        !shades.material.emissive.equals(lit),
+        'drifting through colours',
+    );
+    assert.ok(!clickable(reward.glow.halo), 'the halo never takes a click');
+    assert.equal(reward.toggleGlow(), false);
+    for (let i = 0; i < 30; i++) reward.update(1 / 30, false);
+    assert.equal(shades.material.emissiveIntensity, 0, 'and go out');
+    assert.equal(reward.glow.halo.visible, false);
     // A returning visitor with all eleven already found: there straight away.
     const again = new RecordsReward(new THREE.Group(), 11, 11, () => {});
     assert.equal(again.plaque.scale.x, 1);

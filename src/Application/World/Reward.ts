@@ -173,9 +173,72 @@ export function graduationBear(model: THREE.Object3D) {
     return shaded(bear);
 }
 
+/**
+ * The shutter shades' glow (click the bear): the shades light up like LED
+ * party glasses, drifting through the Graduation cover's pinks, violets
+ * and blues, with a soft halo standing in for bloom. Their materials are
+ * the bear's own shades only (cloned: the arms share the white).
+ */
+const GRADUATION_GLOW = ['#ff4fa3', '#a46bff', '#3fd2ff', '#ffc94d'];
+export function shadesGlow(bear: THREE.Object3D) {
+    const parts = ['glasses', 'glasssesline']
+        .map((name) => bear.getObjectByName(name) as THREE.Mesh | undefined)
+        .filter((mesh): mesh is THREE.Mesh => !!mesh?.isMesh);
+    if (!parts.length) return null;
+    const materials = parts.map((mesh) => {
+        const glow = (mesh.material as THREE.MeshStandardMaterial).clone();
+        glow.emissive = new THREE.Color(0, 0, 0);
+        glow.emissiveIntensity = 0;
+        mesh.material = glow;
+        return glow;
+    });
+    // A halo in front of the lenses (the room has no bloom pass).
+    bear.updateMatrixWorld(true);
+    const lenses = new THREE.Box3();
+    for (const mesh of parts) lenses.expandByObject(mesh, true);
+    const inverse = bear.matrixWorld.clone().invert();
+    lenses.applyMatrix4(inverse);
+    const size = lenses.getSize(new THREE.Vector3());
+    const centre = lenses.getCenter(new THREE.Vector3());
+    const halo = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+            map: haloTexture(),
+            color: GRADUATION_GLOW[0],
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+        }),
+    );
+    halo.name = 'Shutter shades halo';
+    halo.position.copy(centre).add(new THREE.Vector3(0, 0, size.z * 0.6));
+    halo.scale.set(size.x * 1.9, size.x * 1.1, 1);
+    halo.visible = false;
+    halo.raycast = () => undefined;
+    halo.renderOrder = 2;
+    bear.add(halo);
+    const base = materials.map((m) => m.color.clone());
+    return { materials, base, halo, on: false, level: 0, time: 0 };
+}
+
+let haloMap: THREE.CanvasTexture | null = null;
+function haloTexture() {
+    if (haloMap) return haloMap;
+    haloMap = canvasTexture(128, 128, (ctx) => {
+        const fade = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+        fade.addColorStop(0, 'rgba(255,255,255,0.9)');
+        fade.addColorStop(0.35, 'rgba(255,255,255,0.35)');
+        fade.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = fade;
+        ctx.fillRect(0, 0, 128, 128);
+    });
+    return haloMap;
+}
+
 export default class RecordsReward {
     plaque: THREE.Group | null = null;
     bear: THREE.Group | null = null;
+    glow: ReturnType<typeof shadesGlow> = null;
     /** Seconds since the reveal started (for the pop-in). */
     age = Infinity;
     complete = false;
@@ -208,6 +271,7 @@ export default class RecordsReward {
         this.bear = this.bearModel ? graduationBear(this.bearModel) : null;
         this.bear?.position.set(-16900, FLOOR + 965, 5700);
         if (this.bear) this.bear.rotation.y = Math.PI / 2 - 0.3;
+        this.glow = this.bear ? shadesGlow(this.bear) : null;
         // The room converts every material's colour to linear once, at load
         // (World.ts); these arrive later, so they convert themselves.
         const converted = new Set<THREE.Material>();
@@ -241,7 +305,47 @@ export default class RecordsReward {
         this.bear?.scale.setScalar(Math.max(0.001, pop * overshoot));
     }
 
+    /** Click the bear: his shades light up; click again, they go out. */
+    toggleGlow() {
+        if (!this.glow) return false;
+        this.glow.on = !this.glow.on;
+        return this.glow.on;
+    }
+
+    /** The shades warm up and fade over ~0.3 s, and drift through colours. */
+    updateGlow(seconds: number, reducedMotion: boolean) {
+        const glow = this.glow;
+        if (!glow || (!glow.on && glow.level === 0)) return;
+        const target = glow.on ? 1 : 0;
+        glow.level += (target - glow.level) * Math.min(1, seconds * 8);
+        if (Math.abs(target - glow.level) < 0.005) glow.level = target;
+        glow.time += reducedMotion ? 0 : seconds;
+        // Through the palette every ~6 s, with a slow LED-like pulse.
+        const t = (glow.time / 1.5) % GRADUATION_GLOW.length;
+        const i = Math.floor(t);
+        const colour = new THREE.Color(GRADUATION_GLOW[i]).lerp(
+            new THREE.Color(GRADUATION_GLOW[(i + 1) % GRADUATION_GLOW.length]),
+            t - i,
+        );
+        const pulse = reducedMotion ? 1 : 0.85 + 0.15 * Math.sin(glow.time * 3);
+        const linear = colour.clone().convertSRGBToLinear();
+        glow.materials.forEach((material, k) => {
+            // The white frames darken as they light, so the neon colour
+            // reads instead of washing out to white.
+            material.color
+                .copy(glow.base[k])
+                .multiplyScalar(1 - 0.8 * glow.level);
+            material.emissive.copy(linear);
+            material.emissiveIntensity = 2.4 * glow.level * pulse;
+        });
+        const halo = glow.halo.material as THREE.SpriteMaterial;
+        halo.color.copy(linear);
+        halo.opacity = 0.55 * glow.level * pulse;
+        glow.halo.visible = glow.level > 0;
+    }
+
     update(seconds: number, reducedMotion: boolean) {
+        this.updateGlow(seconds, reducedMotion);
         if (this.age === Infinity) return;
         this.age += reducedMotion ? 10 : seconds;
         this.pose(this.age / 0.9);
