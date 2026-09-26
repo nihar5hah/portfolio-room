@@ -52,11 +52,24 @@ module.exports = {
                         )
                             return content;
                         const list = JSON.parse(content.toString());
-                        list.tracks = list.tracks.filter((track) =>
+                        // Full tracks where they exist (local); otherwise
+                        // the 30-second previews (scripts/make-previews.py).
+                        const has = (src) =>
                             fs.existsSync(
-                                path.join(__dirname, '../static', track.src),
-                            ),
-                        );
+                                path.join(__dirname, '../static', src),
+                            );
+                        list.tracks = list.tracks
+                            .map((track) => {
+                                if (has(track.src)) return track;
+                                const preview = track.src.replace(
+                                    /^\/audio\//,
+                                    '/audio/previews/',
+                                );
+                                return has(preview)
+                                    ? { ...track, src: preview, preview: true }
+                                    : null;
+                            })
+                            .filter(Boolean);
                         return JSON.stringify(list);
                     },
                     globOptions: {

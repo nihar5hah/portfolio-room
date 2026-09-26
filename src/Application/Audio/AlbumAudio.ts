@@ -123,7 +123,12 @@ export default class AlbumAudio {
                 const url = new URL(track.src, location.origin);
                 if (
                     url.origin !== location.origin ||
-                    !url.pathname.startsWith(`/audio/${track.album}/`) ||
+                    !(
+                        url.pathname.startsWith(`/audio/${track.album}/`) ||
+                        url.pathname.startsWith(
+                            `/audio/previews/${track.album}/`,
+                        )
+                    ) ||
                     !/\.(mp3|m4a|ogg|wav|flac)$/i.test(url.pathname)
                 )
                     throw new Error('Track must be a local audio file');

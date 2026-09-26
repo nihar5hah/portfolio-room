@@ -235,6 +235,7 @@ test('licensed album playback is quiet, shuffled, gesture-started, muteable and 
         '/audio/mbdtf/../../private.mp3',
         '/audio/mbdtf/track.js',
         '/audio/jackboys/track.mp3',
+        '/audio/previews/jackboys/track.m4a',
     ]) {
         globalThis.fetch = async () => ({
             ok: true,
@@ -361,4 +362,44 @@ test('the shuffled library includes every supplied album file exactly once', () 
             .sort(),
         'Music.app names stay in lockstep with the shuffle pool',
     );
+});
+
+test('every track has a 30-second preview for the live site', async () => {
+    const { execFileSync } = await import('node:child_process');
+    const root = new URL('../static/', import.meta.url);
+    const manifest = JSON.parse(
+        fs.readFileSync(new URL('audio/playlist.json', root), 'utf8'),
+    );
+    for (const track of manifest.tracks) {
+        const preview = new URL(
+            track.src.replace(/^\/audio\//, 'audio/previews/'),
+            root,
+        );
+        assert.ok(
+            fs.existsSync(preview),
+            `${track.src} has a preview (python3 scripts/make-previews.py)`,
+        );
+        assert.ok(fs.statSync(preview).size < 500_000, 'a short clip');
+    }
+    // Spot-check the length of one clip with ffprobe when it is installed.
+    const first = new URL(
+        manifest.tracks[0].src.replace(/^\/audio\//, 'audio/previews/'),
+        root,
+    );
+    try {
+        const seconds = Number(
+            execFileSync('ffprobe', [
+                '-v',
+                'error',
+                '-show_entries',
+                'format=duration',
+                '-of',
+                'default=nw=1:nk=1',
+                first.pathname,
+            ]).toString(),
+        );
+        assert.ok(Math.abs(seconds - 30) < 0.5, `30 s, not ${seconds}`);
+    } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+    }
 });

@@ -8,6 +8,7 @@ dist/
 # Personal music library: ~434 MB of user-supplied albums, local only.
 # The room's own sound effects stay tracked.
 static/audio/*/
+!static/audio/previews/
 !static/audio/atmosphere/
 !static/audio/cc/
 !static/audio/computer/
