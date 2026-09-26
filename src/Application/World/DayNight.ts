@@ -180,11 +180,15 @@ export function paintSky(
     width: number,
     height: number,
     sky: SkyState,
+    weather: { overcast: number; rain: number } = { overcast: 0, rain: 0 },
 ) {
-    const { day, golden, night } = sky;
+    const { day, night } = sky;
+    const cloud = clamp(weather.overcast);
+    // A grey sky mutes the sunset too.
+    const golden = sky.golden * (1 - 0.8 * cloud);
     const horizon = height * 0.74;
     // Sky: night navy → blue hour → daylight, with sunrise/sunset warmth low.
-    const top = mix(
+    let top = mix(
         mix(hex('#050b18'), hex('#1d3563'), 1 - night),
         hex('#3f7cc4'),
         day,
@@ -195,6 +199,18 @@ export function paintSky(
         day,
     );
     low = mix(low, hex('#f09a62'), golden * 0.85);
+    // Overcast: the blue drains to a flat grey, darker the heavier it is.
+    const grey = mix(hex('#161a22'), hex('#8a929c'), day);
+    top = mix(top, mix(grey, hex('#000000'), 0.4 * weather.rain), cloud * 0.9);
+    low = mix(
+        low,
+        mix(
+            mix(grey, hex('#000000'), 0.22 * weather.rain),
+            hex('#ffffff'),
+            0.1,
+        ),
+        cloud * 0.85,
+    );
     const mid = mix(mix(top, low, 0.55), hex('#d98a8c'), golden * 0.35);
     const gradient = ctx.createLinearGradient(0, 0, 0, horizon);
     gradient.addColorStop(0, css(top));
@@ -204,11 +220,11 @@ export function paintSky(
     ctx.fillRect(0, 0, width, height);
 
     // Stars once it is properly dark.
-    if (night > 0.05)
+    if (night > 0.05 && cloud < 0.9)
         for (let i = 0; i < 110; i++) {
             const x = hash(i) * width,
                 y = hash(i + 500) * horizon * 0.85;
-            ctx.fillStyle = `rgba(235,240,255,${(0.25 + 0.6 * hash(i + 900)) * night})`;
+            ctx.fillStyle = `rgba(235,240,255,${(0.25 + 0.6 * hash(i + 900)) * night * (1 - cloud)})`;
             ctx.fillRect(
                 x,
                 y,
@@ -222,6 +238,8 @@ export function paintSky(
     const across = (hourAngle: number) => width * (0.5 + hourAngle / 200);
     const up = (elevation: number) => horizon - (elevation / 38) * horizon;
     const { moon, sun } = sky;
+    // Behind cloud the discs fade out (a heavy sky hides them completely).
+    ctx.globalAlpha = clamp(1 - cloud * 1.15);
     if (moon.elevation > -3 && moon.phase > 0.03 && moon.phase < 0.97) {
         const x = across(moon.hourAngle),
             y = up(moon.elevation),
@@ -266,14 +284,22 @@ export function paintSky(
         ctx.arc(x, y, 34, 0, Math.PI * 2);
         ctx.fill();
     }
+    ctx.globalAlpha = 1;
 
     // Soft clouds: white by day, pink-orange at sunset, dim blue at night.
-    const cloud = mix(
+    let puffColour = mix(
         mix(hex('#2a3550'), hex('#f4f6fa'), day),
         hex('#f4b28a'),
         golden * 0.7,
     );
-    for (let i = 0; i < 6; i++) {
+    // Rain clouds: more of them, lower, heavier and grey.
+    puffColour = mix(
+        puffColour,
+        mix(hex('#0e1117'), hex('#6c737c'), day),
+        cloud * 0.8,
+    );
+    const puffs = 6 + Math.round(12 * cloud);
+    for (let i = 0; i < puffs; i++) {
         const cx = hash(i + 40) * width,
             cy = horizon * (0.18 + 0.5 * hash(i + 60)),
             w = 160 + hash(i + 80) * 220;
@@ -286,8 +312,11 @@ export function paintSky(
                 cy + Math.sin(j * 1.7) * 10,
                 w * 0.3,
             );
-            puff.addColorStop(0, css(cloud, 0.22 + 0.12 * day));
-            puff.addColorStop(1, css(cloud, 0));
+            puff.addColorStop(
+                0,
+                css(puffColour, 0.22 + 0.12 * day + 0.35 * cloud),
+            );
+            puff.addColorStop(1, css(puffColour, 0));
             ctx.fillStyle = puff;
             ctx.fillRect(cx - w, cy - w * 0.4, w * 2, w * 0.8);
         }
@@ -326,6 +355,11 @@ export function paintSky(
                     ctx.fillRect(wx, wy, r ? 5 : 3, r ? 8 : 5);
                 }
             x += w + 2 + hash(i + 31) * 10;
+        }
+        // Rain hangs in the air: the far row all but vanishes, the near one greys.
+        if (weather.rain > 0) {
+            ctx.fillStyle = css(low, weather.rain * (r ? 0.18 : 0.5));
+            ctx.fillRect(0, 0, width, height);
         }
     });
 }

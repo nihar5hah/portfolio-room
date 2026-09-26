@@ -163,6 +163,19 @@ export default function Credits(props: WindowAppProps) {
                             Original model · CC0 ↗
                         </a>
                     </dd>
+                    <dt>Open-Meteo</dt>
+                    <dd>
+                        Bangalore’s current weather, which puts rain (and, in a
+                        storm, lightning) on the room’s window. The rain and
+                        thunder sounds are synthesized for the room.{' '}
+                        <a
+                            href="https://open-meteo.com/"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Weather data · CC BY 4.0 ↗
+                        </a>
+                    </dd>
                     <dt>FC Barcelona / Legacy Football Shirts</dt>
                     <dd>
                         Official club crest and Messi 10 jersey photography.{' '}

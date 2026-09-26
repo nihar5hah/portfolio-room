@@ -7,6 +7,9 @@ import bus from '../UI/EventBus';
 import { occluded } from '../Utils/Occlusion';
 import { DESK_Z, PIT } from './Layout';
 import NavGrid, { Point } from './NavGrid';
+import Football, { BALL_RADIUS } from './Football';
+/** Face of the back wall (the flag wall), room units. */
+const BACK_WALL = -6500;
 
 export default class Decor {
     app = new Application();
@@ -15,6 +18,7 @@ export default class Decor {
     labelBlocked = false;
     labelCheck = 0;
     nav: NavGrid;
+    football: Football | undefined;
     /** Hearts and Zzz floating up from Begu. */
     floaters: {
         sprite: THREE.Sprite;
@@ -148,6 +152,14 @@ export default class Decor {
         this.nav = this.floorPlan();
         this.husky.nav = this.nav;
         this.husky.spots = this.spots();
+        // The football rolls on its own plan: furniture padded by its radius,
+        // and his bed is an obstacle (its rim), not somewhere to lie.
+        const ballNav = this.floorPlan(BALL_RADIUS, BALL_RADIUS, false);
+        this.football = new Football(
+            ballNav,
+            ballNav.nearestFree({ x: 3500, z: -2100 }) ?? { x: 3500, z: -2100 },
+        );
+        this.app.scene.add(this.football.group);
         this.app.scene.add(this.dog);
         this.heart = this.floaterMaterial((ctx) => {
             ctx.fillStyle = '#ff5d7a';
@@ -181,16 +193,15 @@ export default class Decor {
      * between the boards and his head height) blocked out and padded for his
      * body, the pit fenced off, rugs and his bed as surfaces he steps onto.
      */
-    floorPlan() {
+    floorPlan(PAD = 380, LOW_PAD = 120, openBed = true) {
         const FLOOR = -3015;
         const nav = new NavGrid(
             { minX: -17900, maxX: 17900, minZ: -6450, maxZ: 18400 },
             150,
             FLOOR,
         );
-        // Half his body width plus a little: he fits between furniture a
-        // real husky would squeeze through.
-        const PAD = 380;
+        // PAD: half his body width plus a little: he fits between furniture
+        // a real husky would squeeze through.
         const box = new THREE.Box3();
         const shown = (o: THREE.Object3D | null): boolean =>
             !o || (o.visible && shown(o.parent));
@@ -215,7 +226,7 @@ export default class Decor {
                 minZ: box.min.z,
                 maxZ: box.max.z,
             };
-            if (mesh.name.startsWith('Begu bed')) {
+            if (openBed && mesh.name.startsWith('Begu bed')) {
                 if (mesh.userData.surface !== undefined)
                     bed.push({ box: box.clone(), y: mesh.userData.surface });
                 return;
@@ -231,7 +242,7 @@ export default class Decor {
             // around closely; furniture gets his full body's clearance.
             const low =
                 box.max.y < FLOOR + 800 && size.x < 2600 && size.z < 2600;
-            const pad = low ? 120 : PAD;
+            const pad = low ? LOW_PAD : PAD;
             // Big, organic shapes (bean bags, the ottoman, cloth) block their
             // real footprint below his head height, not their bounding box.
             const position = mesh.geometry.getAttribute('position');
@@ -263,8 +274,24 @@ export default class Decor {
             },
             PAD + 150,
         );
+        // The ball also bounces off the walls, a radius from the skirting.
+        if (!openBed) {
+            const { minX, maxX, minZ, maxZ } = {
+                minX: -17960,
+                maxX: 17960,
+                minZ: BACK_WALL,
+                maxZ: 18460,
+            };
+            for (const rect of [
+                { minX, maxX, minZ, maxZ: minZ },
+                { minX, maxX, minZ: maxZ, maxZ },
+                { minX, maxX: minX, minZ, maxZ },
+                { minX: maxX, maxX, minZ, maxZ },
+            ])
+                nav.block(rect, PAD);
+        }
         // His bed is his: walkable, and he lies on the cushion.
-        for (const { box: b, y } of bed) {
+        for (const { box: b, y } of openBed ? bed : []) {
             const rect = {
                 minX: b.min.x + 250,
                 maxX: b.max.x - 250,
@@ -388,6 +415,35 @@ export default class Decor {
         });
     }
 
+    /**
+     * Click the football: it is kicked out into the room, away from the
+     * visitor, and Begu gives chase and brings it back here.
+     */
+    kick() {
+        const ball = this.football;
+        if (!ball || ball.carried) return;
+        const camera = this.app.camera.instance;
+        const forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);
+        const from = ball.position;
+        const target = ball.target(
+            { x: forward.x, z: forward.z },
+            Math.random,
+            (p) => !!this.nav.path(from, p),
+        );
+        if (!target) return;
+        if (this.app.reducedMotion.matches) return ball.place(target);
+        ball.kick(target);
+        this.app.world.audioManager?.play('mouseDown', 0.3, -900);
+        if (this.husky.fetch(ball, from)) this.float(this.heart, 200, 1.2, 300);
+    }
+
+    kickLabel() {
+        if (this.football?.carried) return 'Begu’s bringing it back';
+        if (this.husky.bedtime) return 'Kick the ball · Begu’s asleep';
+        return 'Kick the ball for Begu';
+    }
+
     /** Clicking Begu pets him. */
     pet() {
         const result = this.husky.pet(
@@ -424,6 +480,8 @@ export default class Decor {
             }
         }
         this.floaters = this.floaters.filter((f) => f.age < f.life);
+        if (!this.app.reducedMotion.matches) this.football?.update(dt);
+        else if (this.football) this.football.velocity.set(0, 0);
         // Zzz while he sleeps.
         if (this.husky.asleep) {
             this.zzzTimer -= dt;
@@ -465,6 +523,7 @@ export default class Decor {
                 asleep: 'Asleep',
                 zoomies: 'Zoomies!',
                 playing: 'Playing',
+                fetching: 'Fetch!',
             }[this.husky.mood];
             const span = label.querySelector('span');
             if (span && span.textContent !== mood) span.textContent = mood;

@@ -316,3 +316,52 @@ test('no Web Audio anywhere in room audio, and the muffled loop ships', () => {
         /audioManager\.update\(\s*this\.application\.camera\.instance\.position\.length\(\)/,
     );
 });
+
+test('rain plays on its own loop only while it rains, eased by volume, and thunder follows lightning', async () => {
+    const r = room();
+    const timers = [];
+    const setTimeoutSaved = globalThis.setTimeout;
+    try {
+        const manager = new r.Manager();
+        await flush();
+        const { rain } = manager;
+        assert.match(rain.src, /\/audio\/atmosphere\/rain\.mp3$/);
+        assert.ok(
+            rain.loop && rain.preload === 'none',
+            'fetched only once it rains',
+        );
+        r.bus.dispatch('loadingScreenDone');
+        assert.ok(rain.paused, 'dry: silent');
+        r.bus.dispatch('weather', { rain: 1 });
+        assert.equal(rain.paused, false, 'raining: plays');
+        manager.update(20000, 1 / 60);
+        assert.ok(rain.volume < 0.01, 'fades in rather than starting loud');
+        for (let i = 0; i < 600; i++) manager.update(20000, 1 / 60);
+        assert.ok(
+            rain.volume > 0.12 && rain.volume <= 0.16,
+            'soft, under the music',
+        );
+        manager.update(1000, 1 / 60);
+        assert.ok(rain.volume < 0.08, 'quieter at the Mac');
+        r.bus.dispatch('muteToggle', true);
+        assert.ok(rain.paused, 'Sound off silences it');
+        r.bus.dispatch('muteToggle', false);
+        assert.equal(rain.paused, false);
+        r.bus.dispatch('weather', { rain: 0 });
+        for (let i = 0; i < 900; i++) manager.update(20000, 1 / 60);
+        assert.equal(rain.volume, 0);
+        assert.ok(rain.paused, 'stops once it has faded out');
+        // Lightning: thunder a moment later, as a capped one-shot.
+        globalThis.setTimeout = (fn, ms) => timers.push([fn, ms]);
+        r.bus.dispatch('lightning', {});
+        assert.equal(timers.length, 1);
+        assert.ok(timers[0][1] >= 900 && timers[0][1] <= 3100);
+        timers[0][0]();
+        const thunder = [...manager.playing].at(-1);
+        assert.match(thunder.src, /thunder\.mp3$/);
+        assert.ok(thunder.volume <= 0.3);
+    } finally {
+        globalThis.setTimeout = setTimeoutSaved;
+        r.restore();
+    }
+});

@@ -4,6 +4,7 @@ import bus from '../EventBus';
 import { ALBUMS, AlbumState } from '../../Audio/AlbumAudio';
 import TvView from './TvView';
 import MessiCard from './MessiCard';
+import Ps5View from './Ps5View';
 const ART = Object.fromEntries(
     Object.keys(ALBUMS).map((slug) => [slug, `/room/albums/${slug}.jpg`]),
 ) as Record<keyof typeof ALBUMS, string>;
@@ -16,6 +17,13 @@ export default function InterfaceUI() {
     const [records, setRecords] = useState({ found: 0, total: 0 });
     const [asleep, setAsleep] = useState(false);
     const [hint, setHint] = useState(false);
+    const [reward, setReward] = useState(0);
+    // The moment the last record is found: say what just appeared.
+    useEffect(() => {
+        if (!reward) return;
+        const t = setTimeout(() => setReward(0), 9000);
+        return () => clearTimeout(t);
+    }, [reward]);
     // Show how to move around for a few seconds each time Look Around starts.
     useEffect(() => {
         setHint(free);
@@ -36,6 +44,9 @@ export default function InterfaceUI() {
             bus.on('recordsFound', setRecords),
             bus.on('goodNight', setAsleep),
             bus.on('freeCamToggle', setFree),
+            bus.on('recordsComplete', ({ total }: { total: number }) =>
+                setReward(total),
+            ),
         ];
         return () => off.forEach((f) => f());
     }, []);
@@ -72,6 +83,16 @@ export default function InterfaceUI() {
             </button>
             <TvView />
             <MessiCard />
+            <Ps5View />
+            {reward > 0 && (
+                <p className="records-reward" role="status">
+                    All {reward} records found.
+                    <span>
+                        A gold record just went up by the clock, and someone in
+                        a mortarboard is on the window bench.
+                    </span>
+                </p>
+            )}
             {asleep && (
                 <p className="good-night" role="status">
                     Good night. <span>Tap the bed to wake the room.</span>

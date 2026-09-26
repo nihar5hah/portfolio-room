@@ -22,8 +22,30 @@ export interface Spots {
     door?: { stand: Point; look: Point };
 }
 
+/** Something he can chase and nose back: the football (Football.ts). */
+export interface Fetchable {
+    readonly position: Point;
+    readonly speed: number;
+    carry(to: Point): void;
+    drop(dx?: number, dz?: number): void;
+}
+
 type Step =
-    | { kind: 'walk'; to: Point; gallop?: boolean; path?: Point[] }
+    | {
+          kind: 'walk';
+          to: Point;
+          gallop?: boolean;
+          path?: Point[];
+          /** Pushing the ball along in front of his nose. */
+          carry?: Fetchable;
+      }
+    | {
+          kind: 'chase';
+          ball: Fetchable;
+          path?: Point[];
+          replan?: number;
+      }
+    | { kind: 'drop'; ball: Fetchable }
     | { kind: 'face'; at: Point }
     | {
           kind: 'pose';
@@ -45,6 +67,7 @@ export type Mood =
     | 'asleep'
     | 'zoomies'
     | 'playing'
+    | 'fetching'
     | 'watching';
 
 /** Paw speed of each gait, measured from the clips (no foot sliding). */
@@ -57,6 +80,11 @@ const CENTRE = 272;
  * his left: shift the model back as he lies, so he stays on his bed.
  */
 const LIE_SHIFT = -830;
+
+/** The ball rides this far ahead of his body centre while he noses it. */
+const NOSE = 1200;
+/** Close enough to grab it. */
+const REACH = 1250;
 
 const angleTo = (from: THREE.Vector3, to: Point) =>
     Math.atan2(to.x - from.x, to.z - from.z);
@@ -311,6 +339,9 @@ export default class Husky {
 
     /** Drop whatever he was doing. Lying down, he stays down unless told. */
     interrupt(keepLying = true) {
+        // Whatever he was pushing, he lets go of.
+        if (this.step?.kind === 'walk' && this.step.carry)
+            this.step.carry.drop();
         this.queue = [];
         this.step = null;
         this.stepTime = 0;
@@ -402,6 +433,33 @@ export default class Husky {
                 seconds: 2.5 + this.random() * 5,
             },
         );
+    }
+
+    /**
+     * Fetch: gallop after the kicked ball, catch up with it once it slows,
+     * and nose it back to `home` (where it was kicked from), then a happy
+     * hop. He gives up if it ends somewhere he cannot reach.
+     */
+    fetch(ball: Fetchable, home: Point) {
+        if (this.bedtime) return false;
+        this.interrupt();
+        const back = this.nav?.nearestFree(home) ?? home;
+        // Faces the ball where it stopped, not where it was kicked from.
+        const face = { kind: 'face' } as { kind: 'face'; at: Point };
+        Object.defineProperty(face, 'at', { get: () => ball.position });
+        this.queue.push(
+            { kind: 'mood', mood: 'fetching' },
+            { kind: 'pose', clip: 'Idle_2', seconds: 0.35 },
+            { kind: 'chase', ball },
+            face,
+            { kind: 'pose', clip: 'Idle_2_HeadLow', seconds: 0.6 },
+            { kind: 'walk', to: back, carry: ball },
+            { kind: 'drop', ball },
+            { kind: 'mood', mood: 'idle' },
+            { kind: 'pose', clip: 'Jump_ToIdle', seconds: 1.3, once: true },
+            { kind: 'pose', clip: 'Idle_2', seconds: 2.5 },
+        );
+        return true;
     }
 
     goToBed(seconds: number) {
@@ -566,6 +624,53 @@ export default class Husky {
         return Math.abs(left - by);
     }
 
+    /** Walk (or gallop) a planned route; true on arrival. */
+    stride(step: Extract<Step, { kind: 'walk' }>, dt: number): boolean {
+        const p = this.group.position;
+        if (!step.path) {
+            step.path = this.nav?.path({ x: p.x, z: p.z }, step.to) ?? [];
+            if (!step.path.length) return true;
+        }
+        const next = step.path[0];
+        const dx = next.x - p.x,
+            dz = next.z - p.z;
+        const far = Math.hypot(dx, dz);
+        if (far < 60) {
+            step.path.shift();
+            return !step.path.length;
+        }
+        const off = this.turn(Math.atan2(dx, dz), dt, step.gallop ? 4.5 : 3.2);
+        // Slow right down to turn sharp corners; never walk sideways.
+        const pace =
+            (step.gallop ? GALLOP : WALK) *
+            Math.max(0, Math.cos(Math.min(off, Math.PI / 2)));
+        const move = Math.min(far, pace * dt);
+        const nx = p.x + (dx / far) * move,
+            nz = p.z + (dz / far) * move;
+        // Never step onto furniture: if the corner is tighter than the
+        // path assumed, re-plan from here.
+        if (this.nav && !this.nav.free(nx, nz) && this.nav.free(p.x, p.z)) {
+            step.path = this.nav.path({ x: p.x, z: p.z }, step.to) ?? [];
+            if (!step.path.length) return true;
+            return false;
+        }
+        p.x = nx;
+        p.z = nz;
+        if (step.carry) {
+            // The ball trails into place ahead of his nose as he turns.
+            const h = this.group.rotation.y;
+            const ball = step.carry.position;
+            const k = Math.min(1, dt * 7);
+            step.carry.carry({
+                x: ball.x + (p.x + Math.sin(h) * NOSE - ball.x) * k,
+                z: ball.z + (p.z + Math.cos(h) * NOSE - ball.z) * k,
+            });
+        }
+        const gait = pace < WALK * 0.35 ? 0.6 : 1;
+        this.play(step.gallop ? 'Gallop' : 'Walk', false, gait);
+        return false;
+    }
+
     /** Advance the current step; true when it is finished. */
     run(step: Step, dt: number): boolean {
         this.stepTime += dt;
@@ -574,49 +679,46 @@ export default class Husky {
             case 'mood':
                 this.mood = step.mood;
                 return true;
-            case 'walk': {
-                if (!step.path) {
-                    step.path =
-                        this.nav?.path({ x: p.x, z: p.z }, step.to) ?? [];
-                    if (!step.path.length) return true;
+            case 'walk':
+                return this.stride(step, dt);
+            case 'chase': {
+                const ball = step.ball;
+                const at = ball.position;
+                const far = Math.hypot(at.x - p.x, at.z - p.z);
+                // Caught up with it once it has (nearly) stopped rolling.
+                if (far < REACH && ball.speed < 900) return true;
+                if (this.stepTime > 25) {
+                    this.queue = [{ kind: 'mood', mood: 'idle' }];
+                    return true; // lost it: never mind
                 }
-                const next = step.path[0];
-                const dx = next.x - p.x,
-                    dz = next.z - p.z;
-                const far = Math.hypot(dx, dz);
-                if (far < 60) {
-                    step.path.shift();
-                    return !step.path.length;
+                // Re-plan toward where the ball is now, a few times a second.
+                step.replan = (step.replan ?? 0) - dt;
+                if (!step.path?.length || step.replan <= 0) {
+                    step.replan = 0.35;
+                    step.path = this.nav?.path({ x: p.x, z: p.z }, at) ?? [];
                 }
-                const off = this.turn(
-                    Math.atan2(dx, dz),
-                    dt,
-                    step.gallop ? 4.5 : 3.2,
-                );
-                // Slow right down to turn sharp corners; never walk sideways.
-                const pace =
-                    (step.gallop ? GALLOP : WALK) *
-                    Math.max(0, Math.cos(Math.min(off, Math.PI / 2)));
-                const move = Math.min(far, pace * dt);
-                const nx = p.x + (dx / far) * move,
-                    nz = p.z + (dz / far) * move;
-                // Never step onto furniture: if the corner is tighter than the
-                // path assumed, re-plan from here.
-                if (
-                    this.nav &&
-                    !this.nav.free(nx, nz) &&
-                    this.nav.free(p.x, p.z)
-                ) {
-                    step.path =
-                        this.nav.path({ x: p.x, z: p.z }, step.to) ?? [];
-                    if (!step.path.length) return true;
-                    return false;
+                if (!step.path.length) {
+                    // Nowhere to go: close enough, or out of reach.
+                    if (far < REACH * 1.6) return true;
+                    this.queue = [{ kind: 'mood', mood: 'idle' }];
+                    return true;
                 }
-                p.x = nx;
-                p.z = nz;
-                const gait = pace < WALK * 0.35 ? 0.6 : 1;
-                this.play(step.gallop ? 'Gallop' : 'Walk', false, gait);
+                // Gallop, easing to a trot as he closes in.
+                const walk = {
+                    kind: 'walk' as const,
+                    to: at,
+                    path: step.path,
+                    gallop: far > 2200,
+                };
+                this.stride(walk, dt);
+                if (!walk.path.length && far < REACH * 1.6) return true;
                 return false;
+            }
+            case 'drop': {
+                // A nudge with his nose sends it rolling a little way on.
+                const h = this.group.rotation.y;
+                step.ball.drop(Math.sin(h) * 700, Math.cos(h) * 700);
+                return true;
             }
             case 'face': {
                 const left = this.turn(angleTo(p, step.at), dt, 2.6);

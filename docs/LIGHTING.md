@@ -42,6 +42,36 @@ of lights makes three.js recompile every lit shader, which was the one-second
 freeze, and only that lamp went out. Now no light ever changes visibility, only
 intensity.
 
+## Lamp switches
+
+Click the floor lamp or the desk lamp (an architect's lamp on the desk's back
+corner, `deskLamp` in `Fixtures.ts`) to switch it. Each lamp follows the room
+until clicked (on after dark, off at Good Night); a click turns it the other
+way whatever the hour, so a lamp can be read by during the day or in bed after
+Good Night. Good Night and waking hand both lamps back to the room. The bulb
+warms up and fades over about a quarter of a second, by intensity only.
+
+## Weather
+
+The window shows Bangalore's actual weather: `Weather.ts` reads the same
+Open-Meteo feed as the lock screen (`/api/weather`, Bengaluru). Rain, drizzle
+and thunderstorms put falling rain beyond the glass and beads on it (a few
+running down), and grey the sky (`paintSky` takes an overcast/rain amount):
+the sun, moon and stars fade behind cloud, the skyline hazes over. Cloud cover
+dims daylight through the window, so lamps come on earlier on a dark rainy
+afternoon. In a storm, lightning flickers every 12–35 s (the sky, window light
+and room fill flash briefly) and distant thunder follows a second or two later.
+Rain plays as a soft loop under the music while it rains, quieter at the Mac.
+Changes ease in over several seconds.
+
+`?weather=rain` (or `drizzle`, `storm`, `cloudy`, `clear`) forces a look.
+
+## Clocks
+
+A wall clock right of the flag and the bedside clock both show Bangalore time
+(the wall clock's second hand ticks like a quartz movement). Both follow
+`?time=`, which now runs on from the given time instead of standing still.
+
 ## Checking a time
 
 Add `?time=HH:MM` (Bangalore time) to the URL, e.g. `/?time=18:10` for sunset

@@ -10,6 +10,8 @@ import Cursor from './Cursor';
 import Hitboxes from './Hitboxes';
 import AudioManager from '../Audio/AudioManager';
 import Interactables from './Interactables';
+import RecordsReward from './Reward';
+import bus from '../UI/EventBus';
 export default class World {
     application: Application;
     scene: THREE.Scene;
@@ -24,6 +26,7 @@ export default class World {
     cursor: Cursor;
     audioManager: AudioManager;
     interactables: Interactables;
+    reward: RecordsReward;
 
     constructor() {
         this.application = new Application();
@@ -45,6 +48,41 @@ export default class World {
                 this.interactables.add(this.decor.dog, () => ({
                     label: this.decor.petLabel(),
                     run: () => this.decor.pet(),
+                    instant: true,
+                }));
+            // Every hidden record found: a gold record and the Dropout Bear.
+            if (room && this.interactables) {
+                const interact = this.interactables;
+                this.reward = new RecordsReward(
+                    room,
+                    interact.found.size,
+                    interact.sleeves,
+                    (plaque, bear) => {
+                        const album = () => this.audioManager.album;
+                        interact.add(plaque, () => ({
+                            label: `Gold record · all ${interact.sleeves} found · shuffle`,
+                            run: () => {
+                                album().next();
+                                bus.dispatch('muteToggle', false);
+                            },
+                        }));
+                        interact.add(bear, () => ({
+                            label: 'The Dropout Bear · play Graduation',
+                            run: () => album().playAlbum('graduation'),
+                        }));
+                    },
+                );
+                bus.on('recordsComplete', () =>
+                    this.decor?.husky.hop(
+                        this.application.reducedMotion.matches,
+                    ),
+                );
+            }
+            // The football: kick it and Begu fetches it.
+            if (this.interactables && this.decor?.football)
+                this.interactables.add(this.decor.football.group, () => ({
+                    label: this.decor.kickLabel(),
+                    run: () => this.decor.kick(),
                     instant: true,
                 }));
             const converted = new Set<THREE.Material>();
@@ -76,9 +114,14 @@ export default class World {
         if (this.decor) this.decor.update();
         if (this.environment) this.environment.update();
         if (this.coffeeSteam) this.coffeeSteam.update();
+        this.reward?.update(
+            this.application.time.delta / 1000,
+            this.application.reducedMotion.matches,
+        );
         if (this.audioManager)
             this.audioManager.update(
                 this.application.camera.instance.position.length(),
+                Math.min(this.application.time.delta, 100) / 1000,
             );
     }
 }

@@ -25,6 +25,19 @@ Rare Easter eggs, at most one every ~45 s, each at most every 4 minutes:
 - **Watches the window** for a while.
 - **Waits by the front door**.
 
+## Fetch
+
+The football lies on the desk rug beside the chair (`Football.ts`). Click it
+and it is kicked out into open floor, with a clear run, roughly the way you are
+looking. It rolls with friction, bounces off furniture and walls on its own
+floor plan (padded by its 11 cm radius, his bed counted as an obstacle) and
+turns as it rolls. Begu gallops after it, re-planning toward the moving ball a
+few times a second, eases to a trot as he closes in, dips his head, then noses
+it back to where it was kicked from and nudges it on a little, with a happy
+hop. His label reads "Fetch!". He gives up if the ball ends up somewhere he
+cannot reach. At Good Night the ball can still be kicked, but he stays in bed;
+with reduced motion the ball just moves to where it would stop.
+
 ## Petting
 
 Click (or tap) Begu himself to pet him: he turns to you and leans in, ears

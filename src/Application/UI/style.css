@@ -618,3 +618,40 @@ body {
     background: rgba(0, 0, 0, 0.25);
     cursor: pointer;
 }
+
+/* All hidden records found */
+.records-reward {
+    position: absolute;
+    top: 16%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(440px, calc(100vw - 32px));
+    margin: 0;
+    padding: 16px 20px;
+    text-align: center;
+    font: 600 20px var(--sys);
+    color: #f7e7b6;
+    border-radius: 16px;
+    background: linear-gradient(
+        135deg,
+        rgba(74, 51, 18, 0.88),
+        rgba(28, 22, 12, 0.88)
+    );
+    border: 1px solid rgba(217, 178, 90, 0.55);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    animation: good-night 0.8s ease both;
+    pointer-events: none;
+}
+.records-reward span {
+    display: block;
+    margin-top: 6px;
+    font: 400 13px/1.45 var(--sys);
+    color: rgba(247, 231, 182, 0.75);
+}
+@media (prefers-reduced-motion: reduce) {
+    .records-reward {
+        animation: none;
+    }
+}

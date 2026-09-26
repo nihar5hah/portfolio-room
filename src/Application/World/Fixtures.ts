@@ -292,3 +292,259 @@ export function softPillow(
     const mesh = shade(new THREE.Mesh(geometry, material));
     return mesh;
 }
+
+/**
+ * A round wall clock: a black steel rim, a warm cream dial with minute
+ * ticks, hour bars and numerals, and three hands on a brass cap. Faces +Z.
+ * `set(hours)` turns the hands to a time given as hours since midnight
+ * (fractional; the second hand ticks and settles like a quartz movement).
+ */
+export function wallClock(radius = 760) {
+    const R = radius;
+    const clock = new THREE.Group();
+    const steel = new THREE.MeshStandardMaterial({
+        color: '#17191d',
+        metalness: 0.6,
+        roughness: 0.35,
+    });
+    const brass = new THREE.MeshStandardMaterial({
+        color: '#b08a55',
+        metalness: 0.8,
+        roughness: 0.32,
+    });
+    // Rim: a rolled lip standing proud of the dial.
+    const rim = shade(
+        new THREE.Mesh(
+            new THREE.LatheGeometry(
+                [
+                    [R * 0.94, 0],
+                    [R * 1.0, 0],
+                    [R * 1.04, R * 0.05],
+                    [R * 1.04, R * 0.1],
+                    [R * 1.0, R * 0.14],
+                    [R * 0.95, R * 0.13],
+                    [R * 0.94, R * 0.06],
+                ].map(([x, y]) => new THREE.Vector2(x, y)),
+                96,
+            ),
+            steel,
+        ),
+    );
+    rim.rotation.x = Math.PI / 2; // lathe axis (+Y) to the wall normal (+Z)
+    clock.add(rim);
+    const back = shade(
+        new THREE.Mesh(new THREE.CylinderGeometry(R, R, R * 0.06, 64), steel),
+    );
+    back.rotation.x = Math.PI / 2;
+    back.position.z = R * 0.03;
+    clock.add(back);
+    // Dial, painted once.
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 1024;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+        ctx.fillStyle = '#ece4d3';
+        ctx.fillRect(0, 0, 1024, 1024);
+        ctx.fillStyle = '#1d1f23';
+        ctx.strokeStyle = '#1d1f23';
+        for (let i = 0; i < 60; i++) {
+            const a = (i / 60) * Math.PI * 2;
+            const hour = i % 5 === 0;
+            const r0 = hour ? 392 : 430,
+                r1 = 470;
+            ctx.lineWidth = hour ? 16 : 5;
+            ctx.beginPath();
+            ctx.moveTo(512 + Math.sin(a) * r0, 512 - Math.cos(a) * r0);
+            ctx.lineTo(512 + Math.sin(a) * r1, 512 - Math.cos(a) * r1);
+            ctx.stroke();
+        }
+        ctx.font = '600 84px -apple-system, Helvetica, Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (let h = 1; h <= 12; h++) {
+            const a = (h / 12) * Math.PI * 2;
+            ctx.fillText(
+                String(h),
+                512 + Math.sin(a) * 318,
+                512 - Math.cos(a) * 318 + 4,
+            );
+        }
+        ctx.font = '600 34px -apple-system, Helvetica, Arial, sans-serif';
+        ctx.fillStyle = '#6d5c45';
+        ctx.fillText('BENGALURU', 512, 330);
+        ctx.font = '500 28px -apple-system, Helvetica, Arial, sans-serif';
+        ctx.fillText('IST · UTC+5:30', 512, 700);
+    }
+    const dialMap = new THREE.CanvasTexture(canvas);
+    dialMap.encoding = THREE.sRGBEncoding;
+    dialMap.anisotropy = 8;
+    const dial = new THREE.Mesh(
+        new THREE.CircleGeometry(R * 0.95, 96),
+        new THREE.MeshStandardMaterial({ map: dialMap, roughness: 0.7 }),
+    );
+    dial.name = 'Wall clock dial';
+    dial.position.z = R * 0.065;
+    dial.receiveShadow = true;
+    clock.add(dial);
+    // Hands: thin tapered blades pivoting on the centre, stacked outward.
+    const hand = (
+        length: number,
+        width: number,
+        tail: number,
+        material: THREE.Material,
+        z: number,
+    ) => {
+        const shape = new THREE.Shape();
+        shape.moveTo(-width / 2, -tail);
+        shape.lineTo(width / 2, -tail);
+        shape.lineTo(width * 0.3, length);
+        shape.lineTo(-width * 0.3, length);
+        shape.closePath();
+        const mesh = shade(
+            new THREE.Mesh(
+                new THREE.ExtrudeGeometry(shape, {
+                    depth: 8,
+                    bevelEnabled: false,
+                }),
+                material,
+            ),
+        );
+        const pivot = new THREE.Group();
+        pivot.position.z = z;
+        pivot.add(mesh);
+        clock.add(pivot);
+        return pivot;
+    };
+    const ink = new THREE.MeshStandardMaterial({
+        color: '#141518',
+        roughness: 0.5,
+    });
+    const garnet = new THREE.MeshStandardMaterial({
+        color: '#a50044',
+        roughness: 0.45,
+    });
+    const hours = hand(R * 0.5, 44, R * 0.12, ink, R * 0.075);
+    const minutes = hand(R * 0.8, 30, R * 0.14, ink, R * 0.075 + 12);
+    const seconds = hand(R * 0.86, 10, R * 0.24, garnet, R * 0.075 + 24);
+    const cap = shade(
+        new THREE.Mesh(new THREE.CylinderGeometry(34, 34, 40, 24), brass),
+    );
+    cap.rotation.x = Math.PI / 2;
+    cap.position.z = R * 0.075 + 40;
+    clock.add(cap);
+    const turn = (pivot: THREE.Object3D, fraction: number) =>
+        (pivot.rotation.z = -fraction * Math.PI * 2);
+    const set = (h: number) => {
+        const whole = Math.floor(h * 3600);
+        const part = h * 3600 - whole;
+        // Quartz tick: the second hand jumps and settles in a tenth of a second.
+        const tick = Math.min(1, part / 0.12);
+        const s = (whole % 60) - 1 + tick * tick * (3 - 2 * tick);
+        turn(seconds, s / 60);
+        turn(minutes, ((h * 60) % 60) / 60);
+        turn(hours, (h % 12) / 12);
+    };
+    set(0);
+    return { group: clock, set, hands: { hours, minutes, seconds } };
+}
+
+/**
+ * An architect's desk lamp: weighted base, two slim arms on sprung joints,
+ * and a spun-metal shade angled down at the work. Stands on its origin and
+ * reaches along +X. Returns the lamp, its shade glow material and where the
+ * bulb sits (for a light) in lamp coordinates.
+ */
+export function deskLamp(glow: THREE.MeshStandardMaterial) {
+    const lamp = new THREE.Group();
+    const enamel = new THREE.MeshStandardMaterial({
+        color: '#1a1c20',
+        metalness: 0.35,
+        roughness: 0.4,
+    });
+    const brass = new THREE.MeshStandardMaterial({
+        color: '#b08a55',
+        metalness: 0.8,
+        roughness: 0.3,
+    });
+    const rod = (a: THREE.Vector3, b: THREE.Vector3, r: number) => {
+        const length = a.distanceTo(b);
+        const mesh = shade(
+            new THREE.Mesh(new THREE.CylinderGeometry(r, r, length, 16), brass),
+        );
+        mesh.position.copy(a).add(b).multiplyScalar(0.5);
+        mesh.quaternion.setFromUnitVectors(
+            new THREE.Vector3(0, 1, 0),
+            b.clone().sub(a).normalize(),
+        );
+        lamp.add(mesh);
+    };
+    const joint = (p: THREE.Vector3, r: number) => {
+        const knob = shade(
+            new THREE.Mesh(
+                new THREE.CylinderGeometry(r, r, r * 1.4, 20),
+                enamel,
+            ),
+        );
+        knob.rotation.x = Math.PI / 2;
+        knob.position.copy(p);
+        lamp.add(knob);
+    };
+    const base = shade(
+        new THREE.Mesh(new THREE.CylinderGeometry(210, 235, 70, 48), enamel),
+    );
+    base.position.y = 35;
+    lamp.add(base);
+    const shoulder = new THREE.Vector3(0, 150, 0);
+    const elbow = new THREE.Vector3(260, 1130, 0);
+    const wrist = new THREE.Vector3(930, 1060, 0);
+    const post = shade(
+        new THREE.Mesh(new THREE.CylinderGeometry(34, 44, 90, 16), enamel),
+    );
+    post.position.y = 110;
+    lamp.add(post);
+    // Twin rods per arm, the way sprung lamps are built.
+    for (const z of [-26, 26]) {
+        rod(shoulder.clone().setZ(z), elbow.clone().setZ(z), 11);
+        rod(elbow.clone().setZ(z), wrist.clone().setZ(z), 10);
+    }
+    joint(shoulder, 42);
+    joint(elbow, 38);
+    joint(wrist, 34);
+    // Shade: an open cone tipped forward and down, bulb glowing inside.
+    const head = new THREE.Group();
+    head.position.copy(wrist);
+    head.rotation.z = -2.5; // cone axis (+Y) swung down toward the desk
+    const cone = shade(
+        new THREE.Mesh(
+            new THREE.CylinderGeometry(70, 205, 330, 40, 1, true),
+            new THREE.MeshStandardMaterial({
+                color: '#1a1c20',
+                metalness: 0.35,
+                roughness: 0.4,
+                side: THREE.DoubleSide,
+            }),
+        ),
+    );
+    cone.position.y = 200;
+    cone.rotation.x = Math.PI; // wide mouth away from the joint
+    head.add(cone);
+    const capEnd = shade(
+        new THREE.Mesh(new THREE.CylinderGeometry(72, 72, 40, 24), enamel),
+    );
+    capEnd.position.y = 30;
+    head.add(capEnd);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(70, 20, 12), glow);
+    bulb.position.y = 250;
+    bulb.castShadow = false;
+    head.add(bulb);
+    const diffuser = new THREE.Mesh(new THREE.CircleGeometry(195, 40), glow);
+    diffuser.position.y = 355;
+    diffuser.rotation.x = -Math.PI / 2; // faces out of the mouth
+    diffuser.castShadow = false;
+    head.add(diffuser);
+    lamp.add(head);
+    lamp.updateMatrixWorld(true);
+    const bulbAt = bulb.getWorldPosition(new THREE.Vector3());
+    const aim = head.localToWorld(new THREE.Vector3(0, 2000, 0));
+    return { lamp, bulbAt, aim };
+}

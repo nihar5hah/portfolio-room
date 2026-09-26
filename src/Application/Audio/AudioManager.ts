@@ -20,6 +20,7 @@ const EFFECTS = {
     mouseUp: ['mouse/mouse_up.mp3'],
     keyboardKeydown: [1, 2, 3, 4, 5, 6].map((n) => `keyboard/key_${n}.mp3`),
     ccType: ['cc/type.mp3'],
+    thunder: ['atmosphere/thunder.mp3'],
 };
 type Effect = keyof typeof EFFECTS;
 const MAX_EFFECTS = 4;
@@ -39,6 +40,14 @@ export default class AudioManager {
     /** Same 22.07 s loop, plain and pre-muffled, kept in step. */
     readonly dry = element('atmosphere/office.mp3', true);
     readonly wet = element('atmosphere/office-muffled.mp3', true);
+    /**
+     * Rain against the window while it is raining in Bangalore (Weather.ts),
+     * synthesized for the room (scripts/make-rain.py). Loaded only once it
+     * rains; eased in and out by volume.
+     */
+    readonly rain = element('atmosphere/rain.mp3', true);
+    rainTarget = 0;
+    rainLevel = 0;
     templates = {} as Record<Effect, HTMLAudioElement[]>;
     playing = new Set<HTMLAudioElement>();
     entered = false;
@@ -48,6 +57,19 @@ export default class AudioManager {
     lastKey = '';
 
     constructor() {
+        this.rain.preload = 'none';
+        this.rain.volume = 0;
+        bus.on('weather', (state: { rain: number }) => {
+            this.rainTarget = state.rain;
+            this.startAmbience();
+        });
+        // Thunder rolls in a second or two after the flash.
+        bus.on('lightning', () =>
+            setTimeout(
+                () => this.play('thunder', 0.18 + Math.random() * 0.12),
+                900 + Math.random() * 2200,
+            ),
+        );
         for (const name of Object.keys(EFFECTS) as Effect[])
             this.templates[name] = EFFECTS[name].map((file) => element(file));
         this.applyMix();
@@ -72,6 +94,7 @@ export default class AudioManager {
         if (!muted) return this.startAmbience();
         this.dry.pause();
         this.wet.pause();
+        this.rain.pause();
         for (const el of Array.from(this.playing)) this.release(el);
     }
 
@@ -82,6 +105,8 @@ export default class AudioManager {
             this.wet.currentTime = this.dry.currentTime;
         for (const el of [this.dry, this.wet])
             if (el.paused) void el.play().catch(() => undefined);
+        if (this.rainTarget > 0 && this.rain.paused)
+            void this.rain.play().catch(() => undefined);
     }
 
     resume() {
@@ -91,9 +116,25 @@ export default class AudioManager {
     }
 
     /** Muffled and quieter at the Mac, open across the room. Every frame. */
-    update(distance: number) {
+    update(distance: number, dt = 1 / 60) {
         if (!Number.isFinite(distance)) return;
-        const muffle = 1 - clamp((distance - 1500) / 9500, 0, 1);
+        // Rain eases over a few seconds; quieter (behind the screen) at the Mac.
+        const rainLevel =
+            this.rainLevel +
+            (this.rainTarget - this.rainLevel) * Math.min(1, dt * 0.5);
+        this.rainLevel =
+            Math.abs(rainLevel - this.rainTarget) < 0.002
+                ? this.rainTarget
+                : rainLevel;
+        const muffled = 1 - clamp((distance - 1500) / 9500, 0, 1);
+        this.rain.volume = clamp(
+            this.rainLevel * 0.16 * (1 - 0.6 * muffled),
+            0,
+            1,
+        );
+        if (this.rainLevel === 0 && this.rainTarget === 0 && !this.rain.paused)
+            this.rain.pause();
+        const muffle = muffled;
         const level = clamp(((distance - 1200) / 8800) * 0.15, 0.0375, 0.075);
         if (
             Math.abs(muffle - this.muffle) < 0.01 &&

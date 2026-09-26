@@ -19,10 +19,20 @@ import {
 } from './Layout';
 import { bakeDune, shadeCreases, splitDune, wovenFabric } from './DuneSofa';
 import { furnishLounge, rest, throwBlanket } from './Lounge';
-import { paintSky, skyState, SkyState } from './DayNight';
-import { softPillow, towerSpeaker } from './Fixtures';
+import { bangaloreHour, paintSky, skyState, SkyState } from './DayNight';
+import Weather from './Weather';
+import { deskLamp, softPillow, towerSpeaker, wallClock } from './Fixtures';
 /** Brightness groups for the room's own lights (see `lighting`). */
-type Practical = 'lamp' | 'picture' | 'strip' | 'ceiling' | 'tv';
+type Practical =
+    | 'lamp'
+    | 'picture'
+    | 'strip'
+    | 'ceiling'
+    | 'tv'
+    | 'floorLamp'
+    | 'deskLamp';
+/** The two lamps a visitor can switch by clicking them. */
+export type LampSwitch = 'floorLamp' | 'deskLamp';
 const mixColor = (a: string, b: string, t: number) =>
     new THREE.Color(a).lerp(new THREE.Color(b), THREE.MathUtils.clamp(t, 0, 1));
 
@@ -69,6 +79,31 @@ export default class Environment {
     >;
     dust: THREE.Points;
     dustTime = 0;
+    /**
+     * Lamp switches. `manual` is null while a lamp follows the room (on
+     * after dark, off at Good Night); a click sets it on or off. `level`
+     * eases toward it so the bulb warms up and fades rather than blinking.
+     */
+    switches: Record<LampSwitch, { manual: boolean | null; level: number }> = {
+        floorLamp: { manual: null, level: 0 },
+        deskLamp: { manual: null, level: 0 },
+    };
+    clock: ReturnType<typeof wallClock> | undefined;
+    overrideFrom: number | undefined;
+    /** Bangalore's weather, for the window (Weather.ts). */
+    weather: Weather | undefined;
+    /** Rain on the window: falling streaks and beads on the glass. */
+    rainLayers:
+        | {
+              streaks: THREE.MeshBasicMaterial;
+              beads: THREE.MeshBasicMaterial;
+              beadCanvas: HTMLCanvasElement;
+              runs: { x: number; y: number; speed: number; r: number }[];
+              drawn: number;
+          }
+        | undefined;
+    skyMaterial: THREE.MeshBasicMaterial | undefined;
+    skyWeather = { overcast: 0, rain: 0 };
     constructor() {
         const app = new Application();
         const room = new RoomEnvironment();
@@ -166,6 +201,7 @@ export default class Environment {
             chair.position.set(1350, -3015, -1150 + DESK_Z + 4650);
             app.scene.add(chair);
         }
+        this.weather = new Weather();
         app.scene.add(this.buildRoom());
         // Hemisphere fill is free per-fragment; it replaces the room-wide
         // "Ceiling fill" point light that cost a full light loop everywhere.
@@ -547,9 +583,14 @@ export default class Environment {
         );
         deskRug.name = 'Desk rug';
 
-        // Reading lamp, with an actual pool of warm light.
-        cylinder(420, 75, black, 10100, FLOOR + 40, -3700);
-        cylinder(32, 3700, brass, 10100, FLOOR + 1900, -3700);
+        // Reading lamp, with an actual pool of warm light. Click to switch it.
+        const floorLamp = new THREE.Group();
+        floorLamp.name = 'Floor lamp';
+        floorLamp.add(
+            cylinder(420, 75, black, 10100, FLOOR + 40, -3700),
+            cylinder(32, 3700, brass, 10100, FLOOR + 1900, -3700),
+        );
+        room.add(floorLamp);
         const shade = new THREE.Mesh(
             new THREE.CylinderGeometry(460, 690, 620, 48, 1, true),
             glowing(
@@ -560,20 +601,21 @@ export default class Environment {
                     side: THREE.DoubleSide,
                     roughness: 0.8,
                 }),
-                'lamp',
+                'floorLamp',
             ),
         );
         shade.position.set(10100, 640, -3700);
         shade.name = 'Warm linen lampshade';
-        room.add(shade);
+        floorLamp.add(shade);
         const diffuser = cylinder(
             390,
             12,
-            glowing(glow('#ffe4ad'), 'lamp'),
+            glowing(glow('#ffe4ad'), 'floorLamp'),
             10100,
             325,
             -3700,
         );
+        floorLamp.add(diffuser);
         diffuser.name = 'Lamp diffuser';
         diffuser.castShadow = false;
         const lamp = (this.lamp = new THREE.PointLight(
@@ -589,7 +631,7 @@ export default class Environment {
         // full-scene passes per shadow update. The window key light already
         // grounds everything on the desk; the lamp only needs to glow.
         lamp.castShadow = false;
-        room.add(practical(lamp, 'lamp'));
+        floorLamp.add(practical(lamp, 'floorLamp'));
         const mote = document.createElement('canvas');
         mote.width = mote.height = 32;
         const mc = mote.getContext('2d')!;
@@ -616,7 +658,7 @@ export default class Environment {
         this.dust.frustumCulled = false;
         room.add(this.dust);
 
-        // Bookshelf: technical books, records and a football on the lower shelf.
+        // Bookshelf: technical books and records.
         for (const x of [-9800, -5900])
             box(90, 5100, 1000, black, x, FLOOR + 2550, -5240).name =
                 'Bookshelf';
@@ -658,29 +700,7 @@ export default class Environment {
                 FLOOR + 1800 + i * 110,
                 -5200,
             );
-        const ball = new THREE.Mesh(
-            new THREE.IcosahedronGeometry(470, 2),
-            cream,
-        );
-        ball.position.set(-6800, FLOOR + 800, -5230);
-        ball.castShadow = true;
-        room.add(ball);
-        for (let i = 0; i < 12; i++) {
-            const a = i * 2.39996,
-                y = 1 - (2 * (i + 0.5)) / 12;
-            const n = new THREE.Vector3(
-                Math.cos(a) * Math.sqrt(1 - y * y),
-                y,
-                Math.sin(a) * Math.sqrt(1 - y * y),
-            );
-            const patch = new THREE.Mesh(
-                new THREE.CircleGeometry(134, 5),
-                black,
-            );
-            patch.position.copy(ball.position).addScaledVector(n, 473);
-            patch.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
-            room.add(patch);
-        }
+        // (The football lives on the floor now, for Begu: Football.ts.)
         // Matching shadow boxes flank the TV on a shared centerline.
         const jerseyBacking = material('#24272c');
         for (const [x, texture, name, caption, outline] of [
@@ -994,6 +1014,45 @@ export default class Environment {
         memorabilia.position.set(1000, 5800, -1500);
         memorabilia.target.position.set(500, 1600, BACK);
         room.add(practical(memorabilia, 'picture'), memorabilia.target);
+        // An architect's lamp on the desk's back corner, reaching over the
+        // notebook. Click it (or the floor lamp) to switch it.
+        const deskBulb = glowing(
+            new THREE.MeshStandardMaterial({
+                color: '#f6ead6',
+                emissive: '#ffd9a0',
+                emissiveIntensity: 1.4,
+                roughness: 0.5,
+            }),
+            'deskLamp',
+        );
+        const desked = deskLamp(deskBulb);
+        desked.lamp.name = 'Desk lamp';
+        desked.lamp.position.set(-3300, -452, -850 + DESK_Z);
+        desked.lamp.rotation.y = -0.74;
+        room.add(desked.lamp);
+        desked.lamp.updateMatrixWorld(true);
+        const deskLight = new THREE.SpotLight(
+            '#ffcf95',
+            2.4,
+            6500,
+            0.72,
+            0.75,
+            2,
+        );
+        deskLight.name = 'Desk lamp light';
+        deskLight.castShadow = false;
+        deskLight.position.copy(
+            desked.lamp.localToWorld(desked.bulbAt.clone()),
+        );
+        deskLight.target.position.copy(
+            desked.lamp.localToWorld(desked.aim.clone()),
+        );
+        room.add(practical(deskLight, 'deskLamp'), deskLight.target);
+        // A wall clock on Bangalore time, just right of the flag.
+        const clock = (this.clock = wallClock(720));
+        clock.group.name = 'Bangalore wall clock';
+        clock.group.position.set(5200, 2500, BACK + 6);
+        room.add(clock.group);
         // The flag sits right behind the laptop: its lights ease down while the
         // visitor is on the Mac so the crest stops competing with the screen.
         const flagLights = [memorabilia, wallWash].map((light) => ({
@@ -1012,6 +1071,10 @@ export default class Environment {
         this.sleep = this.sleepTarget = 0;
         bus.on('goodNight', (asleep: boolean) => {
             this.sleepTarget = asleep ? 1 : 0;
+            // Good Night puts every lamp out and morning hands them back to
+            // the room; a click in between still switches one on to read by.
+            for (const lamp of Object.values(this.switches ?? {}))
+                lamp.manual = null;
         });
 
         // A window onto Bangalore and a reading bench give the left wall a
@@ -1029,17 +1092,91 @@ export default class Environment {
         const skyContext = sky.getContext('2d')!;
         const skyMap = new THREE.CanvasTexture(sky);
         this.paintSky = (state: SkyState) => {
-            paintSky(skyContext, 1024, 768, state);
+            paintSky(skyContext, 1024, 768, state, this.skyWeather);
             skyMap.needsUpdate = true;
         };
         skyMap.encoding = THREE.sRGBEncoding;
+        this.skyMaterial = new THREE.MeshBasicMaterial({ map: skyMap });
         window.add(
             new THREE.Mesh(
                 new THREE.PlaneGeometry(6900, 5400),
-                new THREE.MeshBasicMaterial({ map: skyMap }),
+                this.skyMaterial,
             ),
         );
         window.children[window.children.length - 1].position.z = 76;
+        // Rain on the window when it is raining in Bangalore (Weather.ts):
+        // a sheet of falling streaks beyond the glass and beads on it, a few
+        // running down. Both are invisible (opacity 0) in dry weather.
+        const streakCanvas = document.createElement('canvas');
+        streakCanvas.width = streakCanvas.height = 512;
+        const sc = streakCanvas.getContext('2d');
+        if (sc) {
+            for (let i = 0; i < 320; i++) {
+                const x = Math.random() * 512,
+                    y = Math.random() * 512,
+                    length = 18 + Math.random() * 42;
+                sc.strokeStyle = `rgba(215,225,238,${0.18 + Math.random() * 0.4})`;
+                sc.lineWidth = 0.8 + Math.random() * 1.1;
+                sc.beginPath();
+                sc.moveTo(x, y);
+                sc.lineTo(x - length * 0.12, y + length);
+                sc.stroke();
+                // Wrap streaks that run off the bottom onto the top.
+                if (y + length > 512) {
+                    sc.beginPath();
+                    sc.moveTo(x, y - 512);
+                    sc.lineTo(x - length * 0.12, y - 512 + length);
+                    sc.stroke();
+                }
+            }
+        }
+        const streakMap = new THREE.CanvasTexture(streakCanvas);
+        streakMap.wrapS = streakMap.wrapT = THREE.RepeatWrapping;
+        streakMap.repeat.set(3, 2.2);
+        const streaks = new THREE.MeshBasicMaterial({
+            map: streakMap,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+        });
+        const rainSheet = new THREE.Mesh(
+            new THREE.PlaneGeometry(6900, 5400),
+            streaks,
+        );
+        rainSheet.name = 'Rain outside the window';
+        rainSheet.position.z = 84;
+        rainSheet.raycast = () => undefined;
+        window.add(rainSheet);
+        const beadCanvas = document.createElement('canvas');
+        beadCanvas.width = 512;
+        beadCanvas.height = 400;
+        const beadMap = new THREE.CanvasTexture(beadCanvas);
+        const beads = new THREE.MeshBasicMaterial({
+            map: beadMap,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+        });
+        const glassBeads = new THREE.Mesh(
+            new THREE.PlaneGeometry(6900, 5400),
+            beads,
+        );
+        glassBeads.name = 'Raindrops on the glass';
+        glassBeads.position.z = 92;
+        glassBeads.raycast = () => undefined;
+        window.add(glassBeads);
+        this.rainLayers = {
+            streaks,
+            beads,
+            beadCanvas,
+            runs: Array.from({ length: 14 }, () => ({
+                x: Math.random() * 512,
+                y: Math.random() * 400,
+                speed: 25 + Math.random() * 60,
+                r: 1.6 + Math.random() * 1.6,
+            })),
+            drawn: -1,
+        };
         window.add(box(60, 5400, 75, black, 0, 0, 120));
         window.add(box(6900, 65, 75, black, 0, -450, 120));
         window.add(box(7600, 100, 430, wood, 0, -2890, 120));
@@ -2005,6 +2142,81 @@ export default class Environment {
         return room;
     }
 
+    /** Rain on the window and lightning, each frame. */
+    rain() {
+        const weather = this.weather;
+        const layers = this.rainLayers;
+        if (!weather || !layers) return;
+        const app = new Application();
+        const dt = Math.min(app.time?.delta ?? 16, 100) / 1000;
+        if (weather.update(dt)) bus.dispatch('lightning', {});
+        const still = !!app.reducedMotion?.matches;
+        const rain = weather.level.rain;
+        layers.streaks.opacity = rain * (0.5 + 0.3 * weather.flash);
+        layers.beads.opacity = Math.min(1, rain * 1.3);
+        if (rain <= 0 || document.hidden) return;
+        const map = layers.streaks.map!;
+        if (!still) {
+            map.offset.y += dt * (1.1 + 0.9 * rain);
+            map.offset.x += dt * 0.15;
+        }
+        // Beads on the glass, a few of them running: redrawn ~12 times a second.
+        const t = app.time?.elapsed ?? 0;
+        if (layers.drawn >= 0 && (still || t - layers.drawn < 80)) return;
+        const since = layers.drawn < 0 ? 0 : (t - layers.drawn) / 1000;
+        layers.drawn = t;
+        const ctx = layers.beadCanvas.getContext('2d');
+        if (!ctx) return;
+        const W = layers.beadCanvas.width,
+            H = layers.beadCanvas.height;
+        ctx.clearRect(0, 0, W, H);
+        const bead = (x: number, y: number, r: number) => {
+            ctx.fillStyle = 'rgba(160,175,195,0.32)';
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.55)';
+            ctx.beginPath();
+            ctx.arc(x - r * 0.35, y - r * 0.35, r * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+        };
+        const count = Math.round(80 + 220 * rain);
+        for (let i = 0; i < count; i++) {
+            const s = Math.sin(i * 91.7 + 13.1) * 43758.5453;
+            const u = s - Math.floor(s);
+            const v = Math.sin(i * 37.3 + 71.9) * 12543.1;
+            bead(u * W, (v - Math.floor(v)) * H, 0.9 + ((i * 7) % 5) * 0.35);
+        }
+        ctx.strokeStyle = 'rgba(190,205,225,0.3)';
+        for (const run of layers.runs) {
+            run.y += run.speed * since * (0.6 + rain);
+            run.x += Math.sin(run.y * 0.05 + run.speed) * 0.4;
+            if (run.y > H + 10) {
+                run.y = -10;
+                run.x = Math.random() * W;
+            }
+            ctx.lineWidth = run.r * 0.9;
+            ctx.beginPath();
+            ctx.moveTo(run.x, Math.max(0, run.y - 40 - run.speed * 0.4));
+            ctx.lineTo(run.x, run.y);
+            ctx.stroke();
+            bead(run.x, run.y, run.r * 1.3);
+        }
+        layers.beads.map!.needsUpdate = true;
+    }
+
+    /** Whether a switchable lamp is (heading) on. */
+    lampOn(lamp: LampSwitch) {
+        const { manual, level } = this.switches[lamp];
+        return manual ?? level > 0.5;
+    }
+
+    /** Click on a lamp: flip it, whatever the room was doing with it. */
+    toggleLamp(lamp: LampSwitch) {
+        this.switches[lamp].manual = !this.lampOn(lamp);
+        return this.switches[lamp].manual;
+    }
+
     /**
      * Now, or a Bangalore time given as `?time=HH:MM` (for checking how the
      * room looks at any hour).
@@ -2016,6 +2228,8 @@ export default class Environment {
                 : null;
         const match = query && /^(\d{1,2})(?::(\d{2}))?$/.exec(query);
         if (!match) return new Date();
+        // The override is where the clock starts; it keeps running from there.
+        this.overrideFrom ??= Date.now();
         const ist = 5.5 * 3600e3;
         const today = new Date(Date.now() + ist);
         const midnight =
@@ -2025,7 +2239,9 @@ export default class Environment {
                 today.getUTCDate(),
             ) - ist;
         return new Date(
-            midnight + (Number(match[1]) * 60 + Number(match[2] ?? 0)) * 60e3,
+            midnight +
+                (Number(match[1]) * 60 + Number(match[2] ?? 0)) * 60e3 +
+                (Date.now() - this.overrideFrom),
         );
     }
 
@@ -2055,20 +2271,49 @@ export default class Environment {
             this.fanBlades.rotation.y -= dt * 1.9;
         const now = this.now();
         const minute = Math.floor(now.getTime() / 60000);
+        this.skyWeather ??= { overcast: 0, rain: 0 };
+        const weather = this.weather?.level ?? { rain: 0, overcast: 0 };
+        const flash = this.weather?.flash ?? 0;
+        // Repaint the view as a shower rolls in, not only on the minute.
+        if (
+            Math.abs(weather.overcast - this.skyWeather.overcast) > 0.04 ||
+            Math.abs(weather.rain - this.skyWeather.rain) > 0.04 ||
+            (weather.overcast !== this.skyWeather.overcast &&
+                (weather.overcast === 0 || weather.overcast === 1))
+        ) {
+            this.skyWeather = { ...weather };
+            this.skyMinute = -1;
+        }
         if (!this.sky || minute !== this.skyMinute) {
             this.skyMinute = minute;
             this.sky = skyState(now);
             this.paintSky(this.sky);
             this.lightingKey = '';
         }
-        const key = `${this.sleep.toFixed(3)}|${this.flagLightScale.toFixed(3)}`;
-        if (key === this.lightingKey || !this.practicals) return;
-        this.lightingKey = key;
-        const { day, golden, moonlight, westSun } = this.sky;
+        const cloud = weather.overcast;
+        // Cloud cover dims the daylight and hides the sun and moon.
+        const day = this.sky.day * (1 - 0.35 * cloud);
+        const golden = this.sky.golden * (1 - 0.8 * cloud);
+        const moonlight = this.sky.moonlight * (1 - 0.85 * cloud);
+        const westSun = this.sky.westSun * (1 - cloud);
         const asleep = this.sleep,
             awake = 1 - asleep;
         const dark = 1 - THREE.MathUtils.smoothstep(day, 0.25, 0.8);
+        for (const lamp of Object.values(this.switches ?? {})) {
+            const target =
+                lamp.manual === null ? dark * awake : lamp.manual ? 1 : 0;
+            lamp.level = ease(lamp.level, target, 9);
+        }
+        const switches = this.switches ?? {
+            floorLamp: { level: dark * awake },
+            deskLamp: { level: dark * awake },
+        };
+        const key = `${cloud.toFixed(3)}|${flash.toFixed(3)}|${this.sleep.toFixed(3)}|${this.flagLightScale.toFixed(3)}|${switches.floorLamp.level.toFixed(3)}|${switches.deskLamp.level.toFixed(3)}`;
+        if (key === this.lightingKey || !this.practicals) return;
+        this.lightingKey = key;
         const level: Record<Practical, number> = {
+            floorLamp: switches.floorLamp.level,
+            deskLamp: switches.deskLamp.level,
             lamp: dark * awake,
             picture: (0.3 + 0.7 * dark) * awake * this.flagLightScale,
             strip: (0.2 + 0.8 * dark) * awake,
@@ -2096,12 +2341,14 @@ export default class Environment {
         }
         const through = 1 - 0.85 * closed;
         // Sun or moon through the west window.
+        if (this.skyMaterial) this.skyMaterial.color.setScalar(1 + 1.8 * flash);
         if (this.moon) {
             this.moon.intensity =
                 (0.2 +
                     1.4 * moonlight +
                     day * (1.5 + 2.4 * westSun) +
-                    golden * westSun) *
+                    golden * westSun +
+                    7 * flash) *
                 through;
             this.moon.color
                 .copy(mixColor('#9fb8e6', '#fff1dc', day))
@@ -2109,10 +2356,12 @@ export default class Environment {
         }
         if (this.hemisphere) {
             this.hemisphere.intensity =
-                (0.38 + 1.05 * day + 0.1 * golden) * (1 - 0.8 * closed);
+                (0.38 + 1.05 * day + 0.1 * golden + 0.5 * flash) *
+                (1 - 0.8 * closed);
             this.hemisphere.color
                 .copy(mixColor('#46557a', '#dbe6f4', day))
-                .lerp(new THREE.Color('#f0b890'), golden * 0.3);
+                .lerp(new THREE.Color('#f0b890'), golden * 0.3)
+                .lerp(new THREE.Color('#b9c0c9'), cloud * 0.4 * day);
             this.hemisphere.groundColor.copy(
                 mixColor('#2d2622', '#8c7663', day),
             );
@@ -2202,8 +2451,15 @@ export default class Environment {
                 this.record.rotation.y -=
                     ((Math.min(app.time.delta, 50) / 1000) * Math.PI * 10) / 9;
         }
+        this.rain();
         this.lighting();
-        const minute = Math.floor(Date.now() / 60000);
+        const now = this.now();
+        if (this.clock)
+            this.clock.set(bangaloreHour(now) + now.getMilliseconds() / 3.6e6);
+        if (this.dust)
+            (this.dust.material as THREE.PointsMaterial).opacity =
+                0.32 * (this.switches?.floorLamp.level ?? 1);
+        const minute = Math.floor(now.getTime() / 60000);
         if (this.clockMap && this.clockMinute !== minute) {
             this.clockMinute = minute;
             const ctx = (this.clockMap.image as HTMLCanvasElement).getContext(
@@ -2220,7 +2476,7 @@ export default class Environment {
                     timeZone: 'Asia/Kolkata',
                     hour: '2-digit',
                     minute: '2-digit',
-                }).format(new Date()),
+                }).format(now),
                 256,
                 110,
             );

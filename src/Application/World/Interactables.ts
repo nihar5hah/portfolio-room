@@ -65,7 +65,27 @@ export default class Interactables {
                         bus.dispatch('goodNight', this.asleep);
                     },
                 }));
-            else if (name === 'Graduation album rug')
+            else if (
+                name === 'Match night game console' ||
+                name === 'Match night gamepad'
+            )
+                this.add(object, () => ({
+                    label: 'PS5 · Penalty Shootout',
+                    run: () => bus.dispatch('openPs5', {}),
+                }));
+            else if (name === 'Floor lamp' || name === 'Desk lamp') {
+                const lamp = name === 'Floor lamp' ? 'floorLamp' : 'deskLamp';
+                this.add(object, () => ({
+                    label: this.app.world.environment?.lampOn(lamp)
+                        ? `Switch the ${name.toLowerCase()} off`
+                        : `Switch the ${name.toLowerCase()} on`,
+                    run: () => {
+                        this.app.world.environment?.toggleLamp(lamp);
+                        this.app.world.audioManager?.play('mouseUp', 0.25);
+                    },
+                    instant: true,
+                }));
+            } else if (name === 'Graduation album rug')
                 this.add(object, () => ({
                     label: 'Play Graduation',
                     run: () =>

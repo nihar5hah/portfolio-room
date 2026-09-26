@@ -271,3 +271,71 @@ test('Begu roams, naps in his bed, eats, does rare tricks, loves being petted an
     for (let i = 0; i < 300; i++) opened += Number(dog.update(1 / 60, false));
     assert.equal(opened, 1);
 });
+
+test('Begu fetches the kicked football and noses it back without crossing furniture', async () => {
+    const { dog } = await loadDog();
+    const NavGrid = loadNav();
+    const FLOOR = -3015;
+    const nav = new NavGrid(
+        { minX: -8000, maxX: 8000, minZ: -8000, maxZ: 8000 },
+        150,
+        FLOOR,
+    );
+    nav.block({ minX: -2000, maxX: 2000, minZ: -1000, maxZ: 1000 }, 380);
+    dog.nav = nav;
+    dog.spots = {
+        bed: { x: -6000, z: -6000 },
+        bowl: { x: 6000, z: -6000 },
+        haunts: [],
+    };
+    dog.group.position.set(-4000, FLOOR, 4000);
+    // A stand-in ball that rolls to a stop at a far spot.
+    const ball = {
+        at: { x: -3000, z: 3000 },
+        speed: 0,
+        rolling: 0,
+        carried: false,
+        dropped: null,
+        get position() {
+            return { ...this.at };
+        },
+        carry(to) {
+            this.carried = true;
+            this.at = { ...to };
+        },
+        drop(dx = 0, dz = 0) {
+            this.carried = false;
+            this.dropped = { dx, dz };
+        },
+    };
+    const home = { ...ball.at };
+    assert.ok(dog.fetch(ball, home), 'awake, he goes for it');
+    // The kick: over two seconds the ball rolls behind the sofa.
+    const moods = new Set();
+    const kinds = new Set();
+    let inFurniture = 0;
+    for (let t = 0; t < 60 && (dog.queue.length || dog.step); t += 1 / 20) {
+        if (t < 2) {
+            const k = t / 2;
+            ball.at = { x: -3000 + 6000 * k, z: 3000 - 6500 * k };
+            ball.speed = 3000 * (1 - k);
+        } else if (!ball.carried) ball.speed = 0;
+        dog.update(1 / 20, false);
+        moods.add(dog.mood);
+        if (dog.step) kinds.add(dog.step.kind);
+        const p = dog.group.position;
+        if (!nav.free(p.x, p.z)) inFurniture++;
+    }
+    assert.equal(inFurniture, 0, 'never runs through the sofa');
+    assert.ok(moods.has('fetching'));
+    for (const kind of ['chase', 'walk'])
+        assert.ok(kinds.has(kind), `${kind} step`);
+    assert.ok(ball.dropped, 'lets go of it at the end');
+    assert.ok(
+        Math.hypot(ball.at.x - home.x, ball.at.z - home.z) < 2000,
+        'brought back to where it was kicked from',
+    );
+    // At Good Night he stays in bed.
+    dog.goodNight(true);
+    assert.equal(dog.fetch(ball, home), false);
+});
