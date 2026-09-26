@@ -20,3 +20,5 @@ const load = (file) => {
     return exports;
 };
 export default load('Layout.ts');
+/** Loads another World module the same way, e.g. `world('DuneSofa.ts')`. */
+export const world = load;

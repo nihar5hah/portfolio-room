@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import layout from './layout.mjs';
+import layout, { world } from './layout.mjs';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 const require = createRequire(import.meta.url);
@@ -289,6 +289,7 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
                 },
             };
         if (name === './Layout') return layout;
+        if (name === './DuneSofa') return world('DuneSofa.ts');
         if (name === './MatchBoard')
             return {
                 default: class {
@@ -516,7 +517,7 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         Math.abs(loungeSize.x - DUNE_SIZE.x) < 2 &&
             Math.abs(loungeSize.z - DUNE_SIZE.z) < 2 &&
             Math.abs(loungeSize.y - DUNE_SIZE.y) < 2,
-        'model keeps its authored 2.79 × 2.81 m footprint, lying flat',
+        'model keeps its authored footprint at 90% (2.51 × 2.53 m), lying flat',
     );
     assert.ok(
         Math.abs(lounge.min.y - pitFloor) < 1,
@@ -560,8 +561,12 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
     const EDGE = 0.15 * metre;
     const deskEdge = crest((v) => v.z < lounge.min.z + EDGE);
     const windowEdge = crest((v) => v.x < lounge.min.x + EDGE);
-    // Right half of the TV edge, and the bed edge past the back corner.
-    const tvEdge = crest((v) => v.z > lounge.max.z - EDGE && v.x > PIT.x);
+    // The whole TV edge past the window backrest (the TV-side corner pair is
+    // mirrored so its back no longer faces the screen), and the bed edge
+    // past the back corner.
+    const tvEdge = crest(
+        (v) => v.z > lounge.max.z - EDGE && v.x > lounge.min.x + 0.25 * metre,
+    );
     const bedEdge = crest(
         (v) => v.x > lounge.max.x - EDGE && v.z > lounge.min.z + 0.5 * metre,
     );
@@ -587,14 +592,56 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
             !bounds(name).intersectsBox(opening.clone().expandByScalar(150)),
             `${name} clears the pit`,
         );
+    // The seating starts right under the screen: the pit's TV-side nosing
+    // meets the console's doors, with no walkway between.
+    const consoleFront = Math.min(
+        ...room.children
+            .filter((p) => p.position.z > 15000 && p.position.z < 17500)
+            .filter(
+                (p) =>
+                    Math.abs(p.position.x) < 5600 &&
+                    p.position.y > -2600 &&
+                    p.position.y < -1000,
+            )
+            .map((p) => new THREE.Box3().setFromObject(p).min.z),
+    );
+    const pitFront = PIT.z + PIT.length + 150;
     assert.ok(
-        bounds('Match night media wall').min.z - lounge.max.z > 2 * metre,
-        'front row sits over 2 m from the screen',
+        consoleFront - pitFront >= 0 && consoleFront - pitFront < 60,
+        `pit meets the media console (gap ${consoleFront - pitFront})`,
     );
     assert.ok(
-        bounds('Media console').min.z - (PIT.z + PIT.length + 150) >
-            0.9 * metre,
-        'walkway between the pit and the TV',
+        bounds('Match night media wall').min.z - lounge.max.z < 1.5 * metre,
+        'front row sits close under the screen',
+    );
+    // One mesh split into its 16 modules, each on its grid cell, and every
+    // cushion carries the upholstery shading.
+    const modules = room.getObjectByName('Dune sofa').children[0].children;
+    assert.equal(modules.length, 16, 'Dune split into its 16 modules');
+    for (const module of modules) {
+        assert.equal(module.rotation.y, 0, `${module.name} stays square`);
+        assert.ok(module.matrixWorld.determinant() > 0, 'flips are baked in');
+        assert.ok(module.geometry.getAttribute('color'), 'crease shading');
+    }
+    // The whole front row is open seating facing the screen: past the
+    // window backrest, no TV-side cushion rises above seat height.
+    for (const col of [0, 1, 2, 3]) {
+        const front = new THREE.Box3().setFromObject(
+            room.getObjectByName(`Dune module 0-${col}`),
+        );
+        assert.ok(
+            crest(
+                (v) =>
+                    front.containsPoint(v) && v.x > lounge.min.x + 0.25 * metre,
+            ) <
+                pitFloor + 0.3 * metre,
+            `front-row module 0-${col} is open seating`,
+        );
+    }
+    const fabric = modules[0].material;
+    assert.ok(
+        fabric.map && fabric.normalMap && fabric.vertexColors,
+        'woven, crease-shaded upholstery',
     );
     const oasis = bounds('Match night controller table');
     const tabletop = bounds('Dune round tabletop');

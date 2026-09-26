@@ -11,10 +11,13 @@ import {
     DUNE_AT,
     DUNE_COLOR,
     DUNE_SCALE,
+    DUNE_POSES,
+    MEDIA_CONSOLE,
     PIT,
     RUG_AT,
     TATAMI,
 } from './Layout';
+import { bakeDune, shadeCreases, splitDune, wovenFabric } from './DuneSofa';
 type SkyPhase = 'day' | 'dusk' | 'night';
 const SKY: Record<
     SkyPhase,
@@ -1061,8 +1064,16 @@ export default class Environment {
         tvGlow.name = 'TV glow';
         tvGlow.position.set(0, 1900, 16200);
         room.add(tvGlow);
-        box(11000, 1250, 1750, wood, 0, FLOOR + 1000, 17100, 100).name =
-            'Media console';
+        box(
+            11000,
+            1250,
+            MEDIA_CONSOLE.depth,
+            wood,
+            0,
+            FLOOR + 1000,
+            MEDIA_CONSOLE.z,
+            100,
+        ).name = 'Media console';
         for (const x of [-3750, 0, 3750]) {
             box(3530, 1030, 35, black, x, FLOOR + 1000, 16200, 30);
             box(700, 40, 80, brass, x, FLOOR + 1330, 16160);
@@ -1574,8 +1585,6 @@ export default class Environment {
         const lounge = new THREE.Group();
         lounge.name = 'Dune sofa';
         lounge.position.set(DUNE_AT.x, PIT_FLOOR, DUNE_AT.z);
-        // Backrests to the desk (-Z) and window (-X); open toward TV and bed.
-        lounge.rotation.y = Math.PI;
         const duneModel = app.resources.items.gltfModel.duneModel;
         if (duneModel) {
             const sofa = duneModel.scene;
@@ -1626,30 +1635,40 @@ export default class Environment {
             const extent = new THREE.Box3().setFromObject(sofa);
             const centre = extent.getCenter(new THREE.Vector3());
             sofa.position.set(-centre.x, -extent.min.y, -centre.z);
+            // Backrests to the desk (-Z) and window (-X); open toward TV and
+            // bed. The turn is baked in so modules below are room-aligned.
+            const turned = new THREE.Group();
+            turned.rotation.y = Math.PI;
+            turned.add(sofa);
+            const baked = bakeDune(turned);
+            // Upholstery: folds and seams sink into shadow (~7 cm reach).
+            shadeCreases(baked, 0.07 * S, 0.55);
+            // Woven wool: UVs span the ensemble once, so 22 repeats give
+            // ~11 cm tiles of 16 yarns, as colour and a normal map. The
+            // model's fine twill (~28 cm tiles) stays on as the bump.
+            const weave = wovenFabric();
+            for (const t of [weave.map, weave.normalMap]) t.repeat.set(22, 22);
             const bump = app.resources.items.texture.duneFabricBump;
             if (bump) {
                 bump.encoding = THREE.LinearEncoding;
                 bump.wrapS = bump.wrapT = THREE.RepeatWrapping;
-                // UVs span the whole ensemble once: ~28 cm twill repeats.
                 bump.repeat.set(10, 10);
                 bump.needsUpdate = true;
             }
             const duneFabric = new THREE.MeshPhysicalMaterial({
                 color: DUNE_COLOR,
-                roughness: 0.96,
+                map: weave.map,
+                normalMap: weave.normalMap,
+                normalScale: new THREE.Vector2(0.75, 0.75),
+                vertexColors: true,
+                roughness: 0.94,
                 bumpMap: bump,
                 bumpScale: 1.2,
-                sheen: 0.25,
-                sheenRoughness: 0.9,
-                sheenColor: new THREE.Color(DUNE_COLOR).convertSRGBToLinear(),
+                sheen: 0.6,
+                sheenRoughness: 0.55,
+                sheenColor: new THREE.Color('#9fb1c9').convertSRGBToLinear(),
             });
-            sofa.traverse((part: THREE.Object3D) => {
-                if (!(part instanceof THREE.Mesh)) return;
-                part.material = duneFabric;
-                part.castShadow = true;
-                part.receiveShadow = true;
-            });
-            lounge.add(sofa);
+            lounge.add(splitDune(baked, duneFabric, DUNE_POSES));
         }
         room.add(lounge);
         // Duneside-style round table standing on the tatami, clear of the
