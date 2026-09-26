@@ -4,7 +4,7 @@ import { METRE } from './Layout';
 
 /**
  * The lived-in lounge around the TV end of the pit: two slouched bean bags,
- * an ottoman, a side table and a wicker basket, with the mess of someone who
+ * an ottoman and a side table, with the mess of someone who
  * actually watches matches here: a small throw on the ottoman, pillows
  * tossed about, mugs left out, a book pile, kicked-off Spezials.
  *
@@ -12,7 +12,7 @@ import { METRE } from './Layout';
  * a little off. Resting objects are dropped onto whatever is below them by
  * raycasting, so they sit on the bean bags, tables and floor.
  *
- * Photoscanned props (ottoman, side table, basket, pillows, succulent) are
+ * Photoscanned props (ottoman, side table, pillows, succulent) are
  * CC0 models from Poly Haven, merged into models/Lounge/lounge-props.glb.
  */
 const M = METRE;
@@ -562,8 +562,7 @@ export function furnishLounge({
     const [, redBag] = bags;
 
     // Window side: side table by the blue bag, a little crooked, with a mug
-    // and the succulent; books piled on the floor beside it; the wicker
-    // basket with its lid knocked off.
+    // and the succulent; books piled on the floor beside it.
     const table = prop(props, 'side_table_01');
     if (table) {
         table.scale.setScalar(M);
@@ -620,20 +619,6 @@ export function furnishLounge({
         -0.55,
         floor + 0.015 * M,
     );
-    const basket = prop(props, 'wicker_basket_02_base');
-    const lid = prop(props, 'wicker_basket_02_lid');
-    if (basket) {
-        basket.scale.setScalar(2.4 * M);
-        place(basket, 'Wicker blanket basket', -11600, 15150, -0.35);
-        rest(basket, [], floor);
-    }
-    if (lid) {
-        // Knocked off, lying tilted against the basket's side.
-        lid.scale.setScalar(2.4 * M);
-        place(lid, 'Wicker basket lid', -12250, 14600, 0.4);
-        lid.rotation.set(1.15, 0.4, 0.2, 'YXZ');
-        rest(lid, [], floor);
-    }
 
     // Bed side: the ottoman pulled up as a footrest, skewed; the grey throw
     // half off it; a pillow on the bag and another fallen on the floor;

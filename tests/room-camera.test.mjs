@@ -696,7 +696,6 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
     for (const expected of [
         'Leather ottoman footrest',
         'Lounge side table',
-        'Wicker blanket basket',
         'Side table succulent',
         'Half-drunk coffee mug',
         'Pillow on the burgundy bean bag',
@@ -773,6 +772,11 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
             Math.abs(bounds(shoe).min.y + 3015) < 2,
             `${shoe} rests on the floor`,
         );
+    assert.equal(
+        room.getObjectByName('Wicker blanket basket'),
+        undefined,
+        'the wicker basket is gone',
+    );
     assert.equal(
         room.getObjectByName('Kicked-off slide (left)'),
         undefined,

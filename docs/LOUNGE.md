@@ -13,8 +13,6 @@ Window side:
   left uncovered (the oversized throw was removed).
 - **Side table** (Poly Haven), set crooked, with a half-drunk coffee and the
   succulent (Poly Haven); a pile of hardbacks on the floor beside it, one slid off.
-- **Wicker basket** (Poly Haven, shown at 2.4× as a blanket basket), its lid
-  knocked off and lying against it.
 
 Bed side:
 
@@ -59,9 +57,9 @@ On the Dune's front row: a third pillow, tossed.
 
 ## Assets
 
-`static/models/Lounge/lounge-props.glb` merges six CC0 Poly Haven scans (the
-five lounge props plus the pit's Modern Coffee Table 01; credits in the Credits
-app and `static/licenses/models.txt`), 1.84 MB:
+`static/models/Lounge/lounge-props.glb` merges five CC0 Poly Haven scans (the
+four lounge props plus the pit's Modern Coffee Table 01; credits in the Credits
+app and `static/licenses/models.txt`), 1.24 MB:
 `gltf-transform merge` of the 1k glTF downloads, then `dedup`, `prune`,
 `resize --width 512 --height 512` and `webp --quality 82`. Geometry is unchanged.
 three r137 reads the WebP textures through `EXT_texture_webp`.

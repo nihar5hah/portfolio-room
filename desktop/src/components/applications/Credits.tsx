@@ -88,10 +88,9 @@ export default function Credits(props: WindowAppProps) {
                     <dt>Poly Haven</dt>
                     <dd>
                         The lounge’s leather ottoman (Caspian Fortune), side
-                        table and succulent (James Ray Cock), wicker basket
-                        (Kuutti Siitonen), throw pillows (Serhii Khromov) and
-                        the pit’s concrete-and-oak coffee table (Amin), CC0
-                        scans with smaller textures.{' '}
+                        table and succulent (James Ray Cock), throw pillows
+                        (Serhii Khromov) and the pit’s concrete-and-oak coffee
+                        table (Amin), CC0 scans with smaller textures.{' '}
                         <a
                             href="https://polyhaven.com/models"
                             target="_blank"

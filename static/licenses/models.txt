@@ -113,10 +113,9 @@ Poly Haven, CC0 1.0 Universal (public domain): https://creativecommons.org/publi
 - Ottoman 01 by Caspian Fortune: https://polyhaven.com/a/Ottoman_01
 - Side Table 01 by James Ray Cock: https://polyhaven.com/a/side_table_01
 - Potted Plant 04 by James Ray Cock: https://polyhaven.com/a/potted_plant_04
-- Wicker Basket 02 by Kuutti Siitonen: https://polyhaven.com/a/wicker_basket_02
 - Throw Pillows 01 by Serhii Khromov: https://polyhaven.com/a/throw_pillows_01
 - Modern Coffee Table 01 by Amin: https://polyhaven.com/a/modern_coffee_table_01 (the pit's controller table)
-Merged into static/models/Lounge/lounge-props.glb with glTF-Transform (dedup, prune, textures resized to 512 px and re-encoded as WebP). Geometry is unchanged; the basket is shown at 2.4x scale as a blanket basket.
+Merged into static/models/Lounge/lounge-props.glb with glTF-Transform (dedup, prune, textures resized to 512 px and re-encoded as WebP). Geometry is unchanged.
 The bean bags, throws, mugs and books are original procedural geometry.
 
 Adidas SPEZIAL (Handball Spezial) by Tigertigertiger, CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
