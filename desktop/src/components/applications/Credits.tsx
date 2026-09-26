@@ -89,14 +89,40 @@ export default function Credits(props: WindowAppProps) {
                     <dd>
                         The lounge’s leather ottoman (Caspian Fortune), side
                         table and succulent (James Ray Cock), throw pillows
-                        (Serhii Khromov) and the pit’s concrete-and-oak coffee
-                        table (Amin), CC0 scans with smaller textures.{' '}
+                        (Serhii Khromov), the pit’s concrete-and-oak coffee
+                        table (Amin), the potted plants (Rico Cilliers) and the
+                        ceiling fan (Ulan Cabanilla), CC0 scans with smaller
+                        textures.{' '}
                         <a
                             href="https://polyhaven.com/models"
                             target="_blank"
                             rel="noreferrer"
                         >
                             Poly Haven models ↗
+                        </a>
+                    </dd>
+                    <dt>rtql8d</dt>
+                    <dd>
+                        The PlayStation 5 on the media console (CC BY 4.0), laid
+                        flat without its stand.{' '}
+                        <a
+                            href="https://sketchfab.com/3d-models/ps5-d788de3735964151a3e24fd59c0f1956"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Model page ↗
+                        </a>
+                    </dd>
+                    <dt>AHarmlessPotato</dt>
+                    <dd>
+                        The DualSense controllers on the coffee table (CC BY
+                        4.0), simplified with smaller textures.{' '}
+                        <a
+                            href="https://sketchfab.com/3d-models/playstation-5-dualsense-878c1f882808477ab81c2fe86d5a3936"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Model page ↗
                         </a>
                     </dd>
                     <dt>Tigertigertiger</dt>

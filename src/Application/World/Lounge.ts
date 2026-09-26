@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { shadeCreases, wovenFabric } from './DuneSofa';
 import { METRE } from './Layout';
 
@@ -207,7 +208,7 @@ function surfaceAt(
  * surface under it (sampled at its footprint's corners and centre), or with
  * `soft`, until its middle settles `sink` into a cushion.
  */
-function rest(
+export function rest(
     object: THREE.Object3D,
     supports: THREE.Object3D[],
     floor: number,
@@ -549,10 +550,14 @@ export function furnishLounge({
     ] as const) {
         const bag = new THREE.Mesh(
             beanBagGeometry(seed, size),
+            // Brushed cotton canvas: matte, a soft sheen at grazing angles
+            // only, and little of the room reflected in it.
             upholstery(color, 30, {
-                normalScale: new THREE.Vector2(0.35, 0.35),
-                sheen: 0.75,
-                sheenRoughness: 0.4,
+                normalScale: new THREE.Vector2(0.45, 0.45),
+                roughness: 1,
+                sheen: 0.22,
+                sheenRoughness: 0.9,
+                envMapIntensity: 0.3,
             }),
         );
         bag.castShadow = bag.receiveShadow = true;
@@ -630,9 +635,21 @@ export function furnishLounge({
         rest(ottoman, [], floor);
     }
     const pillows = ['throw_pillows_01_pillow01', 'throw_pillows_01_pillow02'];
-    const pillow = (i: number) => {
+    // One scanned zigzag cushion; the others recovered in plain linen so the
+    // pattern is not repeated around the room. The scan's weave stays.
+    const recover = (source: THREE.Mesh, color: string) => {
+        const scan = source.material as THREE.MeshStandardMaterial;
+        const plain = scan.clone();
+        plain.map = null;
+        plain.color = srgb(color);
+        plain.roughness = 1;
+        plain.envMapIntensity = 0.4;
+        source.material = plain;
+    };
+    const pillow = (i: number, cover?: string) => {
         const p = prop(props, pillows[i % 2]);
         if (!p) return undefined;
+        if (cover) recover(p, cover);
         const holder = new THREE.Group();
         // The pillow mesh lies in its XZ plane with the face up; centre it.
         p.geometry.computeBoundingBox();
@@ -661,13 +678,13 @@ export function furnishLounge({
         onBag.updateMatrixWorld(true);
         rest(onBag, [redBag], floor, 0.1 * M, true);
     }
-    const fallen = pillow(1);
+    const fallen = pillow(1, '#cdbf9f'); // oatmeal linen
     if (fallen) {
         place(fallen, 'Pillow fallen on the floor', 5500, 12900, 0.9);
         fallen.rotation.set(0.12, 0.9, -0.08, 'YXZ');
         rest(fallen, [], floor);
     }
-    const onSofa = pillow(1);
+    const onSofa = pillow(1, '#8a1f3d'); // Barça garnet on the blue Dune
     if (onSofa && sofa) {
         place(onSofa, 'Pillow tossed on the Dune', -1900, 12450, -0.6);
         onSofa.rotation.set(0.1, -0.6, 0.14, 'YXZ');
@@ -695,44 +712,48 @@ export function furnishLounge({
         rest(left, [], floor, 0, false, true);
     }
 
-    // Keep the bean bags uncovered; only the ottoman gets a small throw.
+    // A knit throw folded in thirds and left on the ottoman: three soft
+    // layers, each a little askew, the top fold's rounded edge to the room.
     if (ottoman) {
-        // Folded in a hurry and dropped on the ottoman, a corner sliding off.
-        const wool = upholstery('#9aa0a6', 16, {
-            side: THREE.DoubleSide,
-            normalScale: new THREE.Vector2(0.35, 0.35),
-            sheen: 0.25,
+        // No crease shading on these boxes: plain colour, not vertex colours.
+        const knit = upholstery('#6f7a86', 14, {
+            vertexColors: false,
+            normalScale: new THREE.Vector2(0.9, 0.9),
+            roughness: 1,
+            sheen: 0.35,
+            sheenRoughness: 0.8,
+            envMapIntensity: 0.35,
         });
-        const supports: THREE.Object3D[] = [ottoman];
-        const along = new THREE.Vector3(1, 0, 0).applyAxisAngle(
-            new THREE.Vector3(0, 1, 0),
-            ottoman.rotation.y,
-        );
+        const folded = new THREE.Group();
+        const layer = 0.028 * M;
         [
-            [0.19, 0.56, 0.4, 0.2],
-            [0.23, 0.46, 0.32, 0.55],
-        ].forEach(([offset, width, depth, turn], layer) => {
+            [0, 0, 0],
+            [0.012, -0.006, 0.05],
+            [-0.008, 0.01, -0.035],
+        ].forEach(([dx, dz, turn], i) => {
             const fold = new THREE.Mesh(
-                throwBlanket(
-                    supports,
-                    {
-                        x: ottoman.position.x + along.x * offset * M,
-                        z: ottoman.position.z + along.z * offset * M,
-                        yaw: ottoman.rotation.y + turn,
-                    },
-                    { width: width * M, depth: depth * M },
-                    floor,
-                    17 + layer,
-                    false,
+                new RoundedBoxGeometry(
+                    0.46 * M,
+                    layer,
+                    0.31 * M,
+                    3,
+                    layer * 0.48,
                 ),
-                wool,
+                knit,
             );
-            fold.name = `Grey throw on the ottoman (fold ${layer + 1})`;
+            fold.position.set(dx * M, layer * (i + 0.5) * 0.92, dz * M);
+            fold.rotation.y = turn;
             fold.castShadow = fold.receiveShadow = true;
-            lounge.add(fold);
-            fold.updateMatrixWorld(true);
-            supports.push(fold);
+            folded.add(fold);
         });
+        place(
+            folded,
+            'Folded throw on the ottoman',
+            ottoman.position.x - 0.08 * M,
+            ottoman.position.z + 0.02 * M,
+            ottoman.rotation.y + 0.18,
+        );
+        rest(folded, [ottoman], floor, 0.012 * M, true);
     }
     return lounge;
 }

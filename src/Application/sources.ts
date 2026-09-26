@@ -47,6 +47,17 @@ const sources: Resource[] = [
         path: 'models/Spezial/spezial-night-indigo.glb',
     },
     {
+        name: 'roomProps',
+        type: 'gltfModel',
+        path: 'models/Room/room-props.glb',
+    },
+    { name: 'ps5Model', type: 'gltfModel', path: 'models/PS5/ps5.glb' },
+    {
+        name: 'dualSenseModel',
+        type: 'gltfModel',
+        path: 'models/PS5/dualsense.glb',
+    },
+    {
         name: 'duneFabricBump',
         type: 'texture',
         path: 'models/Dune/fabric-bump.webp',

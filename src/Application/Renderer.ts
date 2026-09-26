@@ -110,15 +110,19 @@ export default class Renderer {
         this.overlayScene.add(this.overlay);
 
         // Dim the room (not the CSS3D screen) while the visitor is on the Mac.
-        UIEventBus.on('enterMonitor', () => (this.targetExposure = 0.42));
-        UIEventBus.on('leftMonitor', () => (this.targetExposure = this.roomExposure));
-        // Good night (tap the bed): the room drops to a low night level.
-        UIEventBus.on('goodNight', (asleep: boolean) => {
-            this.roomExposure = asleep ? 0.45 : 0.85;
+        // The room's own level (time of day, Good Night) is set by the
+        // Environment's lighting.
+        UIEventBus.on('enterMonitor', () => {
+            this.monitor = true;
+            this.targetExposure = 0.42;
+        });
+        UIEventBus.on('leftMonitor', () => {
+            this.monitor = false;
             this.targetExposure = this.roomExposure;
         });
     }
 
+    monitor = false;
     roomExposure = 0.85;
     targetExposure = 0.85;
 

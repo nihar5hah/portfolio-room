@@ -18,55 +18,40 @@ import {
     TATAMI,
 } from './Layout';
 import { bakeDune, shadeCreases, splitDune, wovenFabric } from './DuneSofa';
-import { furnishLounge } from './Lounge';
-type SkyPhase = 'day' | 'dusk' | 'night';
-const SKY: Record<
-    SkyPhase,
-    {
-        top: string;
-        bottom: string;
-        orb: string;
-        city: [string, string];
-        light: string;
-        strength: number;
-    }
-> = {
-    day: {
-        top: '#5f8fc9',
-        bottom: '#b9d2ea',
-        orb: '#fff6de',
-        city: ['#4d5d70', '#5a6b7e'],
-        light: '#fff1d6',
-        strength: 1.7,
-    },
-    dusk: {
-        top: '#1f2b4d',
-        bottom: '#d98b5f',
-        orb: '#ffb877',
-        city: ['#1a2130', '#222a3b'],
-        light: '#f0a878',
-        strength: 1.3,
-    },
-    night: {
-        top: '#142335',
-        bottom: '#142335',
-        orb: '#ddcaa0',
-        city: ['#0b121d', '#101a27'],
-        light: '#9fb8e6',
-        strength: 1.4,
-    },
-};
-export function skyPhase(hour: number): SkyPhase {
-    if (hour >= 7 && hour < 17) return 'day';
-    if ((hour >= 17 && hour < 19) || (hour >= 5 && hour < 7)) return 'dusk';
-    return 'night';
-}
+import { furnishLounge, rest, throwBlanket } from './Lounge';
+import { paintSky, skyState, SkyState } from './DayNight';
+import { softPillow, towerSpeaker } from './Fixtures';
+/** Brightness groups for the room's own lights (see `lighting`). */
+type Practical = 'lamp' | 'picture' | 'strip' | 'ceiling' | 'tv';
+const mixColor = (a: string, b: string, t: number) =>
+    new THREE.Color(a).lerp(new THREE.Color(b), THREE.MathUtils.clamp(t, 0, 1));
 
 export default class Environment {
-    paintSky: (phase: SkyPhase) => void = () => undefined;
-    skyShown: SkyPhase | null = null;
+    /** Repaints the window view for a sky state. */
+    paintSky: (sky: SkyState) => void = () => undefined;
+    sky: SkyState;
+    skyMinute = -1;
     moon: THREE.SpotLight;
     lamp: THREE.PointLight;
+    hemisphere: THREE.HemisphereLight;
+    key: THREE.DirectionalLight;
+    /** The room's own lights and glowing surfaces, at their full level. */
+    practicals: { light: THREE.Light; full: number; group: Practical }[];
+    glows: {
+        material: THREE.MeshBasicMaterial | THREE.MeshStandardMaterial;
+        base: THREE.Color;
+        full: number;
+        group: Practical;
+    }[];
+    curtains: { mesh: THREE.Mesh; side: number; open: number }[];
+    fanBlades: THREE.Object3D | undefined;
+    /** Good Night: 0 awake, 1 asleep, eased in `update`. */
+    sleep = 0;
+    sleepTarget = 0;
+    mirror: THREE.MeshBasicMaterial | undefined;
+    reflections = new WeakMap<THREE.Material, number>();
+    reflectionLevel = -1;
+    lightingKey = '';
     flagLights: { light: THREE.Light; full: number }[] = [];
     flagLightScale = 1;
     flagLightTarget = 1;
@@ -161,8 +146,10 @@ export default class Environment {
         app.scene.add(this.buildRoom());
         // Hemisphere fill is free per-fragment; it replaces the room-wide
         // "Ceiling fill" point light that cost a full light loop everywhere.
-        app.scene.add(new THREE.HemisphereLight('#c1cad8', '#6a584d', 0.72));
-        const light = new THREE.DirectionalLight('#bad5ff', 1.05);
+        // Colour and strength follow Bangalore's sky (see `lighting`).
+        this.hemisphere = new THREE.HemisphereLight('#c1cad8', '#6a584d', 0.72);
+        app.scene.add(this.hemisphere);
+        const light = (this.key = new THREE.DirectionalLight('#bad5ff', 1.05));
         light.name = 'Cool doorway key';
         light.position.set(16800, 6200, 12400);
         light.target.position.set(-4000, -1800, 1500);
@@ -189,6 +176,48 @@ export default class Environment {
         const BACK = -6500;
         const room = new THREE.Group();
         room.name = 'Nihar’s Barça den';
+        this.practicals = [];
+        this.glows = [];
+        this.curtains = [];
+        const practical = <T extends THREE.Light>(
+            light: T,
+            group: Practical,
+        ) => {
+            this.practicals.push({ light, full: light.intensity, group });
+            return light;
+        };
+        /** Room units per metre. */
+        const M = 3300;
+        // Scanned plants and the ceiling fan (Poly Haven, CC0).
+        const roomProps = app.resources.items.gltfModel.roomProps?.scene;
+        const scanned = (names: string[], scale: number) => {
+            const plant = new THREE.Group();
+            for (const name of names) {
+                const part = roomProps?.getObjectByName(name);
+                if (!part) continue;
+                const copy = part.clone(true);
+                copy.position.multiplyScalar(scale);
+                copy.scale.multiplyScalar(scale);
+                copy.traverse((o) => (o.castShadow = o.receiveShadow = true));
+                plant.add(copy);
+            }
+            return plant;
+        };
+        const glowing = <
+            T extends THREE.MeshBasicMaterial | THREE.MeshStandardMaterial,
+        >(
+            material: T,
+            group: Practical,
+        ) => {
+            const standard = material instanceof THREE.MeshStandardMaterial;
+            this.glows.push({
+                material,
+                base: (standard ? material.emissive : material.color).clone(),
+                full: standard ? material.emissiveIntensity : 1,
+                group,
+            });
+            return material;
+        };
         const material = (color: string, roughness = 0.8) =>
             new THREE.MeshStandardMaterial({ color, roughness });
         const charcoal = material('#23262d');
@@ -447,7 +476,7 @@ export default class Environment {
         // A picture rail above the door, transom and window, lit by a dim warm
         // cove line, gives the upper wall an edge instead of an empty dark band.
         const RAIL = 6900;
-        const cove = glow('#7c5f43');
+        const cove = glowing(glow('#7c5f43'), 'strip');
         box(36000, 90, 70, wood, 0, RAIL, BACK + 35).name = 'Picture rail';
         box(36000, 16, 24, cove, 0, RAIL + 60, BACK + 60).name = 'Cove light';
         box(36000, 90, 70, wood, 0, RAIL, 18465);
@@ -469,11 +498,18 @@ export default class Environment {
             'Picture light hood';
         for (const x of [-1450, 350])
             box(45, 45, 250, brass, x, 4690, BACK + 125);
-        box(2480, 14, 120, glow('#ffd29a'), -550, 4628, BACK + 260).name =
-            'Desk flag accent light';
+        box(
+            2480,
+            14,
+            120,
+            glowing(glow('#ffd29a'), 'picture'),
+            -550,
+            4628,
+            BACK + 260,
+        ).name = 'Desk flag accent light';
         const wallWash = new THREE.PointLight('#ffbb77', 0.65, 9500, 2);
         wallWash.position.set(-3500, 4300, -4800);
-        room.add(wallWash);
+        room.add(practical(wallWash, 'picture'));
         // Thick pile, no trim strip: a framed edge read as a picture, not a rug.
         // Runs from the wall under the desk out past the chair and Begu's walk.
         const deskRug = box(
@@ -493,18 +529,28 @@ export default class Environment {
         cylinder(32, 3700, brass, 10100, FLOOR + 1900, -3700);
         const shade = new THREE.Mesh(
             new THREE.CylinderGeometry(460, 690, 620, 48, 1, true),
-            new THREE.MeshStandardMaterial({
-                color: '#b09267',
-                emissive: '#ffb877',
-                emissiveIntensity: 0.65,
-                side: THREE.DoubleSide,
-                roughness: 0.8,
-            }),
+            glowing(
+                new THREE.MeshStandardMaterial({
+                    color: '#b09267',
+                    emissive: '#ffb877',
+                    emissiveIntensity: 0.65,
+                    side: THREE.DoubleSide,
+                    roughness: 0.8,
+                }),
+                'lamp',
+            ),
         );
         shade.position.set(10100, 640, -3700);
         shade.name = 'Warm linen lampshade';
         room.add(shade);
-        const diffuser = cylinder(390, 12, glow('#ffe4ad'), 10100, 325, -3700);
+        const diffuser = cylinder(
+            390,
+            12,
+            glowing(glow('#ffe4ad'), 'lamp'),
+            10100,
+            325,
+            -3700,
+        );
         diffuser.name = 'Lamp diffuser';
         diffuser.castShadow = false;
         const lamp = (this.lamp = new THREE.PointLight(
@@ -520,7 +566,7 @@ export default class Environment {
         // full-scene passes per shadow update. The window key light already
         // grounds everything on the desk; the lamp only needs to glow.
         lamp.castShadow = false;
-        room.add(lamp);
+        room.add(practical(lamp, 'lamp'));
         const mote = document.createElement('canvas');
         mote.width = mote.height = 32;
         const mc = mote.getContext('2d')!;
@@ -924,7 +970,7 @@ export default class Environment {
         );
         memorabilia.position.set(1000, 5800, -1500);
         memorabilia.target.position.set(500, 1600, BACK);
-        room.add(memorabilia, memorabilia.target);
+        room.add(practical(memorabilia, 'picture'), memorabilia.target);
         // The flag sits right behind the laptop: its lights ease down while the
         // visitor is on the Mac so the crest stops competing with the screen.
         const flagLights = [memorabilia, wallWash].map((light) => ({
@@ -936,16 +982,21 @@ export default class Environment {
         this.flagLights = flagLights;
         bus.on('enterMonitor', () => (this.flagLightTarget = 0.25));
         bus.on('leftMonitor', () => (this.flagLightTarget = 1));
-        // Good night: the lamp and flag lights go out; only the bedside glow,
-        // TV and the window stay on.
+        // Good night: every lamp, strip and screen fades out and the curtains
+        // close (see `lighting`). Lights only ever change intensity, never
+        // visibility: toggling a light recompiles every shader in the room,
+        // which was the second-long freeze.
+        this.sleep = this.sleepTarget = 0;
         bus.on('goodNight', (asleep: boolean) => {
-            this.flagLightTarget = asleep ? 0.05 : 1;
-            if (this.lamp) this.lamp.visible = !asleep;
+            this.sleepTarget = asleep ? 1 : 0;
         });
 
-        // A night window and reading bench give the left wall a purpose.
+        // A window onto Bangalore and a reading bench give the left wall a
+        // purpose. The view follows the real time in Bangalore (DayNight.ts):
+        // the sun and moon at their actual height, a skyline that lights up
+        // through the evening.
         const window = new THREE.Group();
-        window.name = 'Ahmedabad night window';
+        window.name = 'Bangalore window';
         window.position.set(-17800, 2900, 6200);
         window.rotation.y = Math.PI / 2;
         window.add(box(7200, 5700, 140, black, 0, 0, 0));
@@ -954,41 +1005,8 @@ export default class Environment {
         sky.height = 768;
         const skyContext = sky.getContext('2d')!;
         const skyMap = new THREE.CanvasTexture(sky);
-        // The view outside follows the visitor's own clock; the room stays dark.
-        this.paintSky = (phase: SkyPhase) => {
-            const look = SKY[phase];
-            const gradient = skyContext.createLinearGradient(0, 0, 0, 768);
-            gradient.addColorStop(0, look.top);
-            gradient.addColorStop(1, look.bottom);
-            skyContext.fillStyle = gradient;
-            skyContext.fillRect(0, 0, 1024, 768);
-            skyContext.fillStyle = look.orb;
-            skyContext.beginPath();
-            skyContext.arc(
-                770,
-                phase === 'dusk' ? 470 : 130,
-                phase === 'day' ? 44 : 36,
-                0,
-                Math.PI * 2,
-            );
-            skyContext.fill();
-            for (let i = 0; i < 18; i++) {
-                const x = i * 62,
-                    height = 130 + ((i * 73) % 230);
-                skyContext.fillStyle = i % 2 ? look.city[0] : look.city[1];
-                skyContext.fillRect(x, 768 - height, 70, height);
-                if (phase === 'day') continue; // no lit windows in daylight
-                skyContext.fillStyle = '#ad8552';
-                for (let row = 0; row < 6; row++)
-                    for (let col = 0; col < 3; col++)
-                        if ((row + col + i) % (phase === 'dusk' ? 5 : 3) === 0)
-                            skyContext.fillRect(
-                                x + col * 18 + 9,
-                                785 - height + row * 38,
-                                5,
-                                9,
-                            );
-            }
+        this.paintSky = (state: SkyState) => {
+            paintSky(skyContext, 1024, 768, state);
             skyMap.needsUpdate = true;
         };
         skyMap.encoding = THREE.sRGBEncoding;
@@ -1018,7 +1036,9 @@ export default class Environment {
             const curtain = new THREE.Mesh(curtainGeometry, curtainMaterial);
             curtain.name = 'Curtain';
             curtain.position.set(side * 3760, -100, 250);
+            curtain.castShadow = true;
             window.add(curtain);
+            this.curtains.push({ mesh: curtain, side, open: 3760 });
         }
         room.add(window);
         // Moonlight through the window: a cool, narrow spill across the bench and
@@ -1031,6 +1051,7 @@ export default class Environment {
             0.6,
             1.4,
         );
+        // Sunlight by day, moonlight by night (see `lighting`).
         moon.name = 'Window moonlight';
         moon.position.set(-20500, 9800, 6200);
         moon.target.position.set(-9500, FLOOR, 7200);
@@ -1052,10 +1073,13 @@ export default class Environment {
         this.matchBoard = new MatchBoard();
         const screen = new THREE.Mesh(
             new THREE.PlaneGeometry(8800, 4800),
-            new THREE.MeshBasicMaterial({
-                map: this.matchBoard.map,
-                toneMapped: false,
-            }),
+            glowing(
+                new THREE.MeshBasicMaterial({
+                    map: this.matchBoard.map,
+                    toneMapped: false,
+                }),
+                'tv',
+            ),
         );
         screen.position.z = 96;
         media.add(screen);
@@ -1064,7 +1088,7 @@ export default class Environment {
         const tvGlow = new THREE.PointLight('#8fb7ff', 0.9, 9000, 2);
         tvGlow.name = 'TV glow';
         tvGlow.position.set(0, 1900, 16200);
-        room.add(tvGlow);
+        room.add(practical(tvGlow, 'tv'));
         box(
             11000,
             1250,
@@ -1081,17 +1105,20 @@ export default class Environment {
         }
         for (const x of [-4700, 4700])
             box(100, 400, 1200, black, x, FLOOR + 200, 17100);
+        // Floor-standing tower speakers either side of the console, toed in
+        // toward the pit: lacquered walnut, black baffle, four drivers.
+        const veneer = new THREE.MeshPhysicalMaterial({
+            color: '#4f3322',
+            roughness: 0.42,
+            clearcoat: 0.35,
+            clearcoatRoughness: 0.4,
+        });
         for (const x of [-6400, 6400]) {
-            box(1100, 2850, 1100, black, x, FLOOR + 1425, 17500, 100);
-            for (const y of [FLOOR + 850, FLOOR + 2100]) {
-                const speaker = new THREE.Mesh(
-                    new THREE.CircleGeometry(350, 48),
-                    fabric,
-                );
-                speaker.position.set(x, y, 16940);
-                speaker.rotation.y = Math.PI;
-                room.add(speaker);
-            }
+            const speaker = towerSpeaker(veneer);
+            speaker.name = `Tower speaker (${x < 0 ? 'left' : 'right'})`;
+            speaker.position.set(x, FLOOR, 17500);
+            speaker.rotation.y = x < 0 ? -0.12 : 0.12;
+            room.add(speaker);
         }
 
         // Entry door and a small display shelf complete the right-hand view.
@@ -1104,7 +1131,7 @@ export default class Environment {
             'Doorway transom frame';
         const transom = new THREE.Mesh(
             new THREE.PlaneGeometry(2960, 2060),
-            new THREE.MeshBasicMaterial({ map: skyMap, color: '#91b2e2' }),
+            new THREE.MeshBasicMaterial({ map: skyMap, color: '#dfe7f2' }),
         );
         transom.name = 'Cool doorway window';
         transom.rotation.y = -Math.PI / 2;
@@ -1119,60 +1146,53 @@ export default class Environment {
         bed.rotation.y = -Math.PI / 2;
         const linen = material('#b2aa9b');
         const duvet = material('#514047');
-        bed.add(box(6600, 560, 8600, wood, 0, 380, 0, 120));
-        bed.add(box(6300, 420, 8250, linen, 0, 850, 0, 170));
+        const frame = box(6600, 560, 8600, wood, 0, 380, 0, 120);
+        bed.add(frame);
+        const mattress = box(6300, 420, 8250, linen, 0, 850, 0, 170);
+        mattress.name = 'Mattress';
+        bed.add(mattress);
         bed.add(box(6850, 2450, 180, wood, 0, 1330, -4190, 60));
         for (const x of [-2210, 0, 2210])
             bed.add(
                 box(2110, 1830, 95, material('#493328'), x, 1560, -4070, 35),
             );
-        for (const x of [-1600, 1600]) {
-            const pillow = box(2450, 420, 1450, linen, x, 1260, -2810, 190);
-            pillow.rotation.y = x < 0 ? -0.07 : 0.08;
+        // Soft pillows, slept on: two side by side, the far one pushed up
+        // against the headboard, a third shoved half on top.
+        const pillowCase = new THREE.MeshStandardMaterial({
+            color: '#c9c1b2',
+            roughness: 0.95,
+            envMapIntensity: 0.5,
+        });
+        const bedPillows: THREE.Mesh[] = [];
+        for (const [x, z, yaw, tilt, seed] of [
+            [-1550, -3050, -0.06, -0.18, 1],
+            [1500, -3000, 0.09, -0.1, 2],
+            [900, -2600, 0.32, -0.05, 3],
+        ]) {
+            const pillow = softPillow(2400, 560, 1400, pillowCase, seed);
+            pillow.position.set(x, 1400, z);
+            pillow.rotation.set(tilt, yaw, 0, 'YXZ');
             bed.add(pillow);
+            bedPillows.push(pillow);
         }
-        bed.add(box(6280, 110, 5740, duvet, 0, 1100, 1170, 50));
-        // Shallow geometric folds keep the fabric tactile at the room's scale.
-        const folds = new THREE.PlaneGeometry(6100, 5450, 40, 32);
-        const fp = folds.attributes.position;
-        for (let i = 0; i < fp.count; i++) {
-            const x = fp.getX(i),
-                y = fp.getY(i);
-            fp.setZ(
-                i,
-                55 +
-                    THREE.MathUtils.smoothstep(y, -1200, -700) *
-                        (Math.sin(x * 0.0032 + y * 0.0017) * 45 +
-                            Math.sin(y * 0.005 + Math.sin(x * 0.001)) * 23 +
-                            80 *
-                                Math.exp(
-                                    -(((x + 1550) / 1300) ** 2) -
-                                        ((y - 1200) / 900) ** 2,
-                                )),
-            );
-        }
-        folds.computeVertexNormals();
-        const quilt = new THREE.Mesh(folds, duvet);
-        quilt.name = 'Rumpled burgundy duvet';
-        quilt.rotation.x = -Math.PI / 2;
-        quilt.position.set(0, 1180, 1170);
-        quilt.castShadow = true;
-        quilt.receiveShadow = true;
-        bed.add(quilt);
-        const throwMat = material('#c0aa87');
-        bed.add(box(6440, 90, 1400, throwMat, 0, 1300, 2800, 40));
-        bed.add(box(80, 640, 1400, throwMat, -3190, 1030, 2800, 30));
-        // Backpack on the bed and a folded tee, as in the reference photo.
-        bed.add(box(1050, 1280, 560, black, -1500, 1960, 1770, 180));
-        bed.add(box(830, 590, 110, fabric, -1500, 1630, 2100, 90));
+        // Backpack dropped on the bed, and a folded tee with a tablet on it.
+        const backpack = new THREE.Group();
+        backpack.name = 'Backpack on the bed';
+        backpack.add(box(1050, 1280, 560, black, -1500, 1960, 1770, 180));
+        backpack.add(box(830, 590, 110, fabric, -1500, 1630, 2100, 90));
         const handle = new THREE.Mesh(
             new THREE.TorusGeometry(220, 35, 8, 20, Math.PI),
             black,
         );
         handle.position.set(-1500, 2600, 1760);
-        bed.add(handle);
-        bed.add(box(950, 110, 850, cream, 1570, 1440, 2390, 35));
-        bed.add(box(620, 95, 700, black, 1570, 1540, 2390, 30));
+        backpack.add(handle);
+        backpack.rotation.y = 0.2;
+        bed.add(backpack);
+        const tee = new THREE.Group();
+        tee.name = 'Folded tee and tablet';
+        tee.add(box(950, 110, 850, cream, 1570, 1440, 2390, 35));
+        tee.add(box(620, 95, 700, black, 1570, 1540, 2390, 30));
+        bed.add(tee);
         const bedsideTable = box(1530, 1030, 1530, wood, -4240, 600, -2920, 65);
         bedsideTable.name = 'Bedside table';
         bed.add(bedsideTable);
@@ -1194,10 +1214,104 @@ export default class Environment {
         clockFace.position.set(-4240, 1330, -2785);
         bed.add(clockFace);
         room.add(bed);
-        box(70, 35, 5800, glow('#df4852'), 17550, FLOOR + 650, 5650);
+        room.updateMatrixWorld(true);
+        for (const pillow of bedPillows)
+            rest(
+                pillow,
+                [
+                    mattress,
+                    ...bedPillows.filter(
+                        (p) =>
+                            p !== pillow &&
+                            p.position.z < pillow.position.z - 100,
+                    ),
+                ],
+                FLOOR,
+                60,
+            );
+        // The duvet is dropped over the mattress as cloth (Lounge.ts
+        // throwBlanket): it drapes off the sides and foot, rumpled where
+        // someone got up; its lighter reverse is turned down under the
+        // pillows, and a striped throw lies crumpled across the foot.
+        // Bed axes: world x = 13400 - bed z, world z = 5650 + bed x.
+        const duvetCloth = new THREE.MeshStandardMaterial({
+            color: '#514047',
+            roughness: 0.95,
+            side: THREE.DoubleSide,
+            vertexColors: true,
+            envMapIntensity: 0.5,
+        });
+        const quilt = new THREE.Mesh(
+            throwBlanket(
+                [mattress, frame],
+                { x: 12150, z: 5650, yaw: 0 },
+                { width: 6300, depth: 7050 },
+                FLOOR,
+                41,
+                false,
+            ),
+            duvetCloth,
+        );
+        quilt.name = 'Rumpled burgundy duvet';
+        quilt.castShadow = quilt.receiveShadow = true;
+        room.add(quilt);
+        quilt.updateMatrixWorld(true);
+        const reverse = new THREE.Mesh(
+            throwBlanket(
+                [quilt, mattress],
+                { x: 14900, z: 5650, yaw: 0 },
+                { width: 900, depth: 6950 },
+                FLOOR,
+                43,
+                false,
+            ),
+            new THREE.MeshStandardMaterial({
+                color: '#7d6a70',
+                roughness: 0.95,
+                side: THREE.DoubleSide,
+                vertexColors: true,
+                envMapIntensity: 0.5,
+            }),
+        );
+        reverse.name = 'Turned-down duvet';
+        reverse.castShadow = reverse.receiveShadow = true;
+        room.add(reverse);
+        reverse.updateMatrixWorld(true);
+        const footThrow = new THREE.Mesh(
+            throwBlanket(
+                [reverse, quilt, mattress, frame],
+                { x: 10150, z: 5500, yaw: 0.06 },
+                { width: 1500, depth: 7300 },
+                FLOOR,
+                47,
+                true,
+            ),
+            new THREE.MeshStandardMaterial({
+                color: '#c0aa87',
+                roughness: 1,
+                side: THREE.DoubleSide,
+                vertexColors: true,
+                envMapIntensity: 0.4,
+            }),
+        );
+        footThrow.name = 'Striped throw at the foot of the bed';
+        footThrow.castShadow = footThrow.receiveShadow = true;
+        room.add(footThrow);
+        footThrow.updateMatrixWorld(true);
+        for (const thing of [backpack, tee])
+            rest(thing, [footThrow, reverse, quilt, mattress], FLOOR, 25);
+        box(
+            70,
+            35,
+            5800,
+            glowing(glow('#df4852'), 'strip'),
+            17550,
+            FLOOR + 650,
+            5650,
+        );
         const bedsideGlow = new THREE.PointLight('#b36f68', 0.9, 9000, 2);
         bedsideGlow.position.set(16320, FLOOR + 900, 1410);
-        room.add(bedsideGlow);
+        room.add(practical(bedsideGlow, 'strip'));
 
         const rugMap = app.resources.items.texture.graduationRug;
         rugMap.anisotropy = 8;
@@ -1341,14 +1455,17 @@ export default class Environment {
         // (+100 draw calls, ~40% of frame time). The scene already has a PMREM
         // env map of the room, so a mirror-finish metal plane reflects the
         // room's colours for free. Upgrade path: Reflector throttled to 1/4 fps.
+        // Reflection only, no lighting: a mirror-finish standard material
+        // turned the floor lamp into a hard white hotspot. Its brightness
+        // follows the room's light level (see `lighting`).
+        this.mirror = new THREE.MeshBasicMaterial({
+            color: 0x9aa3ab,
+            envMap: app.scene?.environment ?? null,
+            reflectivity: 1,
+        });
         const glass = new THREE.Mesh(
             new THREE.PlaneGeometry(1600, 5650),
-            new THREE.MeshStandardMaterial({
-                color: 0xc9d1d8,
-                metalness: 1,
-                roughness: 0.04,
-                envMapIntensity: 1.6,
-            }),
+            this.mirror,
         );
         glass.position.z = 76;
         mirror.add(glass);
@@ -1391,24 +1508,17 @@ export default class Environment {
                 3710 + i * 170,
                 12,
             );
-        cylinder(280, 500, cream, 17520, 2300, 7320);
-        for (let i = 0; i < 5; i++) {
-            const leaf = new THREE.Mesh(
-                new THREE.SphereGeometry(1, 12, 8),
-                material('#526443'),
-            );
-            leaf.scale.set(110, 660, 70);
-            leaf.position.set(
-                17520 + Math.sin(i * 2.4) * 180,
-                2820,
-                7320 + Math.cos(i * 2.4) * 180,
-            );
-            leaf.rotation.z = Math.sin(i * 2.4) * 0.5;
-            room.add(leaf);
-        }
+        const ledgePlant = scanned(
+            ['potted_plant_02_pot', 'potted_plant_02_leaves'],
+            0.38 * M,
+        );
+        ledgePlant.name = 'Ledge plant';
+        ledgePlant.position.set(17560, 2050, 7300);
+        ledgePlant.rotation.y = -1.9;
+        room.add(ledgePlant);
         const eveningGlow = new THREE.PointLight('#d4ab91', 1.1, 9000, 2);
         eveningGlow.position.set(16900, 1800, 5400);
-        room.add(eveningGlow);
+        room.add(practical(eveningGlow, 'lamp'));
         // Move the case, wheels and telescopic handle together, clear of the bedside table.
         const luggage = new THREE.Group();
         luggage.name = 'Travel suitcase';
@@ -1642,37 +1752,44 @@ export default class Environment {
         const tableTop = coffeeScan
             ? new THREE.Box3().setFromObject(oasis, true).max.y - tatamiTop
             : 0.39 * S;
-        for (const x of [-240, 240]) {
+        // Two DualSense controllers (AHarmlessPotato, CC BY 4.0) put down on
+        // the table, face up, grips toward the sofa, never quite square.
+        const dualSense = app.resources.items.gltfModel.dualSenseModel?.scene;
+        for (const [x, z, yaw] of [
+            [-420, -60, -0.28],
+            [360, 90, 0.41],
+        ]) {
             const pad = new THREE.Group();
             pad.name = 'Match night gamepad';
-            // Grips reach 50 below the pad's centre: rest them on the disc.
-            pad.position.set(
-                tableX + x * 1.6,
-                tatamiTop + tableTop + 52,
-                tableZ,
-            );
-            pad.rotation.y = x < 0 ? -0.22 : 0.22;
-            pad.add(box(390, 80, 210, cream, 0, 0, 0, 65));
-            for (const side of [-1, 1]) {
-                const grip = box(135, 90, 240, cream, side * 145, -5, 90, 60);
-                grip.rotation.y = side * -0.2;
-                pad.add(grip);
-                pad.add(cylinder(30, 24, black, side * 70, 52, 50));
+            if (dualSense) {
+                const model = dualSense.clone(true);
+                model.traverse((part) => {
+                    const mesh = part as THREE.Mesh;
+                    if (!mesh.isMesh) return;
+                    mesh.castShadow = mesh.receiveShadow = true;
+                    const skin = mesh.material as THREE.MeshStandardMaterial;
+                    // Switched off: no light bar glow.
+                    if (skin.emissiveMap) {
+                        mesh.material = skin.clone();
+                        (
+                            mesh.material as THREE.MeshStandardMaterial
+                        ).emissiveIntensity = 0;
+                    }
+                });
+                // The scan stands upright, face to +Z and 2 units wide: lay it
+                // face up and size it to a real DualSense (160 mm across).
+                model.rotation.x = -Math.PI / 2;
+                model.scale.setScalar((0.16 * S) / 2);
+                pad.add(model);
             }
-            pad.add(box(72, 12, 22, black, -115, 48, -40));
-            pad.add(box(22, 12, 72, black, -115, 48, -40));
-            for (let i = 0; i < 4; i++)
-                pad.add(
-                    cylinder(
-                        12,
-                        12,
-                        black,
-                        117 + Math.sin((i * Math.PI) / 2) * 29,
-                        48,
-                        -40 + Math.cos((i * Math.PI) / 2) * 29,
-                    ),
-                );
+            pad.position.set(
+                tableX + x,
+                tatamiTop + tableTop + 400,
+                tableZ + z,
+            );
+            pad.rotation.y = Math.PI + yaw;
             room.add(pad);
+            if (coffeeScan) rest(pad, [oasis], FLOOR - 2 * S, 0, false, true);
         }
         // The lived-in lounge around the pit's TV end (Lounge.ts).
         furnishLounge({
@@ -1682,56 +1799,100 @@ export default class Environment {
             shoes: app.resources.items.gltfModel.spezialModel?.scene,
             sofa: lounge,
         });
-        box(1000, 220, 660, black, 3650, FLOOR + 1740, 17000, 45).name =
-            'Match night game console';
-        box(930, 12, 580, cream, 3650, FLOOR + 1856, 17000, 25);
-        box(500, 9, 4, glow('#82bbff'), 3500, FLOOR + 1770, 16668);
+        // A PlayStation 5 (rtql8d, CC BY 4.0) lying flat on the console under
+        // the TV, front to the room. The scan stands upright on its base
+        // stand (a separate, very short part), which is removed.
+        const ps5 = new THREE.Group();
+        ps5.name = 'Match night game console';
+        const ps5Scan = app.resources.items.gltfModel.ps5Model?.scene;
+        if (ps5Scan) {
+            const model = ps5Scan.clone(true);
+            model.updateMatrixWorld(true);
+            const whole = new THREE.Box3().setFromObject(model, true);
+            const height = whole.max.y - whole.min.y;
+            const parts: THREE.Mesh[] = [];
+            model.traverse((part) => {
+                if ((part as THREE.Mesh).isMesh) parts.push(part as THREE.Mesh);
+            });
+            for (const part of parts) {
+                const b = new THREE.Box3().setFromObject(part, true);
+                if (b.max.y - b.min.y < 0.15 * height) part.removeFromParent();
+                else part.castShadow = part.receiveShadow = true;
+            }
+            const lying = new THREE.Group();
+            lying.add(model);
+            // Upright height becomes length along +X; the front (+Z) stays.
+            lying.rotation.z = -Math.PI / 2;
+            lying.updateMatrixWorld(true);
+            const flat = new THREE.Box3().setFromObject(lying, true);
+            // A PS5 is 390 mm tall standing up.
+            lying.scale.setScalar((0.39 * S) / (flat.max.x - flat.min.x));
+            lying.updateMatrixWorld(true);
+            flat.setFromObject(lying, true);
+            const centre = flat.getCenter(new THREE.Vector3());
+            lying.position.set(-centre.x, -flat.min.y, -centre.z);
+            ps5.add(lying);
+        }
+        // Front toward the room (-Z), a little off square.
+        ps5.rotation.y = Math.PI + 0.04;
+        ps5.position.set(3500, FLOOR + 1625, 16900);
+        room.add(ps5);
 
+        // A real-size ceiling fan (Poly Haven, CC0; 1.46 m across) with a
+        // light kit, turning slowly. Its bowl light is the room's main light
+        // after dark (see `lighting`).
         const fan = new THREE.Group();
         fan.name = 'Ceiling fan';
-        fan.position.set(1300, CEILING - 2485, 5500);
-        const hub = cylinder(420, 260, cream, 0, 0, 0);
-        fan.add(hub);
-        for (let i = 0; i < 3; i++) {
-            const blade = box(
-                2900,
-                55,
-                540,
-                cream,
-                1800 * Math.cos((i * Math.PI * 2) / 3),
+        fan.position.set(1300, CEILING, 5500);
+        const fanBody = roomProps?.getObjectByName('ceiling_fan');
+        const fanBlades = roomProps?.getObjectByName('ceiling_fan_blades');
+        if (fanBody && fanBlades) {
+            for (const part of [fanBody, fanBlades]) {
+                const copy = part.clone(true);
+                copy.traverse((o) => {
+                    o.castShadow = false;
+                    o.receiveShadow = true;
+                });
+                // Keep the scan's own placement (quantized nodes carry it).
+                copy.position.multiplyScalar(M);
+                copy.scale.multiplyScalar(M);
+                fan.add(copy);
+                if (part === fanBlades) this.fanBlades = copy;
+            }
+        }
+        const bowl = new THREE.Mesh(
+            new THREE.SphereGeometry(
+                300,
+                32,
+                12,
                 0,
-                1800 * Math.sin((i * Math.PI * 2) / 3),
-                70,
-            );
-            blade.rotation.y = (-i * Math.PI * 2) / 3;
-            fan.add(blade);
-        }
-        // Down-rod reaches the ceiling plate so the fan hangs from something.
-        cylinder(90, 2400, cream, 1300, CEILING - 1200, 5500);
-        cylinder(360, 120, cream, 1300, CEILING - 60, 5500);
+                Math.PI * 2,
+                Math.PI / 2,
+                Math.PI / 2,
+            ),
+            glowing(glow('#ffe2b8'), 'ceiling'),
+        );
+        bowl.scale.y = 0.45;
+        bowl.position.y = -0.47 * M;
+        fan.add(bowl);
+        const fanLight = new THREE.PointLight('#ffd9a8', 1.8, 28000, 2);
+        fanLight.name = 'Ceiling fan light';
+        fanLight.position.y = -0.62 * M;
+        fan.add(practical(fanLight, 'ceiling'));
         room.add(fan);
-        // A broad-leaf plant softens the window corner.
-        cylinder(600, 700, cream, -14600, FLOOR + 350, 13000);
-        for (let i = 0; i < 9; i++) {
-            const angle = i * 2.4;
-            const leaf = new THREE.Mesh(
-                new THREE.SphereGeometry(1, 16, 10),
-                material(i % 2 ? '#42543e' : '#617351'),
-            );
-            leaf.scale.set(230, 1250 + (i % 3) * 250, 100);
-            leaf.position.set(
-                -14600 + Math.sin(angle) * 500,
-                FLOOR + 1800,
-                13000 + Math.cos(angle) * 500,
-            );
-            leaf.rotation.set(
-                Math.cos(angle) * 0.42,
-                angle,
-                Math.sin(angle) * 0.42,
-            );
-            leaf.castShadow = true;
-            room.add(leaf);
-        }
+        // A real potted plant (Poly Haven, CC0; 1.35 m) in the window corner.
+        const floorPlant = scanned(
+            [
+                'potted_plant_01_pot',
+                'potted_plant_01_stem',
+                'potted_plant_01_leaves',
+            ],
+            M,
+        );
+        floorPlant.name = 'Window corner plant';
+        floorPlant.position.set(-14600, FLOOR, 13000);
+        floorPlant.rotation.y = 0.7;
+        room.add(floorPlant);
 
         // Begu's corner, away from chair wheels and desk legs.
         cylinder(1050, 220, fabric, -4800, FLOOR + 110, 800 + DESK_Z);
@@ -1754,6 +1915,158 @@ export default class Environment {
         );
         label('BEGU', 1000, 200, -4800, FLOOR + 155, 1865 + DESK_Z);
         return room;
+    }
+
+    /**
+     * Now, or a Bangalore time given as `?time=HH:MM` (for checking how the
+     * room looks at any hour).
+     */
+    now() {
+        const query =
+            typeof location !== 'undefined'
+                ? new URLSearchParams(location.search).get('time')
+                : null;
+        const match = query && /^(\d{1,2})(?::(\d{2}))?$/.exec(query);
+        if (!match) return new Date();
+        const ist = 5.5 * 3600e3;
+        const today = new Date(Date.now() + ist);
+        const midnight =
+            Date.UTC(
+                today.getUTCFullYear(),
+                today.getUTCMonth(),
+                today.getUTCDate(),
+            ) - ist;
+        return new Date(
+            midnight + (Number(match[1]) * 60 + Number(match[2] ?? 0)) * 60e3,
+        );
+    }
+
+    /**
+     * Light the room for Bangalore's time of day and for Good Night.
+     * Daylight comes through the west window (direct sun in the afternoon,
+     * warm at sunset) and the transom; after dark the lamps, ceiling light,
+     * picture lights and LED strips take over. Asleep, everything the room
+     * can switch off fades out, the curtains close and only a little
+     * moonlight or daylight leaks past them. Only intensities change.
+     */
+    lighting() {
+        const app = new Application();
+        const dt = Math.min(app.time?.delta ?? 16, 100) / 1000;
+        const ease = (from: number, to: number, rate: number) => {
+            const next = from + (to - from) * Math.min(1, dt * rate);
+            return Math.abs(to - next) < 0.001 ? to : next;
+        };
+        // Good Night fades over about a second and a half.
+        this.sleep = ease(this.sleep ?? 0, this.sleepTarget ?? 0, 2.6);
+        this.flagLightScale = ease(
+            this.flagLightScale,
+            this.flagLightTarget,
+            3.6,
+        );
+        if (this.fanBlades && !app.reducedMotion?.matches && !document.hidden)
+            this.fanBlades.rotation.y -= dt * 1.9;
+        const now = this.now();
+        const minute = Math.floor(now.getTime() / 60000);
+        if (!this.sky || minute !== this.skyMinute) {
+            this.skyMinute = minute;
+            this.sky = skyState(now);
+            this.paintSky(this.sky);
+            this.lightingKey = '';
+        }
+        const key = `${this.sleep.toFixed(3)}|${this.flagLightScale.toFixed(3)}`;
+        if (key === this.lightingKey || !this.practicals) return;
+        this.lightingKey = key;
+        const { day, golden, moonlight, westSun } = this.sky;
+        const asleep = this.sleep,
+            awake = 1 - asleep;
+        const dark = 1 - THREE.MathUtils.smoothstep(day, 0.25, 0.8);
+        const level: Record<Practical, number> = {
+            lamp: dark * awake,
+            picture: (0.3 + 0.7 * dark) * awake * this.flagLightScale,
+            strip: (0.2 + 0.8 * dark) * awake,
+            ceiling: dark * awake,
+            tv: awake,
+        };
+        for (const { light, full, group } of this.practicals)
+            light.intensity =
+                full * level[group] * (group === 'tv' ? 0.55 + 0.45 * dark : 1);
+        for (const glow of this.glows) {
+            const v = level[glow.group];
+            if (glow.material instanceof THREE.MeshStandardMaterial)
+                glow.material.emissiveIntensity = glow.full * v;
+            // The TV drops to a standby black, not a hole.
+            else
+                glow.material.color
+                    .copy(glow.base)
+                    .multiplyScalar(glow.group === 'tv' ? 0.03 + 0.97 * v : v);
+        }
+        // Curtains draw across the window.
+        const closed = asleep * asleep * (3 - 2 * asleep);
+        for (const c of this.curtains) {
+            c.mesh.position.x = c.side * (c.open - (c.open - 1760) * closed);
+            c.mesh.scale.x = 1 + 1.15 * closed;
+        }
+        const through = 1 - 0.85 * closed;
+        // Sun or moon through the west window.
+        if (this.moon) {
+            this.moon.intensity =
+                (0.2 +
+                    1.4 * moonlight +
+                    day * (1.5 + 2.4 * westSun) +
+                    golden * westSun) *
+                through;
+            this.moon.color
+                .copy(mixColor('#9fb8e6', '#fff1dc', day))
+                .lerp(new THREE.Color('#ffae6b'), golden * 0.8);
+        }
+        if (this.hemisphere) {
+            this.hemisphere.intensity =
+                (0.38 + 1.05 * day + 0.1 * golden) * (1 - 0.8 * closed);
+            this.hemisphere.color
+                .copy(mixColor('#46557a', '#dbe6f4', day))
+                .lerp(new THREE.Color('#f0b890'), golden * 0.3);
+            this.hemisphere.groundColor.copy(
+                mixColor('#2d2622', '#8c7663', day),
+            );
+        }
+        if (this.key) {
+            this.key.intensity = (0.42 + 1.35 * day) * (1 - 0.7 * asleep);
+            this.key.color.copy(mixColor('#8fb0ff', '#fff3e0', day));
+        }
+        const renderer = app.renderer as
+            | {
+                  roomExposure: number;
+                  targetExposure: number;
+                  monitor?: boolean;
+              }
+            | undefined;
+        if (renderer) {
+            renderer.roomExposure = (0.84 + 0.1 * day) * (1 - 0.1 * asleep);
+            if (!renderer.monitor)
+                renderer.targetExposure = renderer.roomExposure;
+        }
+        // Reflections of the (bright, studio-lit) environment map follow the
+        // light level too, or a dark room still gleams.
+        const reflections =
+            (0.35 + 0.65 * day + 0.25 * dark * awake) * (1 - 0.7 * closed);
+        if (app.scene && Math.abs(reflections - this.reflectionLevel) > 0.01) {
+            this.reflectionLevel = reflections;
+            this.mirror?.color
+                .setRGB(0.42, 0.45, 0.48)
+                .multiplyScalar(reflections);
+            app.scene.traverse((object) => {
+                const material = (object as THREE.Mesh).material;
+                if (!material) return;
+                for (const m of Array.isArray(material)
+                    ? material
+                    : [material]) {
+                    if (!(m instanceof THREE.MeshStandardMaterial)) continue;
+                    if (!this.reflections.has(m))
+                        this.reflections.set(m, m.envMapIntensity);
+                    m.envMapIntensity = this.reflections.get(m)! * reflections;
+                }
+            });
+        }
     }
 
     update() {
@@ -1801,21 +2114,7 @@ export default class Environment {
                 this.record.rotation.y -=
                     ((Math.min(app.time.delta, 50) / 1000) * Math.PI * 10) / 9;
         }
-        if (Math.abs(this.flagLightScale - this.flagLightTarget) > 0.002) {
-            this.flagLightScale +=
-                (this.flagLightTarget - this.flagLightScale) * 0.06;
-            for (const { light, full } of this.flagLights)
-                light.intensity = full * this.flagLightScale;
-        }
-        const phase = skyPhase(new Date().getHours());
-        if (phase !== this.skyShown && this.moon) {
-            this.skyShown = phase;
-            this.paintSky(phase);
-            this.moon.color.set(SKY[phase].light);
-            this.moon.intensity = SKY[phase].strength;
-            // Daylight outside: the reading lamp is on, just less needed.
-            this.lamp.intensity = phase === 'day' ? 2.4 : 3.2;
-        }
+        this.lighting();
         const minute = Math.floor(Date.now() / 60000);
         if (this.clockMap && this.clockMinute !== minute) {
             this.clockMinute = minute;

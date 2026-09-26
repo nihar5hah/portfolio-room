@@ -23,6 +23,7 @@ async function texturelessModel(file) {
     for (const key of ['extensionsUsed', 'extensionsRequired'])
         delete json[key];
     for (const m of json.materials ?? []) {
+        delete m.extensions;
         delete m.normalTexture;
         delete m.occlusionTexture;
         delete m.emissiveTexture;
@@ -33,7 +34,9 @@ async function texturelessModel(file) {
     }
     globalThis.ProgressEvent ??= class extends Event {};
     return new Promise((resolve, reject) =>
-        new GLTFLoader().parse(JSON.stringify(json), '', resolve, reject),
+        new GLTFLoader()
+            .setMeshoptDecoder(MeshoptDecoder)
+            .parse(JSON.stringify(json), '', resolve, reject),
     );
 }
 
@@ -276,6 +279,11 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
                     spezialModel: await texturelessModel(
                         'Spezial/spezial-night-indigo.glb',
                     ),
+                    roomProps: await texturelessModel('Room/room-props.glb'),
+                    ps5Model: await texturelessModel('PS5/ps5.glb'),
+                    dualSenseModel: await texturelessModel(
+                        'PS5/dualsense.glb',
+                    ),
                 },
                 texture: {
                     duneFabricBump: new THREE.Texture(),
@@ -370,6 +378,8 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         if (name === './Layout') return layout;
         if (name === './DuneSofa') return world('DuneSofa.ts');
         if (name === './Lounge') return world('Lounge.ts');
+        if (name === './DayNight') return world('DayNight.ts');
+        if (name === './Fixtures') return world('Fixtures.ts');
         if (name === './MatchBoard')
             return {
                 default: class {
@@ -447,14 +457,68 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         room.children.filter((part) => part.name === 'Slat end trim').length,
         2,
     );
+    const metre = 3300;
+    // The bed is made of cloth, not boxes: the duvet lies on the mattress,
+    // drapes off its sides toward the frame, and is rumpled on top.
     const duvet = room.getObjectByName('Rumpled burgundy duvet').geometry
         .attributes.position;
+    const mattressTop = bounds('Mattress').max.y;
     const heights = Array.from({ length: duvet.count }, (_, i) =>
-        duvet.getZ(i),
+        duvet.getY(i),
+    );
+    const top = heights.filter((y) => y > mattressTop - 20);
+    assert.ok(top.length > duvet.count * 0.5, 'duvet lies on the mattress');
+    assert.ok(
+        Math.min(...heights) < mattressTop - 300,
+        'duvet drapes over the edges',
     );
     assert.ok(
-        Math.max(...heights) - Math.min(...heights) > 120,
+        Math.max(...top) - Math.min(...top) > 40,
         'duvet has visible rumpling',
+    );
+    for (const name of ['Backpack on the bed', 'Folded tee and tablet'])
+        assert.ok(
+            bounds(name).min.y > mattressTop - 60 &&
+                bounds(name).min.y < mattressTop + 250,
+            `${name} rests on the bedding`,
+        );
+    // Real furniture in place of boxes.
+    for (const name of [
+        'Tower speaker (left)',
+        'Tower speaker (right)',
+        'Window corner plant',
+        'Ledge plant',
+        'Ceiling fan light',
+    ])
+        assert.ok(room.getObjectByName(name), `${name} in the room`);
+    for (const side of ['left', 'right']) {
+        const tower = bounds(`Tower speaker (${side})`);
+        assert.ok(
+            Math.abs(tower.min.y + 3015) < 2 &&
+                tower.max.y - tower.min.y > 0.8 * metre &&
+                !tower.intersectsBox(bounds('Media console')),
+            `${side} tower stands on the floor beside the console`,
+        );
+    }
+    const plant = bounds('Window corner plant');
+    assert.ok(
+        Math.abs(plant.min.y + 3015) < 5 &&
+            plant.max.y - plant.min.y > 1.1 * metre,
+        'floor plant stands on the floor, real size',
+    );
+    const fan = bounds('Ceiling fan');
+    assert.ok(
+        fan.max.x - fan.min.x < 1.6 * metre &&
+            fan.max.y > bounds('Ceiling').min.y - 50,
+        'ceiling fan is real size and hangs from the ceiling',
+    );
+    const ps5 = bounds('Match night game console');
+    const consoleTop = bounds('Media console').max.y;
+    assert.ok(
+        Math.abs(ps5.min.y - consoleTop) < 5 &&
+            ps5.max.y < bounds('Wall mounted TV frame').min.y &&
+            ps5.max.x - ps5.min.x > 0.35 * metre,
+        'PS5 lies flat on the console, under the TV',
     );
     environment.update();
     const motes = environment.dust.geometry.attributes.position.array.slice();
@@ -593,7 +657,6 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
     // just clear the floor, and a leather tatami on the TV side carries the
     // round table clear of every cushion.
     const lounge = bounds('Dune sofa');
-    const metre = 3300;
     const { PIT, TATAMI, DUNE_SIZE } = layout;
     const pitFloor = -3015 - PIT.drop;
     const opening = new THREE.Box3(
@@ -683,7 +746,7 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         'Burgundy match night bean bag',
         'Graduation album rug',
         'Bed and walnut headboard',
-        'Ahmedabad night window',
+        'Bangalore window',
     ])
         assert.ok(
             !bounds(name).intersectsBox(opening.clone().expandByScalar(150)),
@@ -787,9 +850,31 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         undefined,
         'blue bean bag stays uncovered',
     );
+    const folded = bounds('Folded throw on the ottoman');
+    const ottomanTop = bounds('Leather ottoman footrest');
     assert.ok(
-        room.getObjectByName('Grey throw on the ottoman (fold 1)'),
-        'small ottoman throw remains',
+        folded.min.y > ottomanTop.max.y - 0.06 * metre &&
+            folded.min.y < ottomanTop.max.y + 0.01 * metre &&
+            folded.max.y - folded.min.y < 0.12 * metre,
+        'a neatly folded throw sits on the ottoman',
+    );
+    // Only one cushion keeps the scanned zigzag; the others are plain.
+    const covers = [
+        'Pillow on the burgundy bean bag',
+        'Pillow fallen on the floor',
+        'Pillow tossed on the Dune',
+    ].map((name) => {
+        let map = null;
+        room.getObjectByName(name).traverse((o) => {
+            if (o.isMesh) map = o.material.color.getHexString();
+        });
+        return map;
+    });
+    assert.equal(new Set(covers).size, 3, 'three different cushion covers');
+    const bag = room.getObjectByName('Blue match night bean bag').material;
+    assert.ok(
+        bag.sheen < 0.4 && bag.roughness >= 0.95 && bag.envMapIntensity < 0.5,
+        'bean bags are matte canvas, not glossy',
     );
     // The seating starts right under the screen: the pit's TV-side nosing
     // meets the console's doors, with no walkway between.
@@ -875,7 +960,7 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         const b = new THREE.Box3().setFromObject(pad, true);
         assert.ok(
             b.min.y >= oasis.max.y - 5 && b.min.y < oasis.max.y + 20,
-            'controllers rest on the tabletop',
+            `controllers rest on the tabletop (${Math.round(b.min.y - oasis.max.y)})`,
         );
         assert.ok(
             b.min.x > oasis.min.x && b.max.x < oasis.max.x,
@@ -989,7 +1074,7 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         'playback error stops the record',
     );
     for (const name of [
-        'Ahmedabad night window',
+        'Bangalore window',
         'Match night media wall',
         'Display cabinet',
         'Entry door',
@@ -1058,12 +1143,72 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
     busHandlers.leftMonitor.forEach((fn) => fn());
     assert.equal(environment.flagLightTarget, 1, 'and come back after');
     assert.ok(flagLight.full > 0);
-    const { skyPhase } = exports;
-    assert.deepEqual(
-        [3, 6, 9, 16, 18, 21].map(skyPhase),
-        ['night', 'dusk', 'day', 'day', 'dusk', 'night'],
-        'the window follows the visitor’s local time',
+    // The window and the room's light follow Bangalore time, whatever the
+    // visitor's own time zone (IST is UTC+5:30).
+    const { skyState } = world('DayNight.ts');
+    const ist = (h, m = 0) =>
+        new Date(Date.UTC(2026, 8, 26, h, m) - 5.5 * 3600e3);
+    const noon = skyState(ist(12)),
+        nine = skyState(ist(21)),
+        sunset = skyState(ist(18, 10));
+    assert.ok(Math.abs(nine.hour - 21) < 0.01, '9 pm in Bangalore is 21:00');
+    assert.ok(noon.day > 0.99 && noon.sun.elevation > 60, 'midday sun high');
+    assert.ok(nine.day < 0.01 && nine.night > 0.99, '9 pm is dark');
+    assert.ok(sunset.golden > 0.5, 'around 6 pm the sky turns golden');
+    assert.ok(nine.cityLights > 0.5 && noon.cityLights < 0.05, 'city lights');
+    // Good Night: every practical light and glow fades to nothing without
+    // any light changing visibility (that recompiled every shader: the
+    // freeze), the curtains close, and the room keeps only a faint leak.
+    const now = Date.now;
+    environment.now = () => ist(21);
+    environment.sky = undefined;
+    app.time.delta = 100;
+    for (let frame = 0; frame < 5; frame++) environment.update();
+    const lit = environment.practicals.map(({ light }) => light.intensity);
+    assert.ok(
+        lit.some((v) => v > 1),
+        'lamps and ceiling light are on at 9 pm',
     );
+    const visible = [];
+    room.traverse((o) => o.isLight && visible.push(o.visible));
+    busHandlers.goodNight.forEach((fn) => fn(true));
+    for (let frame = 0; frame < 40; frame++) environment.update();
+    assert.ok(
+        environment.practicals.every(({ light }) => light.intensity < 0.01),
+        'Good Night switches every lamp, strip, screen glow and the ceiling light off',
+    );
+    assert.ok(
+        environment.glows.every(({ material }) =>
+            material.isMeshStandardMaterial
+                ? material.emissiveIntensity < 0.01
+                : material.color.r < 0.05,
+        ),
+        'glowing strips, lampshade and TV go dark',
+    );
+    assert.ok(environment.moon.intensity < 0.3, 'curtains shut out most of the moon');
+    const curtain = environment.curtains[0].mesh;
+    assert.ok(Math.abs(curtain.position.x) < 1800, 'curtains are drawn');
+    const stillVisible = [];
+    room.traverse((o) => o.isLight && stillVisible.push(o.visible));
+    assert.deepEqual(stillVisible, visible, 'no light toggles visibility');
+    busHandlers.goodNight.forEach((fn) => fn(false));
+    for (let frame = 0; frame < 40; frame++) environment.update();
+    assert.ok(
+        environment.practicals.some(({ light }) => light.intensity > 1),
+        'waking up turns them back on',
+    );
+    // By day the lamps are off and the sun does the work.
+    environment.now = () => ist(15);
+    environment.sky = undefined;
+    for (let frame = 0; frame < 3; frame++) environment.update();
+    assert.ok(
+        environment.practicals
+            .filter(({ group }) => group === 'lamp' || group === 'ceiling')
+            .every(({ light }) => light.intensity < 0.05),
+        'lamps are off in the afternoon',
+    );
+    assert.ok(environment.moon.intensity > 2, 'afternoon sun through the window');
+    Date.now = now;
     for (const name of [
         'Walnut record player',
         'Bookshelf',

@@ -122,3 +122,19 @@ Adidas SPEZIAL (Handball Spezial) by Tigertigertiger, CC BY 4.0: https://creativ
 Source: https://sketchfab.com/3d-models/adidas-spezial-447d3b8fbbe54d07ab24623b4121d855
 Changes: the scan's red suede / gum colourway was recoloured to Night Indigo / Cream White (IF7087) in its base-colour texture, and its poorly captured outsole repainted as dark herringbone rubber; mesh welded and simplified to ~11k triangles; textures resized to 1024 px and re-encoded as WebP (static/models/Spezial/spezial-night-indigo.glb). The left shoe is the right scan mirrored.
 Adidas, Spezial and the 3-Stripes are trademarks of adidas AG; this room is not affiliated with adidas.
+
+Room props (2026-09-26 update)
+Poly Haven, CC0 1.0 Universal: https://creativecommons.org/publicdomain/zero/1.0/
+- Potted Plant 01 by Rico Cilliers: https://polyhaven.com/a/potted_plant_01 (window corner)
+- Potted Plant 02 by Rico Cilliers: https://polyhaven.com/a/potted_plant_02 (bedside ledge)
+- Ceiling Fan by Ulan Cabanilla: https://polyhaven.com/a/ceiling_fan
+Merged into static/models/Room/room-props.glb with glTF-Transform: welded, the plants' pebble and soil scatter removed, simplified, textures resized to 512 px WebP.
+
+PlayStation 5 ("PS5") by rtql8d, CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+Source: https://sketchfab.com/3d-models/ps5-d788de3735964151a3e24fd59c0f1956
+Changes: deduplicated and welded (static/models/PS5/ps5.glb); the stand is hidden and the console is shown lying flat.
+
+Playstation 5 Dualsense by AHarmlessPotato, CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+Source: https://sketchfab.com/3d-models/playstation-5-dualsense-878c1f882808477ab81c2fe86d5a3936
+Changes: simplified from ~112k to ~25k triangles, textures resized to 1024 px WebP, alpha blending replaced with opaque materials, light bar switched off (static/models/PS5/dualsense.glb).
+PlayStation, PS5 and DualSense are trademarks of Sony Interactive Entertainment; this room is not affiliated with Sony.

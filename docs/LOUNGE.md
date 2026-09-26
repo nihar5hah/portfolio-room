@@ -18,12 +18,16 @@ Bed side:
 
 - **Burgundy bean bag**, pushed further back and turned in toward the sofa,
   with a chevron pillow (Poly Haven) sunk in its seat.
-- **Leather ottoman** (Poly Haven) pulled up as a footrest, skewed, with a grey
-  throw folded in a hurry on top; the other pillow fallen on the floor.
+- **Leather ottoman** (Poly Haven) pulled up as a footrest, skewed, with a knit
+  throw folded in thirds on top; a plain oatmeal pillow fallen on the floor.
 - A pair of **adidas Handball Spezials** in Night Indigo kicked off (one rolled
   onto its side) and a mug left on the floor.
 
-On the Dune's front row: a third pillow, tossed.
+On the Dune's front row: a garnet pillow, tossed. Only the bean bag's pillow
+keeps the scanned zigzag, so the pattern isn't repeated.
+
+The bean bags are matte brushed canvas (roughness 1, low sheen, reflections
+at 30%), not the earlier glossy satin.
 
 ## How it is built
 
