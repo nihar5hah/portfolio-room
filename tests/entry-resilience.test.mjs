@@ -71,13 +71,15 @@ test('optional artwork failures finish loading; required models keep the room un
     assert.equal(events.at(-1), 'resourceError');
 });
 
-test('album art never blocks entry and fills the same texture once loaded', async () => {
+test('album art never blocks entry, loads only when wanted, and fills the same texture', async () => {
     let loaded;
+    const fetched = [];
     const Resources = load('../src/Application/Utils/Resources.ts', {
         three: {
             ...THREE,
             ImageLoader: class {
                 load(path, done) {
+                    fetched.push(path);
                     loaded = new Promise((resolve) =>
                         setTimeout(() => resolve(done({ path, width: 500, height: 500 }))),
                     );
@@ -91,10 +93,14 @@ test('album art never blocks entry and fills the same texture once loaded', asyn
     Object.assign(resources, {
         sources: [
             { name: 'sleeve', type: 'texture', path: 'room/albums/x.jpg', lazy: true },
+            { name: 'other', type: 'texture', path: 'room/albums/y.jpg', lazy: true },
         ],
         items: { texture: {} },
+        lazySources: new Map(),
+        wanted: new Set(),
+        fillReady: false,
         loaded: 0,
-        toLoad: 1,
+        toLoad: 2,
         loading: { trigger() {} },
         trigger: (name) => events.push(name),
         on() {},
@@ -102,10 +108,13 @@ test('album art never blocks entry and fills the same texture once loaded', asyn
         loaders: { textureLoader: { load: () => assert.fail('must not block on album art') } },
     });
     resources.startLoading();
+    resources.want('sleeve'); // a sleeve in the room asks for its art
     const placeholder = resources.items.texture.sleeve;
     assert.deepEqual(events, ['ready'], 'room is enterable before any album art arrives');
     await new Promise((r) => setTimeout(r)); // fill() is scheduled after ready
     await loaded;
+    await new Promise((r) => setTimeout(r)); // decode, then upload
+    assert.deepEqual(fetched, ['room/albums/x.jpg'], 'art nothing shows is never fetched');
     assert.equal(resources.items.texture.sleeve, placeholder, 'materials keep their texture object');
     assert.equal(placeholder.image.path, 'room/albums/x.jpg', 'real artwork replaces the swatch');
 });

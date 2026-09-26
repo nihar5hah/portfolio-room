@@ -1,9 +1,11 @@
 import React from 'react';
+// macOS app icons: 128px WebP exports of the 256px PNG masters beside them
+// (shown at 40-61px); regenerate with desktop/scripts/optimize-images.mjs.
 import mail from './mail.svg';
-import notes from './mac-notes.png';
-import begu from './mac-messages.png';
-import resume from './mac-preview.png';
-import music from './mac-music.png';
+import notes from './mac-notes.webp';
+import begu from './mac-messages.webp';
+import resume from './mac-preview.webp';
+import music from './mac-music.webp';
 
 import windowResize from './windowResize.png';
 import maximize from './maximize.png';
@@ -11,11 +13,11 @@ import minimize from './minimize.png';
 import computerBig from './computerBig.png';
 import computerSmall from './computerSmall.png';
 import myComputer from './myComputer.png';
-import showcaseIcon from './mac-finder.png';
+import showcaseIcon from './mac-finder.webp';
 import doomIcon from './doomIcon.png';
-import henordleIcon from './mac-textedit.png';
-import trash from './mac-trash.png';
-import credits from './mac-settings.png';
+import henordleIcon from './mac-textedit.webp';
+import trash from './mac-trash.webp';
+import credits from './mac-settings.webp';
 import volumeOn from './volumeOn.png';
 import volumeOff from './volumeOff.png';
 import trailIcon from './trailIcon.png';

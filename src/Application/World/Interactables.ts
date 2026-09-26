@@ -116,16 +116,31 @@ export default class Interactables {
         label.hidden = true;
         document.body.append(label);
 
-        document.addEventListener('pointermove', (event) => {
-            if (event.pointerType === 'touch') return; // labels come from taps
+        // Hover: one raycast per animation frame at most, however fast the
+        // mouse reports (gaming mice send hundreds of moves a second).
+        let hover: PointerEvent | null = null;
+        let scheduled = false;
+        const updateHover = () => {
+            scheduled = false;
+            const event = hover;
+            hover = null;
+            if (!event) return;
             const hit = this.hit(event);
             document.body.classList.toggle('over-object', !!hit);
             label.hidden = !hit;
             if (hit) {
-                label.textContent = hit.label;
+                if (label.textContent !== hit.label)
+                    label.textContent = hit.label;
                 label.style.left = `${event.clientX}px`;
                 label.style.top = `${event.clientY}px`;
             }
+        };
+        document.addEventListener('pointermove', (event) => {
+            if (event.pointerType === 'touch') return; // labels come from taps
+            hover = event;
+            if (scheduled) return;
+            scheduled = true;
+            requestAnimationFrame(updateHover);
         });
         // Act on release, only if the pointer barely moved: dragging to look
         // around must never open something. On touch there is no hover, so

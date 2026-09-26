@@ -1,4 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, {
+    Suspense,
+    memo,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Home from '../showcase/Home';
 import About from '../showcase/About';
@@ -7,18 +14,68 @@ import Projects, { names } from '../showcase/Projects';
 import data from '../../data/content.json';
 import notes from '../../data/notes.json';
 import Contact from '../showcase/Contact';
-import Notes from '../showcase/Notes';
 import VerticalNavbar from '../showcase/VerticalNavbar';
 import Window from '../os/Window';
-import useInitialWindowSize from '../../hooks/useInitialWindowSize';
-function Pages() {
+import GEOMETRY from './geometry';
+import lazyApp from '../os/lazyApp';
+import { AppErrorBoundary } from '../os/WindowPlaceholder';
+
+// Notes render Markdown, which is most of a chunk on its own: fetched on first visit.
+const NotesPage = lazyApp(
+    () => import(/* webpackChunkName: "desktop-notes" */ '../showcase/Notes'),
+);
+function Notes() {
+    const [attempt, setAttempt] = useState(0);
+    const Page = useMemo(
+        () => NotesPage.loaded ?? NotesPage.Component,
+        [attempt], // eslint-disable-line react-hooks/exhaustive-deps
+    );
+    return (
+        <AppErrorBoundary
+            key={attempt}
+            fallback={
+                <article className="page-pending" role="alert">
+                    <p className="page-lead">This note couldn’t load.</p>
+                    <button
+                        type="button"
+                        className="text-link"
+                        onClick={() => {
+                            NotesPage.retry();
+                            setAttempt((n) => n + 1);
+                        }}
+                    >
+                        Try again
+                    </button>
+                </article>
+            }
+        >
+            <Suspense
+                fallback={<article className="page-pending" aria-busy="true" />}
+            >
+                <Page />
+            </Suspense>
+        </AppErrorBoundary>
+    );
+}
+// Pointing at (or tabbing to) a link to the notes starts fetching them.
+const preloadNotes = (event: React.SyntheticEvent) => {
+    if ((event.target as Element).closest?.('a[href$="/notes"]'))
+        NotesPage.preload().catch(() => undefined);
+};
+// The page follows the route, not the window: switching windows (which
+// re-renders the frame for its active look) leaves the page alone.
+const Pages = memo(function Pages() {
     const { pathname } = useLocation();
     const page = useRef<HTMLElement>(null);
     useEffect(() => {
         page.current?.scrollTo(0, 0);
     }, [pathname]);
     return (
-        <div className="site-page portfolio-shell">
+        <div
+            className="site-page portfolio-shell"
+            onPointerOver={preloadNotes}
+            onFocus={preloadNotes}
+        >
             <VerticalNavbar />
             <main className="portfolio-page" ref={page} id="portfolio-content">
                 <Routes>
@@ -35,7 +92,7 @@ function Pages() {
             </main>
         </div>
     );
-}
+});
 // Like Finder, the title bar names the open page and the status bar describes it.
 function describe(pathname: string): [string, string] {
     const [section, id] = pathname.split('/').filter(Boolean);
@@ -43,7 +100,8 @@ function describe(pathname: string): [string, string] {
         `${n} ${word}${n === 1 ? '' : 's'}`;
     if (section === 'projects') {
         const index = data.projects.findIndex((p) => p.id === id);
-        if (index < 0) return ['Projects', count(data.projects.length, 'project')];
+        if (index < 0)
+            return ['Projects', count(data.projects.length, 'project')];
         const p = data.projects[index];
         return [
             names[p.id] || p.title,
@@ -53,7 +111,10 @@ function describe(pathname: string): [string, string] {
     if (section === 'notes') {
         const index = notes.findIndex((n) => n.id === id);
         if (index < 0) return ['Notes', count(notes.length, 'note')];
-        return [notes[index].title, `${index + 1} of ${count(notes.length, 'note')}`];
+        return [
+            notes[index].title,
+            `${index + 1} of ${count(notes.length, 'note')}`,
+        ];
     }
     if (section === 'about') return ['About', 'Ahmedabad, India'];
     if (section === 'experience')
@@ -62,17 +123,10 @@ function describe(pathname: string): [string, string] {
     return ['Nihar Shah', count(data.projects.length, 'project')];
 }
 function Explorer(props: WindowAppProps) {
-    const { initWidth, initHeight } = useInitialWindowSize({ margin: 120 });
-    const width = Math.min(1180, initWidth);
-    // ~40px of air above the dock, like a real window left where macOS opens it.
-    const height = Math.max(420, Math.min(760, initHeight - 30));
     const [title, status] = describe(useLocation().pathname);
     return (
         <Window
-            top={Math.max(40, (window.innerHeight - 90 - height) / 2)}
-            left={Math.max(12, (window.innerWidth - width) / 2)}
-            width={width}
-            height={height}
+            {...GEOMETRY.showcase()}
             windowTitle={title}
             windowBarIcon="windowExplorerIcon"
             closeWindow={props.onClose}
@@ -85,7 +139,7 @@ function Explorer(props: WindowAppProps) {
         </Window>
     );
 }
-export default function ShowcaseExplorer(props: WindowAppProps) {
+function ShowcaseExplorer(props: WindowAppProps) {
     return (
         <HashRouter
             future={{
@@ -97,3 +151,5 @@ export default function ShowcaseExplorer(props: WindowAppProps) {
         </HashRouter>
     );
 }
+
+export default memo(ShowcaseExplorer);

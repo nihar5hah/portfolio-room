@@ -6,23 +6,29 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as geometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import layout from './layout.mjs';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { dequantize } from './dequantize.mjs';
 const require = createRequire(import.meta.url);
 
 async function loadDog() {
     const bytes = fs.readFileSync(
         new URL('../static/models/Begu/husky.glb', import.meta.url),
     );
+    await MeshoptDecoder.ready;
     const gltf = await new Promise((resolve, reject) =>
-        new GLTFLoader().parse(
-            bytes.buffer.slice(
-                bytes.byteOffset,
-                bytes.byteOffset + bytes.length,
+        new GLTFLoader()
+            .setMeshoptDecoder(MeshoptDecoder)
+            .parse(
+                bytes.buffer.slice(
+                    bytes.byteOffset,
+                    bytes.byteOffset + bytes.length,
+                ),
+                '',
+                resolve,
+                reject,
             ),
-            '',
-            resolve,
-            reject,
-        ),
     );
+    dequantize(gltf.scene); // as Resources does on load
     const source = fs.readFileSync(
         new URL('../src/Application/World/Husky.ts', import.meta.url),
         'utf8',

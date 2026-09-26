@@ -82,7 +82,6 @@ img {
     outline: none;
 }
 .os-desktop {
-    background: #b6c5cf url('./assets/wallpaper.jpg') center / cover !important;
     width: 100%;
     height: 100%;
     isolation: isolate;
@@ -112,17 +111,8 @@ img {
 .os-window {
     display: flex;
     flex-direction: column;
-    border: 1px solid #ffffff90;
-    border-radius: 20px;
-    box-shadow:
-        0 28px 80px #172d4d40,
-        0 3px 12px #172d4d24,
-        inset 0 0 0 1px #fff8;
     overflow: hidden;
     max-width: 100%;
-    max-height: calc(100dvh - 104px);
-    background: #f8fafbcc;
-    backdrop-filter: blur(36px) saturate(1.35);
 }
 .os-titlebar {
     height: 46px;
@@ -873,21 +863,11 @@ img {
     margin-top: 26px;
 }
 .system-menu {
-    height: 31px;
     position: absolute;
     inset: 0 0 auto;
     display: flex;
     align-items: center;
-    gap: 23px;
-    padding: 0 22px;
-    background: #eaf1f53d;
-    backdrop-filter: blur(18px);
-    font:
-        12px -apple-system,
-        BlinkMacSystemFont,
-        sans-serif;
     z-index: 100000;
-    color: #1c2a38;
 }
 .system-brand {
     border: 0;
@@ -915,22 +895,9 @@ img {
 }
 .os-dock {
     position: absolute;
-    bottom: 12px;
     left: 50%;
     transform: translateX(-50%);
-    height: 66px;
-    border-radius: 24px;
-    background: linear-gradient(135deg, #ffffff7d, #e3ebf536);
-    backdrop-filter: blur(32px) saturate(1.7);
-    border: 1px solid #ffffff90;
-    box-shadow:
-        0 6px 24px #13294330,
-        inset 0 1px 2px #fffd,
-        inset 0 -1px 1px #fff5;
     display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 10px;
     z-index: 100000;
 }
 .dock-app,
@@ -1011,17 +978,7 @@ img {
 }
 .start-menu {
     position: absolute;
-    left: 15px;
-    top: 34px;
-    width: 240px;
-    background: #f2f6f9c9;
-    backdrop-filter: blur(20px);
-    border: 1px solid #fff8;
-    border-radius: 10px;
-    box-shadow: 0 12px 40px #1e385233;
-    padding: 8px;
     flex-direction: column;
-    gap: 3px;
 }
 .start-menu strong {
     font-size: 12px;
@@ -1113,7 +1070,6 @@ img {
 .word-game .word-tile {
     font-family: var(--sys, -apple-system, sans-serif);
     color: #1d1d1f;
-    will-change: transform;
 }
 .word-game .word-key {
     cursor: pointer;
@@ -1258,6 +1214,30 @@ img {
 
 .os-desktop {
     background: #0d1b2e url('./assets/wallpaper.jpg') center / cover !important;
+    /* Browsers that can choose by type get a WebP sized for the screen; the
+       others keep the JPG above. */
+    background-image: image-set(
+        url('./assets/wallpaper-1920.webp') type('image/webp'),
+        url('./assets/wallpaper.jpg') type('image/jpeg')
+    ) !important;
+}
+@media (min-width: 1200px) and (min-resolution: 1.5dppx), (min-width: 2000px) {
+    .os-desktop {
+        background-image: image-set(
+            url('./assets/wallpaper-2560.webp') type('image/webp'),
+            url('./assets/wallpaper.jpg') type('image/jpeg')
+        ) !important;
+    }
+}
+/* On a phone the window covers nearly all of it: a small copy is plenty. */
+@media (max-width: 700px) {
+    .os-desktop {
+        background-image: url('./assets/wallpaper-960.jpg') !important;
+        background-image: image-set(
+            url('./assets/wallpaper-960.webp') type('image/webp'),
+            url('./assets/wallpaper-960.jpg') type('image/jpeg')
+        ) !important;
+    }
 }
 
 /* Menu bar */
@@ -1409,7 +1389,14 @@ img {
     width: 52px;
     height: 52px;
     border-radius: 0;
-    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
+}
+/* A filter per icon is re-rasterised as icons magnify; touch screens and
+   phones (no hover, see the end of this file) go without. */
+@media (hover: hover) and (min-width: 701px) {
+    .dock-app img,
+    .dock-window img {
+        filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
+    }
 }
 .dock-app:hover,
 .dock-window:hover {
@@ -2070,23 +2057,6 @@ img {
         display: none;
     }
 }
-@media (prefers-reduced-transparency: reduce) {
-    .os-window,
-    .start-menu,
-    .os-dock,
-    .system-menu {
-        background: #eef2f5;
-        color: #1d1d1f;
-        backdrop-filter: none;
-        -webkit-backdrop-filter: none;
-    }
-    .system-brand:hover,
-    .system-action:hover,
-    .system-brand[aria-expanded='true'] {
-        background: #d8dde3;
-        color: #1d1d1f;
-    }
-}
 
 @media (max-width: 700px) {
     .music-now {
@@ -2541,7 +2511,9 @@ html[data-theme='dark'] .os-window[data-active='false'] .os-titlebar {
     background: #2a2a2a;
     color: #6e6e73;
 }
-html[data-theme='dark'] .os-window[data-active='false'] .traffic-button::before {
+html[data-theme='dark']
+    .os-window[data-active='false']
+    .traffic-button::before {
     background: #4a4a4c;
 }
 html[data-theme='dark'] .window-status {
@@ -2610,19 +2582,32 @@ html[data-theme='dark'] .contact-address {
     color: #f5f5f7;
 }
 html[data-theme='dark'] .portfolio-page :is(p, li, dd, small),
-html[data-theme='dark'] :is(.home-intro, .page-lead, .page-eyebrow, .file-meta,
-        .home-rule, .home-footer, .experience-date, .certifications,
-        .contact-location, .empty-state, .project-search > span) {
+html[data-theme='dark']
+    :is(
+        .home-intro,
+        .page-lead,
+        .page-eyebrow,
+        .file-meta,
+        .home-rule,
+        .home-footer,
+        .experience-date,
+        .certifications,
+        .contact-location,
+        .empty-state,
+        .project-search > span
+    ) {
     color: #a1a1a6;
 }
-html[data-theme='dark'] .portfolio-page :is(.text-link, .back-link, .note-read, .markdown a),
+html[data-theme='dark']
+    .portfolio-page
+    :is(.text-link, .back-link, .note-read, .markdown a),
 html[data-theme='dark'] .social-links a,
 html[data-theme='dark'] .contact-actions button,
 html[data-theme='dark'] .credits-links a {
     color: #4aa3ff;
 }
-html[data-theme='dark'] :is(.featured-project, .project-card, .contact-letter,
-        .detail-body aside) {
+html[data-theme='dark']
+    :is(.featured-project, .project-card, .contact-letter, .detail-body aside) {
     background: #2a2a2c;
     border-color: rgba(255, 255, 255, 0.08);
 }
@@ -2823,4 +2808,92 @@ html[data-embedded] .os-dock {
 }
 html[data-embedded][data-theme='dark'] .os-dock {
     background: rgba(30, 30, 34, 0.6);
+}
+
+/* ───────────── Phones and touch screens: glass without the blur ─────────────
+   backdrop-filter re-blurs whatever is behind the menu bar, dock and windows
+   whenever they composite, which low-end phones can't keep up with. There the
+   glass becomes the near-opaque tint the room's laptop already uses. */
+@media (max-width: 700px), (hover: none) {
+    .os-window,
+    .system-menu,
+    .os-dock,
+    .start-menu,
+    .file-badge {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+    .os-window {
+        background: #ffffff;
+    }
+    html[data-theme='dark'] .os-window {
+        background: #1e1e1e;
+    }
+    .system-menu {
+        background: rgba(30, 30, 34, 0.72);
+    }
+    html[data-theme='dark'] .system-menu {
+        background: rgba(24, 24, 28, 0.78);
+    }
+    .start-menu {
+        background: rgba(246, 246, 248, 0.98);
+    }
+    html[data-theme='dark'] .start-menu {
+        background: rgba(40, 40, 44, 0.98);
+    }
+    .os-dock {
+        background: rgba(255, 255, 255, 0.3);
+    }
+    html[data-theme='dark'] .os-dock {
+        background: rgba(30, 30, 34, 0.6);
+    }
+}
+/* After the phone rules, so a visitor who asks for less transparency gets
+   solid chrome everywhere (dark mode keeps its own, more specific, colours). */
+@media (prefers-reduced-transparency: reduce) {
+    .os-window,
+    .start-menu,
+    .os-dock,
+    .system-menu {
+        background: #eef2f5;
+        color: #1d1d1f;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+    .file-badge {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+    .system-brand:hover,
+    .system-action:hover,
+    .system-brand[aria-expanded='true'] {
+        background: #d8dde3;
+        color: #1d1d1f;
+    }
+}
+
+/* The frame an app's window shows while its code downloads, or if it can't. */
+.window-pending {
+    align-items: center;
+    justify-content: center;
+    background: var(--mac-window, #fff);
+}
+.window-pending [role='alert'] {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    font: 13px var(--mac-font);
+    color: var(--mac-muted);
+}
+.window-pending button,
+.page-pending button {
+    border: 0;
+    background: none;
+    padding: 4px;
+    font: 13px var(--mac-font);
+    color: var(--mac-blue);
+    cursor: pointer;
+}
+.page-pending {
+    min-height: 240px;
 }

@@ -20,6 +20,8 @@ test('room objects open their apps; hidden records count once and persist', () =
         querySelector: () => null,
         addEventListener: (type, fn) => (listeners[type] = fn),
     };
+    // Hover is coalesced to animation frames; run them at once here.
+    globalThis.requestAnimationFrame = (run) => run();
     globalThis.innerWidth = 1000;
     globalThis.innerHeight = 1000;
 

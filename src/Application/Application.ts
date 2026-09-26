@@ -13,10 +13,11 @@ import Resources from './Utils/Resources';
 
 import sources from './sources';
 
-import Stats from 'stats.js';
 import Loading from './Utils/Loading';
+import Quality from './Utils/Quality';
 
 import UI from './UI';
+import UIEventBus from './UI/EventBus';
 
 let instance: Application | null = null;
 
@@ -35,7 +36,8 @@ export default class Application {
     mouse: Mouse;
     loading: Loading;
     ui: UI;
-    stats: Stats | undefined;
+    stats: { begin(): void; end(): void; dom: HTMLElement } | undefined;
+    quality: Quality;
 
     constructor() {
         // Singleton
@@ -45,10 +47,12 @@ export default class Application {
 
         instance = this;
 
-
         // Setup
         this.debug = new Debug();
-        this.sizes = new Sizes();
+        // Before the renderer: the tier decides antialiasing and resolution.
+        this.quality = new Quality();
+        document.documentElement.dataset.quality = this.quality.tier;
+        this.sizes = new Sizes(() => this.quality.pixelRatio);
         this.mouse = new Mouse();
         this.loading = new Loading();
         this.time = new Time();
@@ -66,10 +70,15 @@ export default class Application {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('debug')) {
             (window as any).__app = this;
-            this.stats = new Stats();
-            this.stats.showPanel(0);
-
-            document.body.appendChild(this.stats.dom);
+            // Debug-only: loaded on demand, never in a visitor's bundle.
+            void import(/* webpackChunkName: "debug" */ 'stats.js').then(
+                ({ default: Stats }) => {
+                    const stats = new Stats();
+                    stats.showPanel(0);
+                    document.body.appendChild(stats.dom);
+                    this.stats = stats;
+                },
+            );
         }
 
         // Resize event
@@ -81,7 +90,15 @@ export default class Application {
         this.time.on('tick', () => {
             this.update();
         });
+        // The governor judges frame times once the room is on screen and
+        // the first shaders and textures have settled.
+        UIEventBus.on('loadingScreenDone', () =>
+            setTimeout(() => (this.measuring = true), 2000),
+        );
     }
+
+    /** Feeding frame times to the quality governor (after the intro). */
+    measuring = false;
 
     resize() {
         this.camera.resize();
@@ -93,6 +110,8 @@ export default class Application {
         this.camera.update();
         this.world.update();
         this.renderer.update();
+        if (this.measuring && !document.hidden)
+            this.quality.frame(this.time.delta);
         if (this.stats) this.stats.end();
     }
 
@@ -120,6 +139,6 @@ export default class Application {
 
         this.renderer.instance.dispose();
 
-        if (this.debug.active) this.debug.ui.destroy();
+        if (this.debug.active) this.debug.ui?.destroy();
     }
 }

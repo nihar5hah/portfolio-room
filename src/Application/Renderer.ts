@@ -4,27 +4,31 @@ import Application from './Application';
 import Sizes from './Utils/Sizes';
 import Camera from './Camera/Camera';
 import UIEventBus from './UI/EventBus';
-// @ts-ignore
-import screenVert from './Shaders/screen/vertex.glsl';
-// @ts-ignore
-import screenFrag from './Shaders/screen/fragment.glsl';
 import Time from './Utils/Time';
+import type { QualitySettings } from './Utils/Quality';
 
+/**
+ * The room's WebGL renderer, the CSS3D layer the Mac's screen lives on, and
+ * the film grain. Performance-critical choices (see docs/PERFORMANCE.md):
+ *
+ * - Antialiasing, resolution and shadows follow the quality tier
+ *   (Utils/Quality.ts), and the resolution follows the frame-time governor.
+ * - Grain is a tiled CSS noise layer, not a second full-screen WebGL canvas.
+ * - The shadow map is redrawn only when something under the key light
+ *   moves (Begu, the ball, the curtains), at most every few frames.
+ * - Seated at the Mac, the room behind the screen is drawn at a quarter of
+ *   the frame rate: the desktop in the screen gets the GPU.
+ */
 export default class Renderer {
     application: Application;
     sizes: Sizes;
     scene: THREE.Scene;
     cssScene: THREE.Scene;
     time: Time;
-    overlay: THREE.Mesh;
-    overlayScene: THREE.Scene;
     camera: Camera;
-    overlayInstance: THREE.WebGLRenderer;
     instance: THREE.WebGLRenderer;
     cssInstance: CSS3DRenderer;
-    uniforms: {
-        [uniform: string]: THREE.IUniform<any>;
-    };
+    grain: HTMLDivElement | null = null;
 
     constructor() {
         this.application = new Application();
@@ -32,22 +36,22 @@ export default class Renderer {
         this.sizes = this.application.sizes;
         this.scene = this.application.scene;
         this.cssScene = this.application.cssScene;
-        this.overlayScene = this.application.overlayScene;
         this.camera = this.application.camera;
 
         this.setInstance();
     }
 
     setInstance() {
+        const quality = this.application.quality;
+        const settings = quality.settings;
         this.instance = new THREE.WebGLRenderer({
-            antialias: true,
+            antialias: settings.antialias,
             alpha: true,
             powerPreference: 'high-performance',
         });
         // Settings
-        // this.instance.physicallyCorrectLights = true;
         this.instance.outputEncoding = THREE.sRGBEncoding;
-        this.instance.shadowMap.enabled = true;
+        this.instance.shadowMap.enabled = settings.shadowMapSize > 0;
         this.instance.shadowMap.type = THREE.PCFShadowMap;
         // Shadow maps are re-rendered on our own cadence (see update()), not
         // on every render() call.
@@ -66,23 +70,6 @@ export default class Renderer {
 
         document.querySelector('#webgl')?.appendChild(this.instance.domElement);
 
-        this.overlayInstance = new THREE.WebGLRenderer();
-        this.overlayInstance.setSize(this.sizes.width, this.sizes.height);
-        // Grain at 4.5% opacity doesn't need retina pixels; a full-res second
-        // canvas composited with soft-light is pure overhead on mobile GPUs.
-        this.overlayInstance.setPixelRatio(1);
-        this.overlayInstance.domElement.style.position = 'absolute';
-        this.overlayInstance.domElement.style.top = '0px';
-        this.overlayInstance.domElement.style.mixBlendMode = 'soft-light';
-        this.overlayInstance.domElement.style.opacity = '0.045';
-        // this.overlayInstance.domElement.style.mixBlendMode = 'luminosity';
-        // this.overlayInstance.domElement.style.opacity = '1';
-        this.overlayInstance.domElement.style.pointerEvents = 'none';
-
-        document
-            .querySelector('#overlay')
-            ?.appendChild(this.overlayInstance.domElement);
-
         this.cssInstance = new CSS3DRenderer();
         this.cssInstance.setSize(this.sizes.width, this.sizes.height);
         this.cssInstance.domElement.style.position = 'absolute';
@@ -92,22 +79,8 @@ export default class Renderer {
             .querySelector('#css')
             ?.appendChild(this.cssInstance.domElement);
 
-        this.uniforms = {
-            u_time: { value: 1 },
-        };
-
-        this.overlay = new THREE.Mesh(
-            new THREE.PlaneGeometry(10000, 10000),
-            new THREE.ShaderMaterial({
-                vertexShader: screenVert,
-                fragmentShader: screenFrag,
-                uniforms: this.uniforms,
-                depthTest: false,
-                depthWrite: false,
-            }),
-        );
-
-        this.overlayScene.add(this.overlay);
+        this.setGrain(settings);
+        quality.onChange((next) => this.applyQuality(next));
 
         // Dim the room (not the CSS3D screen) while the visitor is on the Mac.
         // The room's own level (time of day, Good Night) is set by the
@@ -120,38 +93,123 @@ export default class Renderer {
             this.monitor = false;
             this.targetExposure = this.roomExposure;
         });
+        // The GPU dropped the context (memory pressure on phones): stop
+        // drawing until it is back, then redraw the shadows.
+        const canvas = this.instance.domElement;
+        canvas.addEventListener('webglcontextlost', (event) => {
+            event.preventDefault();
+            this.lost = true;
+        });
+        canvas.addEventListener('webglcontextrestored', () => {
+            this.lost = false;
+            this.shadowFrames = 3;
+        });
+    }
+
+    /**
+     * Film grain: one small tile of noise, repeated and nudged a few times a
+     * second by a compositor-only transform. Replaces a second full-screen
+     * WebGL canvas that redrew the noise every frame.
+     */
+    setGrain(settings: QualitySettings) {
+        if (!settings.grain) {
+            this.grain?.remove();
+            this.grain = null;
+            return;
+        }
+        if (this.grain) return;
+        const tile = document.createElement('canvas');
+        tile.width = tile.height = 128;
+        const ctx = tile.getContext('2d');
+        if (!ctx) return;
+        const image = ctx.createImageData(128, 128);
+        for (let i = 0; i < image.data.length; i += 4) {
+            const v = Math.random() * 255;
+            image.data[i] = image.data[i + 1] = image.data[i + 2] = v;
+            image.data[i + 3] = 255;
+        }
+        ctx.putImageData(image, 0, 0);
+        const grain = document.createElement('div');
+        grain.className = 'film-grain';
+        grain.style.backgroundImage = `url(${tile.toDataURL()})`;
+        grain.setAttribute('aria-hidden', 'true');
+        document.querySelector('#overlay')?.appendChild(grain);
+        this.grain = grain;
+    }
+
+    /** A new tier or resolution from the quality governor. */
+    applyQuality(settings: QualitySettings) {
+        const ratio = this.application.quality.pixelRatio;
+        this.sizes.pixelRatio = ratio;
+        if (Math.abs(this.instance.getPixelRatio() - ratio) > 0.001) {
+            this.instance.setPixelRatio(ratio);
+            this.instance.setSize(this.sizes.width, this.sizes.height);
+        }
+        this.setGrain(settings);
+        this.application.world?.applyQuality?.(settings);
+        this.shadowFrames = 2;
     }
 
     monitor = false;
+    lost = false;
     roomExposure = 0.85;
     targetExposure = 0.85;
+    /** Frames that must redraw the shadow map (start-up, changes). */
+    shadowFrames = 3;
 
     resize() {
         this.instance.setSize(this.sizes.width, this.sizes.height);
         this.instance.setPixelRatio(this.sizes.pixelRatio);
 
         this.cssInstance.setSize(this.sizes.width, this.sizes.height);
-
-        this.overlayInstance.setSize(this.sizes.width, this.sizes.height);
-        this.overlayInstance.setPixelRatio(1);
     }
 
     frame = 0;
 
-    update() {
-        this.application.camera.instance.updateProjectionMatrix();
-        if (this.uniforms && !this.application.reducedMotion.matches) {
-            this.uniforms.u_time.value = Math.sin(this.time.current * 0.01);
+    /** Whether this frame should redraw the shadow map. */
+    shadowTick() {
+        const settings = this.application.quality.settings;
+        if (!settings.shadowMapSize) return false;
+        if (this.shadowFrames > 0) {
+            this.shadowFrames--;
+            return true;
         }
-        // Only Begu moves under the shadow lights; 20 Hz shadows read as smooth.
-        // ponytail: fixed cadence; upgrade path is "needsUpdate when Begu moved".
-        this.instance.shadowMap.needsUpdate = this.frame++ % 3 === 0;
+        const world = this.application.world;
+        // The curtains, the gold record going up: on every tier.
+        if (world?.shadowsChanged?.(false)) return true;
+        if (!settings.shadowInterval || this.frame % settings.shadowInterval)
+            return false;
+        // Begu and the ball, on tiers where they cast real shadows.
+        return !!world?.shadowsChanged?.(true);
+    }
 
+    update() {
+        const frame = this.frame++;
+        if (this.lost) return;
+        const camera = this.application.camera;
+        camera.instance.updateProjectionMatrix();
         this.instance.toneMappingExposure +=
             (this.targetExposure - this.instance.toneMappingExposure) * 0.06;
-        this.instance.render(this.scene, this.camera.instance);
-        this.cssInstance.render(this.cssScene, this.camera.instance);
-        this.overlayInstance.render(this.overlayScene, this.camera.instance);
-        this.overlay.position.copy(this.camera.instance.position);
+        // At the Mac (and settled there) the room is a dim frame around the
+        // screen: a quarter of the frame rate is plenty.
+        const seated =
+            this.monitor &&
+            camera.currentKeyframe === 'monitor' &&
+            !camera.targetKeyframe &&
+            Math.abs(this.targetExposure - this.instance.toneMappingExposure) <
+                0.01;
+        if (!seated || frame % 4 === 0) {
+            this.instance.shadowMap.needsUpdate = this.shadowTick();
+            this.instance.render(this.scene, camera.instance);
+        }
+        // The CSS3D screen only shows while the lid is open. It is rendered
+        // once up front regardless: that puts the screen's element (and its
+        // iframe, so a preload can start) into the page.
+        const lid = this.application.world?.computerSetup?.openness ?? 1;
+        if (lid > 0.08 || !this.cssPrimed) {
+            this.cssInstance.render(this.cssScene, camera.instance);
+            if (this.application.world?.monitorScreen) this.cssPrimed = true;
+        }
     }
+    cssPrimed = false;
 }

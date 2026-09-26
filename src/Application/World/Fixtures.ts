@@ -40,7 +40,7 @@ function driver(radius: number, metal: boolean) {
             new THREE.Mesh(
                 new THREE.LatheGeometry(
                     points.map(([x, y]) => new THREE.Vector2(x, y)),
-                    64,
+                    40,
                 ),
                 material,
             ),
@@ -963,7 +963,7 @@ export function spinnerSuitcase(
                             (ribs(u) + 30 * (1 - u.x * u.x) * (1 - u.y * u.y));
                     }
                 },
-                [36, 30, 8],
+                [36, 14, 6],
             ),
             shellMaterial,
         );
@@ -980,7 +980,7 @@ export function spinnerSuitcase(
     }
     // The zip band between the halves, a little inset.
     const band = new THREE.Mesh(
-        softBlock(W - 30, H - 30, 90, 130, undefined, [20, 20, 2]),
+        softBlock(W - 30, H - 30, 90, 130, undefined, [12, 12, 2]),
         new THREE.MeshStandardMaterial({ color: '#141417', roughness: 0.8 }),
     );
     band.position.set(0, base + H / 2, 0);

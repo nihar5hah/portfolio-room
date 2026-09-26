@@ -1,15 +1,11 @@
-import React from 'react';
+import React, { memo } from 'react';
 import Window from '../os/Window';
+import GEOMETRY from './geometry';
 
-export default function Resume(props: WindowAppProps) {
-    const width = Math.min(1120, innerWidth - 32);
-    const height = Math.min(820, innerHeight - 130);
+function Resume(props: WindowAppProps) {
     return (
         <Window
-            top={Math.max(40, (innerHeight - 90 - height) / 2)}
-            left={Math.max(12, (innerWidth - width) / 2)}
-            width={width}
-            height={height}
+            {...GEOMETRY.resume()}
             windowTitle="Résumé — Nihar Shah"
             windowBarIcon="resume"
             closeWindow={props.onClose}
@@ -34,3 +30,5 @@ export default function Resume(props: WindowAppProps) {
         </Window>
     );
 }
+
+export default memo(Resume);

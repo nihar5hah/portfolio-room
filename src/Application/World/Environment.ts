@@ -3,7 +3,6 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import Application from '../Application';
 import { ALBUMS } from '../Audio/AlbumAudio';
-import BakedModel from '../Utils/BakedModel';
 import MatchBoard from './MatchBoard';
 import bus from '../UI/EventBus';
 import {
@@ -21,6 +20,7 @@ import { bakeDune, shadeCreases, splitDune, wovenFabric } from './DuneSofa';
 import { furnishLounge, rest, throwBlanket } from './Lounge';
 import { bangaloreHour, paintSky, skyState, SkyState } from './DayNight';
 import Weather from './Weather';
+import type { QualitySettings } from '../Utils/Quality';
 import {
     backpack as makeBackpack,
     deskLamp,
@@ -123,37 +123,12 @@ export default class Environment {
             }
         });
         pmrem.dispose();
-        const original = new BakedModel(
-            app.resources.items.gltfModel.environmentModel,
-            app.resources.items.texture.environmentTexture,
-            900,
-        ).getModel();
-        // Keep the original room layout; replace the desk, the chair (a
-        // Herman Miller Embody, below), the floor and the material treatment.
+        // The original baked room (environment.glb) is gone: every part of
+        // it was hidden under the new desk, chair and floor, yet its 4096²
+        // bake was still downloaded and decoded.
         const embody = app.resources.items.gltfModel.chairModel?.scene;
-        for (const name of [
-            'desk',
-            'Background',
-            ...(embody ? ['chair_base', 'chair_seat'] : []),
-        ]) {
-            const part = original.getObjectByName(name);
-            if (part) part.visible = false;
-        }
-        original.traverse((part) => {
-            if (part instanceof THREE.Mesh && part.visible) {
-                part.geometry.computeVertexNormals();
-                part.material = new THREE.MeshStandardMaterial({
-                    color: part.name === 'chair_seat' ? '#353b46' : '#15181e',
-                    roughness: 0.65,
-                    metalness: 0.12,
-                });
-                part.castShadow = true;
-                part.receiveShadow = true;
-            }
-        });
         app.scene.background = new THREE.Color('#101218');
         app.scene.fog = null;
-        app.scene.add(original);
         const walnut = new THREE.MeshStandardMaterial({
             color: '#60402d',
             roughness: 0.56,
@@ -189,7 +164,6 @@ export default class Environment {
         desk.add(rail);
         // Desk and its chair stand under the flag (see Layout.ts).
         desk.position.z = DESK_Z;
-        original.position.z += DESK_Z;
         app.scene.add(desk);
         // Herman Miller's Embody Chair with Arms (their published 3D model),
         // pulled up to the desk where the old chair stood, a touch askew.
@@ -1001,6 +975,7 @@ export default class Environment {
         ] as const) {
             const sleeve = box(SLEEVE, SLEEVE, 46, black, x, y, z, 10);
             sleeve.name = `Album sleeve: ${texture}`;
+            app.resources.want?.(texture);
             sleeve.rotation.order = 'YXZ';
             sleeve.rotation.set(lean, turn, 0);
             const cover = new THREE.Mesh(
@@ -1748,6 +1723,8 @@ export default class Environment {
             ]),
         );
         const albumMap = this.recordArtwork.mbdtf.sleeve;
+        app.resources.want?.('poster_mbdtf');
+        app.resources.want?.('mbdtfVinyl');
         const recordLabel = (this.recordLabel = new THREE.Mesh(
             new THREE.CircleGeometry(244, 64),
             new THREE.MeshStandardMaterial({
@@ -2168,7 +2145,8 @@ export default class Environment {
         }
         // Beads on the glass, a few of them running: redrawn ~12 times a second.
         const t = app.time?.elapsed ?? 0;
-        if (layers.drawn >= 0 && (still || t - layers.drawn < 80)) return;
+        const every = this.ambientDetail === false ? 250 : 80;
+        if (layers.drawn >= 0 && (still || t - layers.drawn < every)) return;
         const since = layers.drawn < 0 ? 0 : (t - layers.drawn) / 1000;
         layers.drawn = t;
         const ctx = layers.beadCanvas.getContext('2d');
@@ -2210,6 +2188,59 @@ export default class Environment {
         }
         layers.beads.map!.needsUpdate = true;
     }
+
+    /**
+     * Quality tier (Utils/Quality.ts): how many of the room's practical
+     * lights run in the shader, the key light's shadow map, and small
+     * ambient effects. Every light a forward shader knows about costs every
+     * lit pixel, even at zero intensity, so lower tiers take the minor ones
+     * out (their fixtures keep glowing) and lift the sky fill instead.
+     */
+    applyQuality(settings: QualitySettings, initial = true) {
+        const keep: Record<QualitySettings['lights'], Practical[]> = {
+            all: [
+                'lamp',
+                'picture',
+                'strip',
+                'ceiling',
+                'tv',
+                'floorLamp',
+                'deskLamp',
+            ],
+            key: ['ceiling', 'tv', 'floorLamp', 'deskLamp'],
+            // The fan light is the room's evening fill; the reading lamp
+            // is the one a visitor can switch.
+            minimal: ['ceiling', 'floorLamp'],
+        };
+        // The light count is fixed after start-up (a change recompiles every
+        // lit shader); later tiers keep the lights they started with.
+        if (initial) {
+            const on = new Set(keep[settings.lights]);
+            for (const { light, group } of this.practicals ?? [])
+                light.visible = on.has(group);
+        }
+        if (initial)
+            this.fillBoost =
+                settings.lights === 'all'
+                    ? 0
+                    : settings.lights === 'key'
+                      ? 0.2
+                      : 0.4;
+        this.ambientDetail = settings.ambientDetail;
+        const size = settings.shadowMapSize;
+        if (this.key) {
+            if (initial) this.key.castShadow = size > 0;
+            if (size && this.key.shadow.mapSize.x !== size) {
+                this.key.shadow.mapSize.set(size, size);
+                // Reallocated at the new size on the next shadow pass.
+                this.key.shadow.map?.dispose();
+                (this.key.shadow as { map: unknown }).map = null;
+            }
+        }
+        this.lightingKey = '';
+    }
+    fillBoost = 0;
+    ambientDetail = true;
 
     /** Whether a switchable lamp is (heading) on. */
     lampOn(lamp: LampSwitch) {
@@ -2361,9 +2392,12 @@ export default class Environment {
                 .lerp(new THREE.Color('#ffae6b'), golden * 0.8);
         }
         if (this.hemisphere) {
+            // Lights a lower quality tier leaves out of the shader still
+            // count: their share of the evening fill goes to the sky light.
             this.hemisphere.intensity =
                 (0.38 + 1.05 * day + 0.1 * golden + 0.5 * flash) *
-                (1 - 0.8 * closed);
+                (1 - 0.8 * closed) *
+                (1 + (this.fillBoost ?? 0) * dark * awake);
             this.hemisphere.color
                 .copy(mixColor('#46557a', '#dbe6f4', day))
                 .lerp(new THREE.Color('#f0b890'), golden * 0.3)
@@ -2416,8 +2450,9 @@ export default class Environment {
         this.matchBoard?.update();
         if (this.dust) {
             const app = new Application();
-            this.dust.visible = !app.reducedMotion.matches;
-            if (!app.reducedMotion.matches && !document.hidden) {
+            this.dust.visible =
+                !app.reducedMotion.matches && this.ambientDetail !== false;
+            if (this.dust.visible && !document.hidden) {
                 this.dustTime =
                     (this.dustTime || 0) + Math.min(app.time.delta, 50) / 1000;
                 const positions = this.dust.geometry.attributes.position;
@@ -2444,6 +2479,8 @@ export default class Environment {
             const id = album?.tracks[album.index]?.album;
             if (id && id !== this.recordAlbum && this.recordArtwork[id]) {
                 const art = this.recordArtwork[id];
+                app.resources.want?.(`poster_${id}`);
+                app.resources.want?.(`${id}Vinyl`);
                 this.sleeveCover.material.map = art.sleeve;
                 this.recordLabel.material.map = art.label;
                 this.recordMaterial.color.set(art.color).convertSRGBToLinear();

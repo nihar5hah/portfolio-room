@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import Icon from '../general/Icon';
 import { IconName } from '../../assets/icons';
 import useWeather from '../../hooks/useWeather';
@@ -20,34 +20,44 @@ export interface ToolbarProps {
     toggleMinimize: (key: string) => void;
     shutdown: () => void;
     launch: (name: string) => void;
+    /** Start fetching an app's code when the visitor shows intent to open it. */
+    preload?: (name: string) => void;
 }
-export default function Toolbar({
+const clock = new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'Asia/Kolkata',
+});
+const now = () => clock.format(new Date()).replace(/,/g, '');
+function Toolbar({
     windows,
     toggleMinimize,
     shutdown,
     launch,
+    preload,
 }: ToolbarProps) {
     const [menu, setMenu] = useState(false);
     const weather = useWeather();
     const [theme, toggleTheme] = useTheme();
-    const [time, setTime] = useState('');
+    const [time, setTime] = useState(now);
+    // Tick on each minute boundary, and not at all while the tab is hidden.
     useEffect(() => {
-        const tick = () =>
-            setTime(
-                new Intl.DateTimeFormat('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    timeZone: 'Asia/Kolkata',
-                })
-                    .format(new Date())
-                    .replace(/,/g, ''),
-            );
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const tick = () => {
+            clearTimeout(timer);
+            if (document.visibilityState === 'hidden') return;
+            setTime(now());
+            timer = setTimeout(tick, 60_000 - (Date.now() % 60_000) + 50);
+        };
         tick();
-        const t = setInterval(tick, 30000);
-        return () => clearInterval(t);
+        document.addEventListener('visibilitychange', tick);
+        return () => {
+            clearTimeout(timer);
+            document.removeEventListener('visibilitychange', tick);
+        };
     }, []);
     useEffect(() => {
         if (!menu) return;
@@ -96,12 +106,14 @@ export default function Toolbar({
                 </button>
                 <button
                     className="system-action"
+                    onPointerEnter={() => preload?.('Begu')}
                     onClick={() => launch('Begu')}
                 >
                     Begu
                 </button>
                 <button
                     className="system-action"
+                    onPointerEnter={() => preload?.('Credits')}
                     onClick={() => launch('Credits')}
                 >
                     About
@@ -111,17 +123,24 @@ export default function Toolbar({
                     <span
                         className="system-weather"
                         title={weather
-                            .map((c) => `${c.name} (${c.note}): ${c.temp}°C, ${c.condition}`)
+                            .map(
+                                (c) =>
+                                    `${c.name} (${c.note}): ${c.temp}°C, ${c.condition}`,
+                            )
                             .join(' · ')}
                     >
-                        {weather.map((c) => `${c.id.toUpperCase()} ${c.temp}°`).join('  ')}
+                        {weather
+                            .map((c) => `${c.id.toUpperCase()} ${c.temp}°`)
+                            .join('  ')}
                     </span>
                 )}
                 <button
                     className="system-appearance"
                     onClick={toggleTheme}
                     aria-pressed={theme === 'dark'}
-                    aria-label={theme === 'dark' ? 'Use light mode' : 'Use dark mode'}
+                    aria-label={
+                        theme === 'dark' ? 'Use light mode' : 'Use dark mode'
+                    }
                     title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
                 >
                     {theme === 'dark' ? (
@@ -225,6 +244,12 @@ export default function Toolbar({
                             key={app.name}
                             className="dock-app"
                             aria-label={app.label}
+                            onPointerEnter={
+                                entry ? undefined : () => preload?.(app.name)
+                            }
+                            onFocus={
+                                entry ? undefined : () => preload?.(app.name)
+                            }
                             onClick={() => {
                                 if (!entry) return launch(app.name);
                                 const [key, w] = entry;
@@ -271,3 +296,6 @@ export default function Toolbar({
         </>
     );
 }
+
+// Re-renders only when the windows change: callbacks from Desktop are stable.
+export default memo(Toolbar);

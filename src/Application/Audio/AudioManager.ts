@@ -30,7 +30,9 @@ const clamp = (value: number, min: number, max: number) =>
 function element(file: string, loop = false) {
     const el = document.createElement('audio');
     el.src = `/audio/${file}`;
-    el.preload = 'auto';
+    // Sound starts off: nothing is fetched until the visitor turns it on
+    // (the ambience alone is ~0.9 MB).
+    el.preload = 'none';
     el.loop = loop;
     return el;
 }
@@ -91,7 +93,16 @@ export default class AudioManager {
 
     setMuted(muted: boolean) {
         this.muted = muted;
-        if (!muted) return this.startAmbience();
+        if (!muted) {
+            // Now worth having ready: the loops and the click/key sounds.
+            for (const el of [
+                this.dry,
+                this.wet,
+                ...Object.values(this.templates).flat(),
+            ])
+                if (el.preload === 'none') el.preload = 'auto';
+            return this.startAmbience();
+        }
         this.dry.pause();
         this.wet.pause();
         this.rain.pause();

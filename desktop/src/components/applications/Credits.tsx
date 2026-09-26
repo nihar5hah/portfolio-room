@@ -1,18 +1,10 @@
-import React from 'react';
+import React, { memo } from 'react';
 import Window from '../os/Window';
-export default function Credits(props: WindowAppProps) {
+import GEOMETRY from './geometry';
+function Credits(props: WindowAppProps) {
     return (
         <Window
-            top={Math.max(
-                40,
-                (innerHeight - 90 - Math.min(620, innerHeight - 140)) / 2,
-            )}
-            left={Math.max(
-                12,
-                (innerWidth - Math.min(640, innerWidth - 24)) / 2,
-            )}
-            width={Math.min(640, innerWidth - 24)}
-            height={Math.min(620, innerHeight - 140)}
+            {...GEOMETRY.credits()}
             windowTitle="About this computer"
             windowBarIcon="credits"
             closeWindow={props.onClose}
@@ -330,3 +322,5 @@ export default function Credits(props: WindowAppProps) {
         </Window>
     );
 }
+
+export default memo(Credits);

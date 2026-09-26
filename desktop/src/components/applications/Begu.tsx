@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { memo, useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import Window from '../os/Window';
+import GEOMETRY from './geometry';
 import avatar from '../../assets/begu-avatar.jpg';
 type Message = { role: 'user' | 'assistant'; content: string };
 const GREETING =
@@ -11,7 +12,7 @@ const SUGGESTIONS = [
     'Which project should I explore?',
 ];
 // A Messages-style conversation: Begu's greeting is the first incoming bubble.
-export default function Begu(props: WindowAppProps) {
+function Begu(props: WindowAppProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [busy, setBusy] = useState(false);
@@ -64,10 +65,7 @@ export default function Begu(props: WindowAppProps) {
     ];
     return (
         <Window
-            top={58}
-            left={Math.max(16, innerWidth / 2 - 280)}
-            width={Math.min(560, innerWidth - 32)}
-            height={Math.min(720, innerHeight - 145)}
+            {...GEOMETRY.begu()}
             windowTitle="Begu"
             windowBarIcon="begu"
             closeWindow={props.onClose}
@@ -109,7 +107,9 @@ export default function Begu(props: WindowAppProps) {
                                             : 'You:'}
                                     </span>
                                     {m.role === 'assistant' ? (
-                                        <ReactMarkdown>{m.content}</ReactMarkdown>
+                                        <ReactMarkdown>
+                                            {m.content}
+                                        </ReactMarkdown>
                                     ) : (
                                         m.content
                                     )}
@@ -198,3 +198,5 @@ export default function Begu(props: WindowAppProps) {
         </Window>
     );
 }
+
+export default memo(Begu);

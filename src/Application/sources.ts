@@ -74,24 +74,14 @@ const sources: Resource[] = [
         path: 'models/Dune/fabric-bump.webp',
     },
     {
-        name: 'environmentModel',
-        type: 'gltfModel',
-        path: 'models/World/environment.glb',
-    },
-    {
-        name: 'environmentTexture',
-        type: 'texture',
-        path: 'models/World/baked_environment.jpg',
-    },
-    {
         name: 'decorModel',
         type: 'gltfModel',
-        path: 'models/Decor/decor.glb',
+        path: 'models/Decor/coffee.glb',
     },
     {
         name: 'decorTexture',
         type: 'texture',
-        path: 'models/Decor/baked_decor_modified.jpg',
+        path: 'models/Decor/coffee.jpg',
     },
 ];
 

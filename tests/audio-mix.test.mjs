@@ -159,8 +159,15 @@ test('room ambience and effects play on <audio> elements, never Web Audio', asyn
         assert.ok(r.elements.every((el) => el.paused));
         assert.equal(manager.playing.size, 0);
 
+        assert.equal(dry.preload, 'none', 'nothing is fetched while silent');
+        assert.ok(
+            Object.values(manager.templates)
+                .flat()
+                .every((el) => el.preload === 'none'),
+        );
         r.bus.dispatch('loadingScreenDone');
         assert.equal(dry.paused, false, 'office ambience plays');
+        assert.equal(dry.preload, 'auto', 'fetched once sound is on');
         assert.equal(wet.paused, false, 'muffled copy runs alongside');
         assert.equal(music.paused, false, 'music plays');
         const [startup] = manager.playing;

@@ -20,6 +20,14 @@ export default class MonitorScreen extends EventEmitter {
     inComputer: boolean;
     mouseClickInProgress = false;
     shouldLeaveMonitor = false;
+    iframe: HTMLIFrameElement;
+    /** The desktop has been asked for (its src set). */
+    loaded = false;
+    listening = false;
+    /** Last applied screen state (0 hidden, 1 visible, 2 usable). */
+    screenState = -1;
+    rect: DOMRect | null = null;
+    rectAt = 0;
 
     constructor() {
         super();
@@ -32,6 +40,35 @@ export default class MonitorScreen extends EventEmitter {
         // Create screen
         this.initializeScreenEvents();
         this.createIframe();
+        // The desktop inside the Mac is a whole second app (React, its
+        // wallpaper, icons): load it when the visitor heads for the Mac, or
+        // once the room is idle on devices with power to spare. Phones never
+        // use it (they open /desktop/ full screen).
+        const settings = this.application.quality.settings;
+        if (
+            settings.preloadDesktop &&
+            !matchMedia('(max-width: 700px)').matches
+        )
+            bus.on('loadingScreenDone', () =>
+                setTimeout(() => {
+                    const idle =
+                        (window as any).requestIdleCallback ??
+                        ((run: () => void) => setTimeout(run, 1));
+                    idle(() => this.load(), { timeout: 5000 });
+                }, 3000),
+            );
+    }
+
+    /**
+     * Point the screen at the desktop (once). `app` and `route` open
+     * something straight away; returns true if this call started the load.
+     */
+    load(app?: string, route?: string) {
+        if (this.loaded) return false;
+        this.loaded = true;
+        const query = app ? `?app=${encodeURIComponent(app)}` : '';
+        this.iframe.src = `/desktop/${query}${route ? `#${route}` : ''}`;
+        return true;
     }
 
     initializeScreenEvents() {
@@ -127,6 +164,9 @@ export default class MonitorScreen extends EventEmitter {
 
         // Bubble mouse move events to the main application, so we can affect the camera
         iframe.onload = () => {
+            // Only the desktop, once (not the blank page before it loads).
+            if (!this.loaded || this.listening) return;
+            this.listening = true;
             if (iframe.contentWindow) {
                 // Music app inside the Mac drives the room's AlbumAudio.
                 // Parent -> iframe: every albumChange is mirrored as a message.
@@ -178,7 +218,13 @@ export default class MonitorScreen extends EventEmitter {
                     // @ts-ignore
                     evt.inComputer = event.data.inComputer;
                     if (event.data.type === 'mousemove') {
-                        var clRect = iframe.getBoundingClientRect();
+                        // One layout read per ~frame, not per mouse event.
+                        const now = performance.now();
+                        if (!this.rect || now - this.rectAt > 100) {
+                            this.rect = iframe.getBoundingClientRect();
+                            this.rectAt = now;
+                        }
+                        const clRect = this.rect;
                         const { top, left, width, height } = clRect;
                         const widthRatio = width / SCREEN_SIZE.w;
                         const heightRatio = height / SCREEN_SIZE.h;
@@ -204,7 +250,7 @@ export default class MonitorScreen extends EventEmitter {
             }
         };
 
-        iframe.src = '/desktop/';
+        this.iframe = iframe;
         iframe.style.width = this.screenSize.width + 'px';
         iframe.style.height = this.screenSize.height + 'px';
         iframe.style.padding = '0';
@@ -274,11 +320,20 @@ export default class MonitorScreen extends EventEmitter {
         this.cutout.position.copy(this.object.position);
         this.cutout.quaternion.copy(this.object.quaternion);
         this.cutout.scale.copy(this.object.scale);
+        // The lid starting to open is the last moment to fetch the desktop.
+        if (computer.openness > 0.001) this.load();
         const visible = computer.openness > 0.08;
-        this.object.element.style.visibility = visible ? 'visible' : 'hidden';
-        this.object.element.style.pointerEvents =
-            computer.openness > 0.98 ? 'auto' : 'none';
-        this.object.element.toggleAttribute('inert', computer.openness < 0.98);
+        const usable = computer.openness > 0.98;
         this.cutout.visible = visible;
+        // Style writes only when the state changes: rewriting them every
+        // frame kept invalidating the iframe's layer.
+        const state = usable ? 2 : visible ? 1 : 0;
+        if (state === this.screenState) return;
+        this.screenState = state;
+        const element = this.object.element;
+        element.style.visibility = visible ? 'visible' : 'hidden';
+        element.style.pointerEvents = usable ? 'auto' : 'none';
+        element.toggleAttribute('inert', !usable);
+        this.rect = null;
     }
 }

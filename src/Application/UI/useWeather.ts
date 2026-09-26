@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { weatherFeed } from '../Utils/weatherFeed';
 
 export type CityWeather = {
     id: string;
@@ -15,8 +16,7 @@ export default function useWeather() {
     useEffect(() => {
         let alive = true;
         const load = () =>
-            fetch('/api/weather')
-                .then((r) => (r.ok ? r.json() : null))
+            weatherFeed()
                 .then((data) => alive && data?.cities && setCities(data.cities))
                 .catch(() => undefined); // weather is decoration; never an error state
         load();

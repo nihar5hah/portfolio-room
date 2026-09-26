@@ -33,6 +33,25 @@ const types = {
     '.mp4': 'video/mp4',
     '.pdf': 'application/pdf',
 };
+/** Does the Accept-Encoding header allow `coding` (q > 0)? */
+export function accepts(header, coding) {
+    return String(header || '')
+        .split(',')
+        .some((part) => {
+            const [name, ...params] = part.trim().toLowerCase().split(';');
+            if (name.trim() !== coding && name.trim() !== '*') return false;
+            const q = params
+                .map((p) => p.trim())
+                .find((p) => p.startsWith('q='));
+            return !q || Number(q.slice(2)) > 0;
+        });
+}
+// Precompressed copies written by scripts/compress-dist.mjs.
+const ENCODINGS = [
+    ['br', '.br'],
+    ['gzip', '.gz'],
+];
+
 export function createPortfolioServer({
     apiKey = process.env.GEMINI_API_KEY,
     fetchImpl = fetch,
@@ -236,13 +255,37 @@ export function createPortfolioServer({
             // the playlist, models and textures that keep their names when
             // edited) revalidates, answered with a cheap 304 when unchanged.
             const immutable = /\.[0-9a-f]{16,}\.|[\\/]audio[\\/]/.test(path);
-            const etag = `W/"${info.size.toString(16)}-${Math.floor(info.mtimeMs).toString(16)}"`;
+            // A Brotli or gzip copy from the build, when the browser takes
+            // it (whole-file requests only; ranges stay on the original).
+            const type = types[extname(path)] || 'application/octet-stream';
+            let encoding = null;
+            let compressible = false;
+            if (!req.headers.range) {
+                for (const [coding, suffix] of ENCODINGS) {
+                    let alt;
+                    try {
+                        alt = await stat(path + suffix);
+                    } catch {
+                        continue;
+                    }
+                    if (!alt.isFile()) continue;
+                    compressible = true;
+                    if (!accepts(req.headers['accept-encoding'], coding))
+                        continue;
+                    encoding = coding;
+                    path += suffix;
+                    info = alt;
+                    break;
+                }
+            }
+            const etag = `W/"${info.size.toString(16)}-${Math.floor(info.mtimeMs).toString(16)}${encoding ? `-${encoding}` : ''}"`;
             const caching = {
                 'Cache-Control': immutable
                     ? 'public, max-age=2592000, immutable'
                     : 'no-cache',
                 ETag: etag,
                 'Last-Modified': info.mtime.toUTCString(),
+                ...(compressible ? { Vary: 'Accept-Encoding' } : {}),
             };
             if (
                 !req.headers.range &&
@@ -280,10 +323,11 @@ export function createPortfolioServer({
                 );
             }
             res.writeHead(status, {
-                'Content-Type':
-                    types[extname(path)] || 'application/octet-stream',
+                'Content-Type': type,
                 'Content-Length': end - start + 1,
-                'Accept-Ranges': 'bytes',
+                ...(encoding
+                    ? { 'Content-Encoding': encoding }
+                    : { 'Accept-Ranges': 'bytes' }),
                 ...caching,
             });
             if (req.method === 'HEAD' || !info.size) return res.end();

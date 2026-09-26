@@ -51,6 +51,12 @@ At Good Night he goes to his bed and sleeps (Zzz) until the room wakes; music
 does not make him hop out of bed. The music itself fades out and stops at
 Good Night and resumes on waking (unless you had paused it yourself).
 
+## Shadow
+
+He casts a real shadow where the shadow map is redrawn as he moves (high
+and medium quality). On the low tier the shadow map is drawn once and kept,
+so he wears a soft contact shadow instead (`Decor.contactShadow`).
+
 ## Getting around
 
 `NavGrid.ts` is a 150-unit floor plan read from the furnished room when he is

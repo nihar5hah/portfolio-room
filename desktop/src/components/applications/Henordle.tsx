@@ -1,22 +1,14 @@
-import React from 'react';
+import React, { memo } from 'react';
 import Window from '../os/Window';
 import Wordle from '../wordle/Wordle';
+import GEOMETRY from './geometry';
 
 export interface HenordleAppProps extends WindowAppProps {}
 
 const HenordleApp: React.FC<HenordleAppProps> = (props) => {
     return (
         <Window
-            top={Math.max(
-                40,
-                (innerHeight - 90 - Math.min(780, innerHeight - 140)) / 2,
-            )}
-            left={Math.max(
-                12,
-                (innerWidth - Math.min(560, innerWidth - 24)) / 2,
-            )}
-            width={Math.min(560, innerWidth - 24)}
-            height={Math.min(780, innerHeight - 140)}
+            {...GEOMETRY.henordle()}
             windowBarIcon="windowGameIcon"
             windowTitle="Word game"
             closeWindow={props.onClose}
@@ -32,4 +24,4 @@ const HenordleApp: React.FC<HenordleAppProps> = (props) => {
     );
 };
 
-export default HenordleApp;
+export default memo(HenordleApp);

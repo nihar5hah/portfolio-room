@@ -7,8 +7,32 @@ module.exports = {
     output: {
         path: path.resolve(__dirname, '../dist'),
         filename: '[name].[contenthash].js',
+        // Hashed names get a year of caching from the server (immutable).
+        assetModuleFilename: '[name].[contenthash][ext]',
         publicPath: '/',
         clean: true,
+    },
+    optimization: {
+        splitChunks: {
+            cacheGroups: {
+                // React is shared by the room's UI and the desktop in the
+                // Mac's screen: download it once for both.
+                react: {
+                    test: /[\\/]node_modules[\\/](react|react-dom|scheduler|object-assign)[\\/]/,
+                    name: 'react',
+                    chunks: 'all',
+                    priority: 20,
+                },
+                // three.js changes far less often than the room's own code:
+                // a separate file stays cached across room updates.
+                three: {
+                    test: /[\\/]node_modules[\\/]three[\\/]/,
+                    name: 'three',
+                    chunks: 'all',
+                    priority: 10,
+                },
+            },
+        },
     },
     plugins: [
         new CopyPlugin({
@@ -26,6 +50,14 @@ module.exports = {
                             '**/audio/computer/**',
                             '**/audio/atmosphere/office.ogg',
                             '**/baked_decor.jpg',
+                            // Unused by the site (legacy bakes, videos, spare
+                            // models); kept as sources, never deployed.
+                            '**/textures/monitor/**',
+                            '**/models/World/**',
+                            '**/models/Computer/**',
+                            '**/models/Begu/shiba.glb',
+                            '**/models/Decor/baked_decor_modified.jpg',
+                            '**/models/Decor/decor.glb',
                         ],
                     },
                 },
@@ -41,7 +73,14 @@ module.exports = {
     ],
     resolve: {
         extensions: ['.tsx', '.ts', '.js'],
-        alias: { three: path.resolve(__dirname, '../node_modules/three') },
+        // three.js from its source modules (it declares itself side-effect
+        // free), so the unused parts of the library are left out.
+        alias: {
+            three$: path.resolve(
+                __dirname,
+                '../node_modules/three/src/Three.js',
+            ),
+        },
     },
     module: {
         rules: [
@@ -52,7 +91,15 @@ module.exports = {
                     loader: 'babel-loader',
                     options: {
                         presets: [
-                            '@babel/preset-env',
+                            // Browsers with WebGL 2 all run modern JS: no ES5
+                            // down-levelling (smaller, faster code).
+                            [
+                                '@babel/preset-env',
+                                {
+                                    targets:
+                                        'defaults and fully supports es6-module',
+                                },
+                            ],
                             '@babel/preset-react',
                             '@babel/preset-typescript',
                         ],

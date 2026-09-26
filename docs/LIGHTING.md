@@ -72,6 +72,17 @@ A wall clock right of the flag and the bedside clock both show Bangalore time
 (the wall clock's second hand ticks like a quartz movement). Both follow
 `?time=`, which now runs on from the given time instead of standing still.
 
+## Quality tiers
+
+Lower quality tiers (docs/PERFORMANCE.md) run fewer of the practical lights
+in the shader: medium keeps the fan light, TV glow and the two lamps; low
+keeps the fan light and the floor lamp. The fixtures of the others still
+glow, and their share of the evening light is added to the sky fill. The
+set is chosen once at start-up; a later tier drop never changes it (that
+would recompile every lit shader). The shadow map is redrawn only when
+Begu, the ball, the curtains, the MacBook lid or the gold record move; on
+the low tier it is drawn once and Begu gets a soft contact shadow.
+
 ## Checking a time
 
 Add `?time=HH:MM` (Bangalore time) to the URL, e.g. `/?time=18:10` for sunset

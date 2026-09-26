@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { unstable_batchedUpdates } from 'react-dom';
 import { IconName } from '../../assets/icons';
 import Button from './Button';
 
@@ -62,7 +63,10 @@ const Window: React.FC<WindowProps> = (props) => {
             const availableHeight = Math.max(220, window.innerHeight - 130);
             const nextWidth = isMaximized
                 ? window.innerWidth
-                : Math.min(Math.max(preferred.current.width, 520), availableWidth);
+                : Math.min(
+                      Math.max(preferred.current.width, 520),
+                      availableWidth,
+                  );
             const nextHeight = isMaximized
                 ? window.innerHeight - 120
                 : Math.min(preferred.current.height, availableHeight);
@@ -71,26 +75,38 @@ const Window: React.FC<WindowProps> = (props) => {
             setLeft((current) =>
                 isMaximized
                     ? 0
-                    : Math.max(6, Math.min(current, window.innerWidth - nextWidth - 6)),
+                    : Math.max(
+                          6,
+                          Math.min(current, window.innerWidth - nextWidth - 6),
+                      ),
             );
             setTop((current) =>
                 isMaximized
                     ? 32
                     : Math.max(
                           6,
-                          Math.min(current, window.innerHeight - nextHeight - 44),
+                          Math.min(
+                              current,
+                              window.innerHeight - nextHeight - 44,
+                          ),
                       ),
             );
         };
         window.addEventListener('resize', fit);
         return () => window.removeEventListener('resize', fit);
     }, [isMaximized]);
-    // The window itself follows the cursor: geometry is written straight to the
-    // node during the gesture and committed to state on release, so a drag never
-    // re-renders the contents. top/left/width/height stay frozen meanwhile, which
-    // keeps every delta below anchored to where the gesture started.
+    // The window itself follows the cursor: during a drag it is only translated
+    // (composited, no layout or shadow repaint) and a resize writes its size
+    // straight to the node, at most once per frame. Both are committed to state
+    // on release, so a gesture never re-renders the contents. top/left/width/
+    // height stay frozen meanwhile, which keeps every delta below anchored to
+    // where the gesture started.
     const gesture = useRef<'drag' | 'resize' | null>(null);
     const capture = useRef<{ element: HTMLDivElement; id: number }>();
+    // Where the gesture has taken the window so far, and the frame that will show it.
+    const live = useRef({ left, top, width, height });
+    const pointer = useRef({ x: 0, y: 0 });
+    const frame = useRef<number>();
     const startGesture = (
         event: React.PointerEvent<HTMLDivElement>,
         mode: 'drag' | 'resize',
@@ -99,40 +115,23 @@ const Window: React.FC<WindowProps> = (props) => {
         event.currentTarget.setPointerCapture(event.pointerId);
         capture.current = { element: event.currentTarget, id: event.pointerId };
         gesture.current = mode;
+        live.current = { left, top, width, height };
         dragProps.current = {
             dragStartX: event.clientX,
             dragStartY: event.clientY,
         };
     };
 
-    const stopGesture = () => {
-        if (!gesture.current) return;
-        const resized = gesture.current === 'resize';
-        gesture.current = null;
-        const style = windowRef.current.style;
-        if (resized)
-            preferred.current = {
-                width: parseFloat(style.width),
-                height: parseFloat(style.height),
-            };
-        setLeft(parseFloat(style.left));
-        setTop(parseFloat(style.top));
-        setWidth(parseFloat(style.width));
-        setHeight(parseFloat(style.height));
-        const held = capture.current;
-        capture.current = undefined;
-        if (held?.element.hasPointerCapture(held.id))
-            held.element.releasePointerCapture(held.id);
-    };
-
-    const moveGesture = (event: PointerEvent) => {
-        if (!gesture.current || event.pointerId !== capture.current?.id) return;
-        if (!(event.buttons & 1)) return stopGesture();
-        const { clientX, clientY } = event;
+    // Apply the latest pointer position to the node.
+    const applyGesture = () => {
+        frame.current = undefined;
+        const node = windowRef.current;
+        if (!node || !gesture.current) return;
+        const { x: clientX, y: clientY } = pointer.current;
         if (gesture.current === 'drag') {
             const { x, y } = getXYFromDragProps(clientX, clientY);
-            windowRef.current.style.left = `${x}px`;
-            windowRef.current.style.top = `${y}px`;
+            live.current = { ...live.current, left: x, top: y };
+            node.style.transform = `translate3d(${x - left}px, ${y - top}px, 0)`;
         } else {
             const curWidth = Math.min(
                 window.innerWidth - left - 6,
@@ -142,9 +141,48 @@ const Window: React.FC<WindowProps> = (props) => {
                 window.innerHeight - top - 90,
                 Math.max(220, clientY - top),
             );
-            windowRef.current.style.width = `${curWidth}px`;
-            windowRef.current.style.height = `${curHeight}px`;
+            live.current = {
+                ...live.current,
+                width: curWidth,
+                height: curHeight,
+            };
+            node.style.width = `${curWidth}px`;
+            node.style.height = `${curHeight}px`;
         }
+    };
+
+    const stopGesture = () => {
+        if (!gesture.current) return;
+        // Land exactly where the pointer was released, even mid-frame.
+        if (frame.current !== undefined) {
+            cancelAnimationFrame(frame.current);
+            applyGesture();
+        }
+        const resized = gesture.current === 'resize';
+        gesture.current = null;
+        const next = live.current;
+        if (resized)
+            preferred.current = { width: next.width, height: next.height };
+        // One synchronous render with the final geometry, then drop the
+        // translation it replaces, so the window never jumps.
+        unstable_batchedUpdates(() => {
+            setLeft(next.left);
+            setTop(next.top);
+            setWidth(next.width);
+            setHeight(next.height);
+        });
+        if (windowRef.current) windowRef.current.style.transform = '';
+        const held = capture.current;
+        capture.current = undefined;
+        if (held?.element.hasPointerCapture(held.id))
+            held.element.releasePointerCapture(held.id);
+    };
+
+    const moveGesture = (event: PointerEvent) => {
+        if (!gesture.current || event.pointerId !== capture.current?.id) return;
+        if (!(event.buttons & 1)) return stopGesture();
+        pointer.current = { x: event.clientX, y: event.clientY };
+        frame.current ??= requestAnimationFrame(applyGesture);
     };
 
     useEffect(() => {
@@ -236,7 +274,6 @@ const Window: React.FC<WindowProps> = (props) => {
             setIsMaximized(true);
         }
     };
-
 
     const onWindowInteract = () => {
         props.onInteract();

@@ -10,12 +10,12 @@ declare interface WindowAppProps {
     active?: boolean;
 }
 
+/** Open windows by app key; Desktop renders each app from its registry entry. */
 declare type DesktopWindows = {
     [key in string]: {
         zIndex: number;
-        component: React.ReactElement;
         minimized: boolean;
         name: string;
-        icon: IconName;
+        icon: import('../assets/icons').IconName;
     };
 };

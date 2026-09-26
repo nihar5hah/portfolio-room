@@ -7,6 +7,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import layout, { world } from './layout.mjs';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { dequantize } from './dequantize.mjs';
 const require = createRequire(import.meta.url);
 
 // The shipped Dune GLB (geometry only; Meshopt-compressed, quantized).
@@ -20,8 +21,11 @@ async function texturelessModel(file) {
     const json = JSON.parse(bytes.subarray(20, 20 + length));
     json.buffers[0].uri = `data:application/octet-stream;base64,${bytes.subarray(28 + length).toString('base64')}`;
     for (const key of ['images', 'textures', 'samplers']) delete json[key];
+    // Node cannot decode the WebP textures; keep the geometry extensions.
+    const geometry = ['EXT_meshopt_compression', 'KHR_mesh_quantization'];
     for (const key of ['extensionsUsed', 'extensionsRequired'])
-        delete json[key];
+        if (json[key])
+            json[key] = json[key].filter((e) => geometry.includes(e));
     for (const m of json.materials ?? []) {
         delete m.extensions;
         delete m.normalTexture;
@@ -33,11 +37,14 @@ async function texturelessModel(file) {
         }
     }
     globalThis.ProgressEvent ??= class extends Event {};
-    return new Promise((resolve, reject) =>
+    const gltf = await new Promise((resolve, reject) =>
         new GLTFLoader()
             .setMeshoptDecoder(MeshoptDecoder)
             .parse(JSON.stringify(json), '', resolve, reject),
     );
+    // As Resources does on load (the models ship quantized).
+    dequantize(gltf.scene);
+    return gltf;
 }
 
 async function duneModel() {

@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import Window from '../os/Window';
+import GEOMETRY from './geometry';
 import AlbumAudio, {
     AlbumState,
 } from '../../../../src/Application/Audio/AlbumAudio';
@@ -27,9 +28,16 @@ const NAMES = {
     fouryou: 'Four You · Karan Aujla',
 } as const;
 type Album = keyof typeof NAMES;
-const ART = Object.fromEntries(
-    Object.keys(NAMES).map((slug) => [slug, `/room/albums/${slug}.jpg`]),
-) as Record<Album, string>;
+// Sleeves are 500-800px JPGs made for the room; the app shows them at 132px
+// and 34px, so it uses small WebP copies (desktop/scripts/optimize-images.mjs)
+// and falls back to the original if a copy is missing.
+const art = (slug: Album, size: 96 | 264) =>
+    `/room/albums/thumbs/${slug}-${size}.webp`;
+const original = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    const image = event.currentTarget;
+    const slug = /thumbs\/([\w-]+)-\d+\.webp$/.exec(image.src)?.[1];
+    if (slug) image.src = `/room/albums/${slug}.jpg`;
+};
 
 // Both entry points use AlbumAudio; keep standalone audio alive across window closes.
 let standalone: AlbumAudio | undefined;
@@ -48,7 +56,7 @@ const send = (action: 'toggle' | 'next' | 'state' | 'retry') => {
     else standalone.publish();
 };
 
-export default function Music(props: WindowAppProps) {
+function Music(props: WindowAppProps) {
     const [state, setState] = useState<AlbumState | null>();
     useEffect(() => {
         const receive = (event: MessageEvent) => {
@@ -72,10 +80,7 @@ export default function Music(props: WindowAppProps) {
     }, []);
     return (
         <Window
-            top={72}
-            left={Math.max(16, innerWidth / 2 - 260)}
-            width={Math.min(520, innerWidth - 32)}
-            height={Math.min(620, innerHeight - 160)}
+            {...GEOMETRY.music()}
             windowTitle="Music"
             windowBarIcon="music"
             closeWindow={props.onClose}
@@ -94,7 +99,13 @@ export default function Music(props: WindowAppProps) {
                 {state ? (
                     <>
                         <header className="music-now">
-                            <img src={ART[state.album]} alt="" />
+                            <img
+                                src={art(state.album, 264)}
+                                alt=""
+                                width={132}
+                                height={132}
+                                onError={original}
+                            />
                             <div>
                                 <small>Now playing</small>
                                 <h1>{state.title}</h1>
@@ -127,7 +138,15 @@ export default function Music(props: WindowAppProps) {
                                     data-current={i === state.index}
                                     data-played={i < state.index}
                                 >
-                                    <img src={ART[track.album]} alt="" />
+                                    <img
+                                        src={art(track.album, 96)}
+                                        alt=""
+                                        width={34}
+                                        height={34}
+                                        loading="lazy"
+                                        decoding="async"
+                                        onError={original}
+                                    />
                                     <span>{track.title}</span>
                                     <small>
                                         {NAMES[track.album].split(' · ')[0]}
@@ -155,3 +174,5 @@ export default function Music(props: WindowAppProps) {
         </Window>
     );
 }
+
+export default memo(Music);

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
 import { applyTheme, initialTheme } from './hooks/useTheme';
+import { BRIDGED_EVENTS, createInputBridge } from './inputBridge';
 
 // Before first paint, so a dark-mode visitor never sees a light flash.
 applyTheme(initialTheme());
@@ -11,34 +12,17 @@ if (window.parent !== window) {
     // Inside the room this page is drawn on a 3D-transformed laptop screen;
     // index.css drops effects that Chrome renders with seams there.
     document.documentElement.dataset.embedded = 'room';
-    for (const type of [
-        'mousemove',
-        'mousedown',
-        'mouseup',
-        'pointercancel',
-        'keydown',
-        'keyup',
-        'focusin',
-    ]) {
-        window.addEventListener(type, (raw) => {
-            const event = raw as MouseEvent & KeyboardEvent;
-            window.parent.postMessage(
-                {
-                    type: type === 'pointercancel' ? 'mouseup' : type,
-                    inComputer:
-                        type.startsWith('key') ||
-                        (type !== 'pointercancel' &&
-                            event.clientX >= 0 &&
-                            event.clientX <= innerWidth &&
-                            event.clientY >= 0 &&
-                            event.clientY <= innerHeight),
-                    clientX: event.clientX,
-                    clientY: event.clientY,
-                    key: event.key,
-                },
-                window.location.origin,
-            );
-        });
-    }
+    // At most one mousemove per frame reaches the room; clicks and keys go at once.
+    const bridge = createInputBridge({
+        post: (message) =>
+            window.parent.postMessage(message, window.location.origin),
+        viewport: () => ({ width: innerWidth, height: innerHeight }),
+        schedule: (callback) => requestAnimationFrame(callback),
+        cancel: (handle) => cancelAnimationFrame(handle),
+    });
+    for (const type of BRIDGED_EVENTS)
+        window.addEventListener(type, (event) =>
+            bridge.handle(type, event as MouseEvent & KeyboardEvent),
+        );
 }
 ReactDOM.render(<App />, document.getElementById('root'));

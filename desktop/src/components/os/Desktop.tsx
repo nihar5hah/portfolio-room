@@ -1,66 +1,193 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, {
+    Suspense,
+    useCallback,
+    useEffect,
+    useMemo,
+    useState,
+} from 'react';
 import Colors from '../../constants/colors';
 import ShowcaseExplorer from '../applications/ShowcaseExplorer';
 import ShutdownSequence from './ShutdownSequence';
-// import ThisComputer from '../applications/ThisComputer';
-import Henordle from '../applications/Henordle';
 import Toolbar from './Toolbar';
-import DesktopShortcut, { DesktopShortcutProps } from './DesktopShortcut';
 import { IconName } from '../../assets/icons';
-import Credits from '../applications/Credits';
-import Begu from '../applications/Begu';
-import Music from '../applications/Music';
-import Resume from '../applications/Resume';
+import GEOMETRY, { WindowGeometry } from '../applications/geometry';
+import lazyApp, { LazyApp } from './lazyApp';
+import WindowPlaceholder, { AppErrorBoundary } from './WindowPlaceholder';
+import * as windowState from './windowState';
 
 export interface DesktopProps {}
 
-type ExtendedWindowAppProps<T> = T & WindowAppProps;
+interface Application {
+    key: string;
+    name: string;
+    /** The app window's title, for the frame shown while its code loads. */
+    title: string;
+    shortcutIcon: IconName;
+    geometry: () => WindowGeometry;
+    /** Apps that start with the desktop are bundled with it... */
+    component?: React.ComponentType<WindowAppProps>;
+    /** ...the rest download the first time they open. */
+    lazy?: LazyApp<WindowAppProps>;
+}
 
-const APPLICATIONS: {
-    [key in string]: {
-        key: string;
-        name: string;
-        shortcutIcon: IconName;
-        component: React.FC<ExtendedWindowAppProps<any>>;
-    };
-} = {
+const APPLICATIONS: { [key in string]: Application } = {
     showcase: {
         key: 'showcase',
         name: 'My Portfolio',
+        title: 'Nihar Shah',
         shortcutIcon: 'showcaseIcon',
+        geometry: GEOMETRY.showcase,
         component: ShowcaseExplorer,
     },
     henordle: {
         key: 'henordle',
         name: 'Word game',
+        title: 'Word game',
         shortcutIcon: 'henordleIcon',
-        component: Henordle,
+        geometry: GEOMETRY.henordle,
+        lazy: lazyApp(
+            () =>
+                import(
+                    /* webpackChunkName: "desktop-wordle" */ '../applications/Henordle'
+                ),
+        ),
     },
-    begu: { key: 'begu', name: 'Begu', shortcutIcon: 'begu', component: Begu },
+    begu: {
+        key: 'begu',
+        name: 'Begu',
+        title: 'Begu',
+        shortcutIcon: 'begu',
+        geometry: GEOMETRY.begu,
+        lazy: lazyApp(
+            () =>
+                import(
+                    /* webpackChunkName: "desktop-begu" */ '../applications/Begu'
+                ),
+        ),
+    },
     music: {
         key: 'music',
         name: 'Music',
+        title: 'Music',
         shortcutIcon: 'music',
-        component: Music,
+        geometry: GEOMETRY.music,
+        lazy: lazyApp(
+            () =>
+                import(
+                    /* webpackChunkName: "desktop-music" */ '../applications/Music'
+                ),
+        ),
     },
     resume: {
         key: 'resume',
         name: 'Résumé',
+        title: 'Résumé — Nihar Shah',
         shortcutIcon: 'resume',
-        component: Resume,
+        geometry: GEOMETRY.resume,
+        lazy: lazyApp(
+            () =>
+                import(
+                    /* webpackChunkName: "desktop-resume" */ '../applications/Resume'
+                ),
+        ),
     },
     credits: {
         key: 'credits',
         name: 'Credits',
+        title: 'About this computer',
         shortcutIcon: 'credits',
-        component: Credits,
+        geometry: GEOMETRY.credits,
+        lazy: lazyApp(
+            () =>
+                import(
+                    /* webpackChunkName: "desktop-credits" */ '../applications/Credits'
+                ),
+        ),
     },
 };
 
+const isApp = (key: unknown): key is string =>
+    typeof key === 'string' &&
+    Object.prototype.hasOwnProperty.call(APPLICATIONS, key);
+
+const keyForName = (name: string) =>
+    Object.keys(APPLICATIONS).find((key) => APPLICATIONS[key].name === name);
+
+interface WindowSlotProps {
+    appKey: string;
+    zIndex: number;
+    minimized: boolean;
+    active: boolean;
+    onInteract: (key: string) => void;
+    onClose: (key: string) => void;
+    onMinimize: (key: string) => void;
+}
+
+/**
+ * One open window. Memoised with callbacks bound once per window, so raising,
+ * focusing or minimising one window leaves the others (and their apps) alone.
+ */
+const WindowSlot = React.memo(function WindowSlot({
+    appKey,
+    zIndex,
+    minimized,
+    active,
+    onInteract,
+    onClose,
+    onMinimize,
+}: WindowSlotProps) {
+    const app = APPLICATIONS[appKey];
+    const [attempt, setAttempt] = useState(0);
+    const interact = useCallback(
+        () => onInteract(appKey),
+        [onInteract, appKey],
+    );
+    const close = useCallback(() => onClose(appKey), [onClose, appKey]);
+    const minimize = useCallback(
+        () => onMinimize(appKey),
+        [onMinimize, appKey],
+    );
+    const retry = useCallback(() => {
+        app.lazy?.retry();
+        setAttempt((n) => n + 1);
+    }, [app]);
+    const placeholder = (failed: boolean) => (
+        <WindowPlaceholder
+            title={app.title}
+            geometry={app.geometry}
+            active={active}
+            onInteract={interact}
+            onClose={close}
+            onMinimize={minimize}
+            onRetry={failed ? retry : undefined}
+        />
+    );
+    // Chosen once per mount (and per retry), never switched while mounted: an
+    // app whose code already arrived (hover preload, or opened before) renders
+    // straight away instead of suspending for a frame.
+    const App = useMemo(
+        () =>
+            app.lazy ? (app.lazy.loaded ?? app.lazy.Component) : app.component!,
+        [app, attempt], // eslint-disable-line react-hooks/exhaustive-deps
+    );
+    return (
+        <div style={minimized ? { zIndex, ...styles.minimized } : { zIndex }}>
+            <AppErrorBoundary key={attempt} fallback={placeholder(true)}>
+                <Suspense fallback={placeholder(false)}>
+                    <App
+                        active={active}
+                        onInteract={interact}
+                        onClose={close}
+                        onMinimize={minimize}
+                    />
+                </Suspense>
+            </AppErrorBoundary>
+        </div>
+    );
+});
+
 const Desktop: React.FC<DesktopProps> = (props) => {
     const [windows, setWindows] = useState<DesktopWindows>({});
-
-    const [shortcuts, setShortcuts] = useState<DesktopShortcutProps[]>([]);
 
     const [shutdown, setShutdown] = useState(false);
     // Clicking bare wallpaper leaves no window active, like clicking the macOS desktop.
@@ -71,67 +198,55 @@ const Desktop: React.FC<DesktopProps> = (props) => {
         : null;
     const [numShutdowns, setNumShutdowns] = useState(1);
 
+    const rebootDesktop = useCallback(() => {
+        setWindows({});
+    }, []);
+
     useEffect(() => {
         if (shutdown === true) {
             rebootDesktop();
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [shutdown]);
+    }, [shutdown, rebootDesktop]);
 
-    useEffect(() => {
-        const newShortcuts: DesktopShortcutProps[] = [];
-        Object.keys(APPLICATIONS).forEach((key) => {
-            const app = APPLICATIONS[key];
-            newShortcuts.push({
-                shortcutName: app.name,
-                icon: app.shortcutIcon,
-                onOpen: () => {
-                    addWindow(
-                        app.key,
-                        <app.component
-                            onInteract={() => onWindowInteract(app.key)}
-                            onMinimize={() => minimizeWindow(app.key)}
-                            onClose={() => removeWindow(app.key)}
-                            key={app.key}
-                        />,
-                    );
-                },
-            });
-        });
+    // Open an app, or bring its window back to the front. Every window change
+    // (see windowState.ts) keeps the previous state when nothing would change, so
+    // clicks and focus in the front window don't re-render the desktop at all.
+    const openApp = useCallback((key: string) => {
+        if (!isApp(key)) return;
+        const { name, shortcutIcon: icon } = APPLICATIONS[key];
+        setDesktopFocused(false);
+        setWindows((prev) => windowState.open(prev, key, { name, icon }));
+    }, []);
 
-        const requested = APPLICATIONS[
-            new URLSearchParams(location.search).get('app') || ''
-        ]?.name;
-        newShortcuts.forEach((shortcut) => {
-            if (
-                shortcut.shortcutName === 'My Portfolio' ||
-                shortcut.shortcutName === requested
-            ) {
-                shortcut.onOpen();
-            }
-        });
+    const launch = useCallback(
+        (name: string) => {
+            const key = keyForName(name);
+            if (key) openApp(key);
+        },
+        [openApp],
+    );
 
-        setShortcuts(newShortcuts);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Hovering a dock icon starts fetching that app's code.
+    const preload = useCallback((name: string) => {
+        const key = keyForName(name);
+        key && APPLICATIONS[key].lazy?.preload().catch(() => undefined);
     }, []);
 
     useEffect(() => {
-        const open = () =>
-            shortcuts
-                .find((shortcut) => shortcut.shortcutName === 'Begu')
-                ?.onOpen();
-        const openResume = () =>
-            shortcuts
-                .find((shortcut) => shortcut.shortcutName === 'Résumé')
-                ?.onOpen();
+        openApp('showcase');
+        const requested = new URLSearchParams(location.search).get('app');
+        if (requested && requested !== 'showcase') openApp(requested);
+    }, [openApp]);
+
+    useEffect(() => {
+        const open = () => openApp('begu');
+        const openResume = () => openApp('resume');
         // The room asks for an app when a visitor clicks an object (turntable,
         // bookshelf, jerseys, Begu). Route is a portfolio page such as /notes.
-        const openApp = (key: string, route?: string) => {
+        const openRoute = (key: string, route?: string) => {
             if (typeof route === 'string' && /^\/[a-z-/]*$/.test(route))
                 location.hash = route;
-            shortcuts
-                .find((s) => s.shortcutName === APPLICATIONS[key]?.name)
-                ?.onOpen();
+            openApp(key);
         };
         const receive = (event: MessageEvent) => {
             if (
@@ -140,11 +255,8 @@ const Desktop: React.FC<DesktopProps> = (props) => {
             )
                 return;
             if (event.data?.type === 'openBegu') open();
-            else if (
-                event.data?.type === 'openApp' &&
-                Object.prototype.hasOwnProperty.call(APPLICATIONS, event.data.app)
-            )
-                openApp(event.data.app, event.data.route);
+            else if (event.data?.type === 'openApp' && isApp(event.data.app))
+                openRoute(event.data.app, event.data.route);
         };
         window.addEventListener('message', receive);
         window.addEventListener('openBegu', open);
@@ -154,7 +266,11 @@ const Desktop: React.FC<DesktopProps> = (props) => {
             window.removeEventListener('openBegu', open);
             window.removeEventListener('openResume', openResume);
         };
-    }, [shortcuts]);
+    }, [openApp]);
+
+    const removeWindow = useCallback((key: string) => {
+        setWindows((prev) => windowState.close(prev, key));
+    }, []);
 
     // Standalone only: inside the room, Escape belongs to the camera (Step back).
     useEffect(() => {
@@ -162,109 +278,38 @@ const Desktop: React.FC<DesktopProps> = (props) => {
         const close = (event: KeyboardEvent) => {
             if (event.key !== 'Escape' || !topKey || desktopFocused) return;
             if (document.querySelector('#workspace-menu')) return; // menu closes first
-            const field = (event.target as HTMLElement)?.closest?.('input, textarea');
+            const field = (event.target as HTMLElement)?.closest?.(
+                'input, textarea',
+            );
             if (field && (field as HTMLInputElement).value) return;
             removeWindow(topKey);
         };
         window.addEventListener('keydown', close);
         return () => window.removeEventListener('keydown', close);
-    }, [topKey, desktopFocused]);
-
-    const rebootDesktop = useCallback(() => {
-        setWindows({});
-    }, []);
-
-    const removeWindow = useCallback((key: string) => {
-        setWindows((prevWindows) => {
-            const newWindows = { ...prevWindows };
-            delete newWindows[key];
-            return newWindows;
-        });
-    }, []);
+    }, [topKey, desktopFocused, removeWindow]);
 
     const minimizeWindow = useCallback((key: string) => {
-        setWindows((prevWindows) => {
-            const newWindows = { ...prevWindows };
-            newWindows[key].minimized = true;
-            return newWindows;
-        });
+        setWindows((prev) => windowState.minimize(prev, key));
     }, []);
 
-    const getHighestZIndex = useCallback((): number => {
-        let highestZIndex = 0;
-        Object.keys(windows).forEach((key) => {
-            const window = windows[key];
-            if (window) {
-                if (window.zIndex > highestZIndex)
-                    highestZIndex = window.zIndex;
-            }
-        });
-        return highestZIndex;
-    }, [windows]);
+    const toggleMinimize = useCallback((key: string) => {
+        setWindows((prev) => windowState.toggle(prev, key));
+    }, []);
 
-    const toggleMinimize = useCallback(
-        (key: string) => {
-            const newWindows = { ...windows };
-            const highestIndex = getHighestZIndex();
-            if (
-                newWindows[key].minimized ||
-                newWindows[key].zIndex === highestIndex
-            ) {
-                newWindows[key].minimized = !newWindows[key].minimized;
-            }
-            newWindows[key].zIndex = getHighestZIndex() + 1;
-            setWindows(newWindows);
-        },
-        [windows, getHighestZIndex],
-    );
-
-    const onWindowInteract = useCallback(
-        (key: string) => {
-            setDesktopFocused(false);
-            setWindows((prevWindows) => ({
-                ...prevWindows,
-                [key]: {
-                    ...prevWindows[key],
-                    zIndex:
-                        1 +
-                        Math.max(
-                            0,
-                            ...Object.values(prevWindows).map((w) => w.zIndex),
-                        ),
-                },
-            }));
-        },
-        [setWindows, getHighestZIndex],
-    );
+    // Called on every mousedown and focus inside a window (both fire for one
+    // click): a no-op unless the window is behind another or the wallpaper
+    // had focus, so the second call never renders.
+    const onWindowInteract = useCallback((key: string) => {
+        setDesktopFocused(false);
+        setWindows((prev) => windowState.raise(prev, key));
+    }, []);
 
     const startShutdown = useCallback(() => {
         setTimeout(() => {
             setShutdown(true);
-            setNumShutdowns(numShutdowns + 1);
+            setNumShutdowns((n) => n + 1);
         }, 600);
-    }, [numShutdowns]);
-
-    const addWindow = useCallback(
-        (key: string, element: JSX.Element) => {
-            setDesktopFocused(false);
-            setWindows((prevState) => ({
-                ...prevState,
-                [key]: {
-                    zIndex:
-                        1 +
-                        Math.max(
-                            0,
-                            ...Object.values(prevState).map((w) => w.zIndex),
-                        ),
-                    minimized: false,
-                    component: element,
-                    name: APPLICATIONS[key].name,
-                    icon: APPLICATIONS[key].shortcutIcon,
-                },
-            }));
-        },
-        [getHighestZIndex],
-    );
+    }, []);
 
     return !shutdown ? (
         <div
@@ -287,55 +332,24 @@ const Desktop: React.FC<DesktopProps> = (props) => {
                 </span>
                 <small>NIHAR’S WORKSPACE</small>
             </div>
-            {/* For each window in windows, loop over and render  */}
-            {Object.keys(windows).map((key) => {
-                const element = windows[key].component;
-                if (!element) return <div key={`win-${key}`}></div>;
-                return (
-                    <div
-                        key={`win-${key}`}
-                        style={Object.assign(
-                            {},
-                            { zIndex: windows[key].zIndex },
-                            windows[key].minimized && styles.minimized,
-                        )}
-                    >
-                        {React.cloneElement(element, {
-                            key,
-                            active: !desktopFocused && key === topKey,
-                            onInteract: () => onWindowInteract(key),
-                            onClose: () => removeWindow(key),
-                        })}
-                    </div>
-                );
-            })}
-            <div style={styles.shortcuts} className="desktop-shortcuts">
-                {shortcuts.map((shortcut, i) => {
-                    return (
-                        <div
-                            style={Object.assign({}, styles.shortcutContainer, {
-                                top: i * 104,
-                            })}
-                            key={shortcut.shortcutName}
-                        >
-                            <DesktopShortcut
-                                icon={shortcut.icon}
-                                shortcutName={shortcut.shortcutName}
-                                onOpen={shortcut.onOpen}
-                            />
-                        </div>
-                    );
-                })}
-            </div>
+            {Object.keys(windows).map((key) => (
+                <WindowSlot
+                    key={`win-${key}`}
+                    appKey={key}
+                    zIndex={windows[key].zIndex}
+                    minimized={windows[key].minimized}
+                    active={!desktopFocused && key === topKey}
+                    onInteract={onWindowInteract}
+                    onClose={removeWindow}
+                    onMinimize={minimizeWindow}
+                />
+            ))}
             <Toolbar
                 windows={windows}
                 toggleMinimize={toggleMinimize}
                 shutdown={startShutdown}
-                launch={(name) =>
-                    shortcuts
-                        .find((shortcut) => shortcut.shortcutName === name)
-                        ?.onOpen()
-                }
+                launch={launch}
+                preload={preload}
             />
         </div>
     ) : (
@@ -351,19 +365,6 @@ const styles: StyleSheetCSS = {
         minHeight: '100%',
         flex: 1,
         backgroundColor: Colors.turquoise,
-    },
-    shutdown: {
-        minHeight: '100%',
-        flex: 1,
-        backgroundColor: '#1d2e2f',
-    },
-    shortcutContainer: {
-        position: 'absolute',
-    },
-    shortcuts: {
-        position: 'absolute',
-        top: 16,
-        left: 6,
     },
     minimized: {
         display: 'none',

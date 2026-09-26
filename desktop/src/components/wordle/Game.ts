@@ -10,10 +10,10 @@ export type Mark = 'correct' | 'present' | 'absent';
 export const LENGTH = 5;
 export const TRIES = 6;
 
-const VALID = new Set(WORDS);
-for (const word of ANSWERS) VALID.add(word);
-
-export const isWord = (guess: string) => VALID.has(guess.toLowerCase());
+// Built on the first guess, not when the game's code loads.
+let valid: Set<string> | undefined;
+export const isWord = (guess: string) =>
+    (valid ??= new Set([...WORDS, ...ANSWERS])).has(guess.toLowerCase());
 
 /**
  * Colour a guess against the answer. Greens first; then each remaining

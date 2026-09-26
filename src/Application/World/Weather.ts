@@ -1,4 +1,5 @@
 import bus from '../UI/EventBus';
+import { weatherFeed } from '../Utils/weatherFeed';
 
 /**
  * Bangalore's weather for the window: the same Open-Meteo reading the lock
@@ -90,11 +91,8 @@ export default class Weather {
 
     async load() {
         try {
-            const response = await fetch('/api/weather', {
-                signal: AbortSignal.timeout(10_000),
-            });
-            if (!response.ok) return;
-            const data = await response.json();
+            // Shared with the lock screen's readout (one request, not two).
+            const data = await weatherFeed();
             const city = data?.cities?.find(
                 (c: { id?: string }) => c?.id === 'blr',
             );

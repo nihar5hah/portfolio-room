@@ -178,7 +178,12 @@ export default class Camera extends EventEmitter {
                 );
                 return;
             }
-            if (app)
+            // Not loaded yet: it opens with the app in its address instead.
+            const started = new Application().world?.monitorScreen?.load(
+                app,
+                route,
+            );
+            if (app && !started)
                 document
                     .querySelector<HTMLIFrameElement>('#computer-screen')
                     ?.contentWindow?.postMessage(

@@ -417,6 +417,44 @@ export default class Decor {
         });
     }
 
+    shadowBlob: THREE.Mesh | undefined;
+    /**
+     * A soft contact shadow under Begu, for quality tiers whose shadow map
+     * is drawn once and kept (he would otherwise leave his shadow behind).
+     */
+    contactShadow(on: boolean) {
+        if (!this.dog) return;
+        if (!this.shadowBlob && on) {
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                const fade = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+                fade.addColorStop(0, 'rgba(0,0,0,0.55)');
+                fade.addColorStop(0.55, 'rgba(0,0,0,0.3)');
+                fade.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = fade;
+                ctx.fillRect(0, 0, 64, 64);
+            }
+            const blob = new THREE.Mesh(
+                new THREE.PlaneGeometry(1100, 2100),
+                new THREE.MeshBasicMaterial({
+                    map: new THREE.CanvasTexture(canvas),
+                    transparent: true,
+                    depthWrite: false,
+                }),
+            );
+            blob.name = 'Contact shadow';
+            blob.rotation.x = -Math.PI / 2;
+            blob.position.set(0, 8, 280);
+            blob.raycast = () => undefined;
+            blob.renderOrder = 1;
+            this.dog.add(blob);
+            this.shadowBlob = blob;
+        }
+        if (this.shadowBlob) this.shadowBlob.visible = on;
+    }
+
     /**
      * Click the football: it is kicked out into the room, away from the
      * visitor, and Begu gives chase and brings it back here.

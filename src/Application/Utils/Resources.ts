@@ -5,6 +5,7 @@ import Application from '../Application';
 import UIEventBus from '../UI/EventBus';
 import EventEmitter from './EventEmitter';
 import Loading from './Loading';
+import { dequantize } from './Dequantize';
 
 export default class Resources extends EventEmitter {
     sources: Resource[];
@@ -24,6 +25,10 @@ export default class Resources extends EventEmitter {
     };
     application: Application;
     loading: Loading;
+    /** Lazy textures by name, fetched only once something asks for them. */
+    lazySources = new Map<string, TextureResource>();
+    wanted = new Set<string>();
+    fillReady = false;
 
     constructor(sources: Resource[]) {
         super();
@@ -49,7 +54,8 @@ export default class Resources extends EventEmitter {
     }
 
     startLoading() {
-        const lazy: TextureResource[] = [];
+        this.lazySources ??= new Map();
+        this.wanted ??= new Set();
         // Load each source
         for (const source of this.sources) {
             if (source.type === 'texture' && source.lazy) {
@@ -57,12 +63,16 @@ export default class Resources extends EventEmitter {
                 const placeholder = new THREE.Texture(this.swatch());
                 placeholder.encoding = THREE.sRGBEncoding;
                 placeholder.needsUpdate = true;
-                lazy.push(source);
+                this.lazySources.set(source.name, source);
                 this.sourceLoaded(source, placeholder);
             } else if (source.type === 'gltfModel') {
                 this.loaders.gltfLoader.load(
                     source.path,
                     (file) => {
+                        // Models ship Meshopt-quantized (scripts/
+                        // optimize-models.mjs); raycasts, bounds and the
+                        // floor plan need plain floats (Utils/Dequantize.ts).
+                        dequantize(file.scene);
                         this.sourceLoaded(source, file);
                     },
                     undefined,
@@ -89,21 +99,41 @@ export default class Resources extends EventEmitter {
                 );
             }
         }
-        // Album art streams in once the room is usable; a failure keeps the swatch.
-        const images = new THREE.ImageLoader();
-        const fill = () =>
-            lazy.forEach((source) =>
-                images.load(source.path, (image) => {
+        // Album art streams in once the room is usable, and only the art
+        // something shows (the sleeves in the room, the record on the
+        // turntable): the other albums' covers load when they play.
+        const fill = () => {
+            this.fillReady = true;
+            this.wanted.forEach((name) => this.fetchLazy(name));
+        };
+        if (this.loaded === this.toLoad) setTimeout(fill);
+        else this.on('ready', fill);
+    }
+
+    /** Ask for a lazy texture's real image (once); a failure keeps the swatch. */
+    want(name: string) {
+        if (this.wanted.has(name) || !this.lazySources.has(name)) return;
+        this.wanted.add(name);
+        if (this.fillReady) this.fetchLazy(name);
+    }
+
+    fetchLazy(name: string) {
+        const source = this.lazySources.get(name);
+        if (!source) return;
+        new THREE.ImageLoader().load(source.path, (image) => {
+            // Decode off the main thread before the upload where supported.
+            const ready = image.decode ? image.decode() : Promise.resolve();
+            void ready
+                .catch(() => undefined)
+                .then(() => {
                     const texture = this.items.texture[source.name];
-                    // WebGL2 storage is immutable at 1×1: free it so the real
-                    // size is allocated on the next upload.
+                    // WebGL2 storage is immutable at 1×1: free it so the
+                    // real size is allocated on the next upload.
                     texture.dispose();
                     texture.image = image;
                     texture.needsUpdate = true;
-                }),
-            );
-        if (this.loaded === this.toLoad) setTimeout(fill);
-        else this.on('ready', fill);
+                });
+        });
     }
 
     swatch() {

@@ -12,13 +12,16 @@ const Icon: React.FC<IconProps> = ({ icon, style, size }) => {
         {},
         styles.icon,
         style,
-        size && { width: size, height: size }
+        size && { width: size, height: size },
     );
     return (
         <img
             style={iconStyle}
             alt={''}
             src={getIconByName(icon) as unknown as string}
+            width={size}
+            height={size}
+            decoding="async"
         />
     );
 };

@@ -1,5 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion, useAnimation } from 'framer-motion';
+import React, {
+    memo,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import {
     LENGTH,
     Mark,
@@ -71,15 +77,44 @@ const COLORS: Record<Mark | 'empty', string> = {
     empty: 'var(--tile-empty, #fff)',
 };
 
-const Tile: React.FC<{
+// Tile and row motion runs on the Web Animations API: transforms only, so the
+// browser composites it off the main thread. Each segment eases in and out
+// (quadratic), like the tween it replaces.
+const EASE = 'cubic-bezier(0.455, 0.03, 0.515, 0.955)';
+const reducedMotion = () =>
+    matchMedia('(prefers-reduced-motion: reduce)').matches;
+/** Plays a transform animation; resolves when it finishes, rejects if cancelled. */
+const play = (
+    element: HTMLElement | null,
+    transforms: string[],
+    options: KeyframeAnimationOptions,
+    running?: Animation[],
+): Promise<void> => {
+    if (!element?.animate) return Promise.resolve();
+    const animation = element.animate(
+        transforms.map((transform) => ({ transform, easing: EASE })),
+        options,
+    );
+    running?.push(animation);
+    return animation.finished.then(() => undefined);
+};
+
+const Tile = memo(function Tile({
+    letter,
+    mark,
+    index,
+    reveal,
+    pop,
+    bounce,
+}: {
     letter: string;
     mark?: Mark;
     index: number;
     reveal: boolean;
     pop: boolean;
     bounce: boolean;
-}> = ({ letter, mark, index, reveal, pop, bounce }) => {
-    const controls = useAnimation();
+}) {
+    const tile = useRef<HTMLDivElement>(null);
     const [shown, setShown] = useState<Mark | undefined>(
         reveal ? undefined : mark,
     );
@@ -95,49 +130,62 @@ const Tile: React.FC<{
         // Flip one after another, turning colour at the halfway point. A
         // timer backs the animation up, so colours always appear even when
         // animation frames are paused (a background tab) or motion is off.
-        let cancelled = false;
-        const delay = index * 0.28;
-        if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        if (reducedMotion() || !tile.current?.animate) {
             setShown(mark);
             return;
         }
+        let cancelled = false;
+        const running: Animation[] = [];
+        const delay = index * 280;
         const backup = setTimeout(
             () => !cancelled && setShown(mark),
-            (delay + 0.2) * 1000,
+            delay + 200,
         );
-        controls
-            .start({ rotateX: 90, transition: { delay, duration: 0.18 } })
+        play(
+            tile.current,
+            ['rotateX(0deg)', 'rotateX(90deg)'],
+            { delay, duration: 180, fill: 'forwards' },
+            running,
+        )
             .then(() => {
                 if (cancelled) return;
                 setShown(mark);
-                return controls.start({
-                    rotateX: 0,
-                    transition: { duration: 0.18 },
-                });
+                // Starts at 90deg, so the held first half can go at once.
+                const back = play(
+                    tile.current,
+                    ['rotateX(90deg)', 'rotateX(0deg)'],
+                    { duration: 180 },
+                    running,
+                );
+                running[0].cancel();
+                return back;
             })
             .then(() => {
                 if (cancelled || !bounce) return;
-                return controls.start({
-                    y: [0, -14, 0],
-                    transition: { delay: index * 0.09, duration: 0.35 },
-                });
-            });
+                return play(
+                    tile.current,
+                    ['translateY(0)', 'translateY(-14px)', 'translateY(0)'],
+                    { delay: index * 90, duration: 350 },
+                    running,
+                );
+            })
+            .catch(() => undefined); // cancelled: the tile unmounted or changed
         return () => {
             cancelled = true;
             clearTimeout(backup);
+            running.forEach((animation) => animation.cancel());
         };
-    }, [mark, reveal, index, bounce, controls]);
+    }, [mark, reveal, index, bounce]);
     useEffect(() => {
-        if (pop && letter)
-            controls.start({
-                scale: [1, 1.1, 1],
-                transition: { duration: 0.1 },
-            });
-    }, [letter, pop, controls]);
+        if (pop && letter && !reducedMotion())
+            play(tile.current, ['scale(1)', 'scale(1.1)', 'scale(1)'], {
+                duration: 100,
+            }).catch(() => undefined);
+    }, [letter, pop]);
     const filled = !!shown;
     return (
-        <motion.div
-            animate={controls}
+        <div
+            ref={tile}
             className="word-tile"
             data-mark={shown ?? (letter ? 'typed' : 'empty')}
             aria-label={
@@ -155,9 +203,9 @@ const Tile: React.FC<{
             }}
         >
             {letter}
-        </motion.div>
+        </div>
     );
-};
+});
 
 const ROWS = ['QWERTYUIOP', 'ASDFGHJKL', '+ZXCVBNM-'];
 
@@ -168,7 +216,7 @@ const Wordle: React.FC = () => {
     const [message, setMessage] = useState('');
     const [revealing, setRevealing] = useState(-1);
     const [showStats, setShowStats] = useState(false);
-    const shake = useAnimation();
+    const rowRefs = useRef<(HTMLDivElement | null)[]>([]);
 
     const { answer, guesses, mode } = game;
     const won = guesses.at(-1) === answer;
@@ -186,22 +234,25 @@ const Wordle: React.FC = () => {
         if (ms) setTimeout(() => setMessage((m) => (m === text ? '' : m)), ms);
     }, []);
 
+    const shake = useCallback(() => {
+        if (reducedMotion()) return;
+        play(
+            rowRefs.current[guesses.length],
+            [0, -8, 8, -6, 6, 0].map((x) => `translateX(${x}px)`),
+            { duration: 350 },
+        ).catch(() => undefined);
+    }, [guesses.length]);
+
     const submit = useCallback(() => {
         if (over) return;
         if (typing.length < LENGTH) {
             say('Not enough letters');
-            shake.start({
-                x: [0, -8, 8, -6, 6, 0],
-                transition: { duration: 0.35 },
-            });
+            shake();
             return;
         }
         if (!isWord(typing)) {
             say('Not in word list');
-            shake.start({
-                x: [0, -8, 8, -6, 6, 0],
-                transition: { duration: 0.35 },
-            });
+            shake();
             return;
         }
         const next = [...guesses, typing];
@@ -342,10 +393,10 @@ const Wordle: React.FC = () => {
             </div>
             <div style={styles.board}>
                 {rows.map((row, r) => (
-                    <motion.div
+                    <div
                         key={`${game.answer}-${r}`}
                         style={styles.row}
-                        animate={r === guesses.length ? shake : undefined}
+                        ref={(row) => (rowRefs.current[r] = row)}
                     >
                         {[...Array(LENGTH)].map((_, i) => (
                             <Tile
@@ -362,7 +413,7 @@ const Wordle: React.FC = () => {
                                 }
                             />
                         ))}
-                    </motion.div>
+                    </div>
                 ))}
             </div>
             <div style={styles.keyboard}>
