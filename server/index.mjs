@@ -52,9 +52,32 @@ const ENCODINGS = [
     ['gzip', '.gz'],
 ];
 
+/**
+ * Origins allowed to call /api/chat besides the server's own host: the site
+ * on its own domain when Vercel forwards /api to this server on Render
+ * (ALLOWED_ORIGINS=https://niharshah.me,https://www.niharshah.me).
+ */
+export function allowedOrigin(origin, host, allowed = []) {
+    if (!origin) return true;
+    let url;
+    try {
+        url = new URL(origin);
+    } catch {
+        return false;
+    }
+    return url.host === host || allowed.includes(url.origin);
+}
+
 export function createPortfolioServer({
     apiKey = process.env.GEMINI_API_KEY,
     fetchImpl = fetch,
+    allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+        .split(',')
+        .map((o) => o.trim().replace(/\/$/, ''))
+        .filter(Boolean),
+    // Behind Vercel and Render the socket is the proxy; the visitor is the
+    // first X-Forwarded-For entry (Vercel sets it, clients cannot spoof it).
+    trustProxy = process.env.TRUST_PROXY === '1',
 } = {}) {
     // ponytail: per-process limits suit one server; use a shared rate limiter when deploying multiple instances.
     const visitors = new Map();
@@ -83,6 +106,8 @@ export function createPortfolioServer({
                     });
                 }
             }
+            if (url.pathname === '/api/health')
+                return json(res, 200, { ok: true });
             if (url.pathname === '/api/weather') {
                 if (req.method !== 'GET')
                     return json(res, 405, { error: 'Use GET for weather.' });
@@ -98,8 +123,11 @@ export function createPortfolioServer({
                 if (req.method !== 'POST')
                     return json(res, 405, { error: 'Use POST for chat.' });
                 if (
-                    req.headers.origin &&
-                    new URL(req.headers.origin).host !== req.headers.host
+                    !allowedOrigin(
+                        req.headers.origin,
+                        req.headers.host,
+                        allowedOrigins,
+                    )
                 )
                     return json(res, 403, {
                         error: 'This request must come from the portfolio.',
@@ -148,7 +176,12 @@ export function createPortfolioServer({
                         error: 'Begu is offline right now. You can still explore Nihar’s projects or get in touch.',
                     });
                 const now = Date.now(),
-                    ip = req.socket.remoteAddress;
+                    ip =
+                        (trustProxy &&
+                            String(req.headers['x-forwarded-for'] || '')
+                                .split(',')[0]
+                                .trim()) ||
+                        req.socket.remoteAddress;
                 for (const [key, entry] of visitors)
                     if (now - entry.start > 3600000) visitors.delete(key);
                 if (visitors.size >= 1000 && !visitors.has(ip))
@@ -349,7 +382,9 @@ if (
     resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
     const port = Number(process.env.PORT || 5181);
-    createPortfolioServer().listen(port, '127.0.0.1', () =>
-        console.log(`Nihar’s workspace: http://127.0.0.1:${port}`),
+    // Locally only this machine; on Render, HOST=0.0.0.0.
+    const host = process.env.HOST || '127.0.0.1';
+    createPortfolioServer().listen(port, host, () =>
+        console.log(`Nihar’s workspace: http://${host}:${port}`),
     );
 }

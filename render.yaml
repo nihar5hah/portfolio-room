@@ -1,0 +1,26 @@
+# Render Blueprint: the room's backend (Begu's chat, weather, match board).
+# The website itself is served by Vercel, which forwards /api/* here
+# (vercel.json). The server has no npm dependencies, so there is no build.
+services:
+    - type: web
+      name: nihar-room-api
+      runtime: node
+      plan: free
+      region: singapore
+      branch: main
+      buildCommand: node --version
+      startCommand: node server/index.mjs
+      healthCheckPath: /api/health
+      autoDeploy: true
+      envVars:
+          - key: HOST
+            value: 0.0.0.0
+          - key: NODE_VERSION
+            value: '22'
+          - key: TRUST_PROXY
+            value: '1'
+          - key: ALLOWED_ORIGINS
+            value: https://niharshah.me,https://www.niharshah.me
+          # Set in the Render dashboard; never committed.
+          - key: GEMINI_API_KEY
+            sync: false

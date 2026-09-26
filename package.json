@@ -1,6 +1,9 @@
 {
   "repository": "github:nihar5hah/portfolio-room",
   "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "webpack serve --config bundler/webpack.dev.js",
     "build": "webpack --config bundler/webpack.prod.js && node scripts/compress-dist.mjs",
