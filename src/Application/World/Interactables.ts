@@ -3,7 +3,12 @@ import Application from '../Application';
 import bus from '../UI/EventBus';
 
 /** What a room object opens, and how it is described on hover. */
-type Action = { label: string; run: () => void };
+type Action = {
+    label: string;
+    run: () => void;
+    /** Act on the first tap on touch screens too (petting Begu). */
+    instant?: boolean;
+};
 
 export const FOUND_KEY = 'nihar-found-records';
 
@@ -16,8 +21,10 @@ export default class Interactables {
     app = new Application();
     ray = new THREE.Raycaster();
     pointer = new THREE.Vector2();
-    targets: { object: THREE.Object3D; action: (o: THREE.Object3D) => Action }[] =
-        [];
+    targets: {
+        object: THREE.Object3D;
+        action: (o: THREE.Object3D) => Action;
+    }[] = [];
     found = new Set<string>(
         JSON.parse(localStorage.getItem(FOUND_KEY) || '[]') as string[],
     );
@@ -60,7 +67,10 @@ export default class Interactables {
             else if (name === 'Graduation album rug')
                 this.add(object, () => ({
                     label: 'Play Graduation',
-                    run: () => this.app.world.audioManager.album.playAlbum('graduation'),
+                    run: () =>
+                        this.app.world.audioManager.album.playAlbum(
+                            'graduation',
+                        ),
                 }));
             else if (name.startsWith('Album sleeve: poster_')) {
                 this.sleeves++;
@@ -105,12 +115,17 @@ export default class Interactables {
             pressed = null;
             if (
                 !press ||
-                Math.hypot(event.clientX - press.x, event.clientY - press.y) > 10
+                Math.hypot(event.clientX - press.x, event.clientY - press.y) >
+                    10
             )
                 return;
             const hit = this.hit(event);
             if (!hit || hit.label !== press.hit.label) return;
-            if (event.pointerType === 'touch' && armed !== hit.label) {
+            if (
+                event.pointerType === 'touch' &&
+                !hit.instant &&
+                armed !== hit.label
+            ) {
                 armed = hit.label;
                 label.textContent = `${hit.label} · tap again`;
                 label.style.left = `${event.clientX}px`;
@@ -157,7 +172,10 @@ export default class Interactables {
     find(album: string) {
         if (!this.found.has(album)) {
             this.found.add(album);
-            localStorage.setItem(FOUND_KEY, JSON.stringify(Array.from(this.found)));
+            localStorage.setItem(
+                FOUND_KEY,
+                JSON.stringify(Array.from(this.found)),
+            );
             this.publish();
         }
         this.app.world.audioManager.album.playAlbum(album);

@@ -40,6 +40,13 @@ export default class World {
             this.audioManager = new AudioManager();
             const room = this.scene.getObjectByName('Nihar’s Barça den');
             if (room) this.interactables = new Interactables(room);
+            // Begu: click him to pet him; his name label opens the chat.
+            if (this.interactables && this.decor?.dog)
+                this.interactables.add(this.decor.dog, () => ({
+                    label: this.decor.petLabel(),
+                    run: () => this.decor.pet(),
+                    instant: true,
+                }));
             const converted = new Set<THREE.Material>();
             this.scene.traverse((part) => {
                 if (!(part instanceof THREE.Mesh)) return;

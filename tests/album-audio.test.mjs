@@ -124,6 +124,27 @@ test('licensed album playback is quiet, shuffled, gesture-started, muteable and 
         previous,
         'reshuffle avoids immediate repetition',
     );
+    // Good Night: the music fades out and stops; waking brings it back.
+    const timers = [];
+    const realSet = globalThis.setInterval,
+        realClear = globalThis.clearInterval;
+    globalThis.setInterval = (fn) => (timers.push(fn), timers.length);
+    globalThis.clearInterval = (id) => id && (timers[id - 1] = null);
+    bus.dispatch('goodNight', true);
+    assert.equal(album.audio.paused, false, 'the fade starts, not a cut');
+    for (let i = 0; i < 12; i++) timers.forEach((fn) => fn?.());
+    assert.equal(album.audio.paused, true, 'Good Night stops the music');
+    assert.equal(album.audio.volume, 0.06, 'volume restored for later');
+    bus.dispatch('goodNight', false);
+    assert.equal(album.audio.paused, false, 'waking resumes the music');
+    // Asleep while already paused by the visitor: waking keeps it paused.
+    album.toggle();
+    bus.dispatch('goodNight', true);
+    bus.dispatch('goodNight', false);
+    assert.equal(album.audio.paused, true, 'a chosen pause survives the night');
+    album.toggle();
+    globalThis.setInterval = realSet;
+    globalThis.clearInterval = realClear;
     bus.dispatch('muteToggle', true);
     assert.equal(album.audio.paused, true);
     album.next();
@@ -143,7 +164,11 @@ test('licensed album playback is quiet, shuffled, gesture-started, muteable and 
     const before = album.index;
     album.audio.rejectPlay = true; // a broken file never reaches 'playing'
     album.audio.onerror();
-    assert.equal(album.error, false, 'a missing track skips instead of stopping');
+    assert.equal(
+        album.error,
+        false,
+        'a missing track skips instead of stopping',
+    );
     assert.equal(album.index, (before + 1) % 3, 'skips to the next song');
     album.audio.onerror();
     album.audio.onerror();

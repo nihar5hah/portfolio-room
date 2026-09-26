@@ -246,6 +246,75 @@ export function rest(
 }
 
 /**
+ * The top surface of `supports` over `area`, sampled once on an n × n grid
+ * (one downward ray each) and read back bilinearly. Cheap to query many
+ * times, for fitting soft things into a cushion.
+ */
+export function heightField(
+    supports: THREE.Object3D[],
+    area: THREE.Box3,
+    floor: number,
+    n = 40,
+) {
+    const h = new Float32Array((n + 1) * (n + 1));
+    const w = area.max.x - area.min.x,
+        d = area.max.z - area.min.z;
+    for (let j = 0; j <= n; j++)
+        for (let i = 0; i <= n; i++)
+            h[j * (n + 1) + i] = surfaceAt(
+                supports,
+                area.min.x + (w * i) / n,
+                area.min.z + (d * j) / n,
+                floor,
+                area.max.y + 4 * M,
+            );
+    return (x: number, z: number) => {
+        const u = ((x - area.min.x) / w) * n,
+            v = ((z - area.min.z) / d) * n;
+        if (u < 0 || v < 0 || u > n || v > n) return floor;
+        const i = Math.min(n - 1, Math.floor(u)),
+            j = Math.min(n - 1, Math.floor(v));
+        const fu = u - i,
+            fv = v - j;
+        const at = (a: number, b: number) => h[b * (n + 1) + a];
+        return (
+            at(i, j) * (1 - fu) * (1 - fv) +
+            at(i + 1, j) * fu * (1 - fv) +
+            at(i, j + 1) * (1 - fu) * fv +
+            at(i + 1, j + 1) * fu * fv
+        );
+    };
+}
+
+/**
+ * Lift `object` until no part of it is inside the surface `top` (every
+ * sampled vertex at or above it), then let it press in by `sink`. Suits
+ * soft, tilted things (a cushion in a bean bag) that must not clip.
+ */
+export function settle(
+    object: THREE.Object3D,
+    top: (x: number, z: number) => number,
+    sink = 0,
+) {
+    object.updateMatrixWorld(true);
+    const v = new THREE.Vector3();
+    let lift = -Infinity;
+    object.traverse((part) => {
+        const mesh = part as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        const position = mesh.geometry.getAttribute('position');
+        const every = Math.max(1, Math.floor(position.count / 500));
+        for (let i = 0; i < position.count; i += every) {
+            v.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld);
+            lift = Math.max(lift, top(v.x, v.z) - v.y);
+        }
+    });
+    if (lift === -Infinity) return;
+    object.position.y += lift - sink;
+    object.updateMatrixWorld(true);
+}
+
+/**
  * A throw dropped over `supports`: a cloth grid laid over whatever is below,
  * falling steeply off edges (as a blanket hangs) and rumpled where it lies on
  * the floor. Striped near both ends.
@@ -542,8 +611,8 @@ export function furnishLounge({
             'Burgundy match night bean bag',
             '#9a3a4b',
             29,
-            8550,
-            11900,
+            9750,
+            11600,
             -0.2,
             { width: 0.96 * M, depth: 1.02 * M, height: 0.74 * M },
         ],
@@ -631,7 +700,7 @@ export function furnishLounge({
     const ottoman = prop(props, 'Ottoman_01');
     if (ottoman) {
         ottoman.scale.setScalar(M);
-        place(ottoman, 'Leather ottoman footrest', 7300, 14400, 0.52);
+        place(ottoman, 'Leather ottoman footrest', 10200, 15300, 0.52);
         rest(ottoman, [], floor);
     }
     const pillows = ['throw_pillows_01_pillow01', 'throw_pillows_01_pillow02'];
@@ -665,22 +734,51 @@ export function furnishLounge({
     };
     const onBag = pillow(0);
     if (onBag) {
-        // Tossed into the seat hollow, propped against the back.
-        place(onBag, 'Pillow on the burgundy bean bag', 8550, 11900, 0);
-        const local = new THREE.Vector3(0.05 * M, 0, 0.02 * M).applyAxisAngle(
-            new THREE.Vector3(0, 1, 0),
-            redBag.rotation.y,
+        // Tossed into the seat hollow: of a few ways it could land, it ends
+        // up the one sitting lowest (gravity), leaning into the backrest,
+        // never through the fabric; it only presses in a centimetre.
+        place(onBag, 'Pillow on the burgundy bean bag', 9750, 11600, 0);
+        const top = heightField(
+            [redBag],
+            new THREE.Box3().setFromObject(redBag),
+            floor,
         );
-        onBag.position.x += local.x;
-        onBag.position.z += local.z;
-        // The scanned pillows lie face up, already slumped.
-        onBag.rotation.set(0.08, redBag.rotation.y + 0.35, 0.12, 'YXZ');
-        onBag.updateMatrixWorld(true);
-        rest(onBag, [redBag], floor, 0.1 * M, true);
+        const yaw = redBag.rotation.y;
+        const axis = new THREE.Vector3(0, 1, 0);
+        let best = { y: Infinity, x: 0, z: 0, tilt: 0 };
+        for (const tilt of [0.25, 0.45, 0.65, 0.85])
+            for (const dz of [-0.14, -0.08, -0.02, 0.04, 0.1])
+                for (const dx of [-0.04, 0.03]) {
+                    const local = new THREE.Vector3(
+                        dx * M,
+                        0,
+                        dz * M,
+                    ).applyAxisAngle(axis, yaw);
+                    onBag.position.set(
+                        redBag.position.x + local.x,
+                        floor + 2 * M,
+                        redBag.position.z + local.z,
+                    );
+                    onBag.rotation.set(tilt, yaw + 0.3, 0.1, 'YXZ');
+                    settle(onBag, top);
+                    const centre = new THREE.Box3()
+                        .setFromObject(onBag)
+                        .getCenter(new THREE.Vector3()).y;
+                    if (centre < best.y)
+                        best = {
+                            y: centre,
+                            x: onBag.position.x,
+                            z: onBag.position.z,
+                            tilt,
+                        };
+                }
+        onBag.position.set(best.x, floor + 2 * M, best.z);
+        onBag.rotation.set(best.tilt, yaw + 0.3, 0.1, 'YXZ');
+        settle(onBag, top, 0.01 * M);
     }
     const fallen = pillow(1, '#cdbf9f'); // oatmeal linen
     if (fallen) {
-        place(fallen, 'Pillow fallen on the floor', 5500, 12900, 0.9);
+        place(fallen, 'Pillow fallen on the floor', 12400, 12200, 0.9);
         fallen.rotation.set(0.12, 0.9, -0.08, 'YXZ');
         rest(fallen, [], floor);
     }
@@ -693,8 +791,8 @@ export function furnishLounge({
     const floorMug = place(
         mug('#c9a227', false),
         'Mug left by the bean bag',
-        10650,
-        13450,
+        12100,
+        14400,
         -0.8,
     );
     rest(floorMug, [], floor);
@@ -702,12 +800,12 @@ export function furnishLounge({
     // toward the bag, the other rolled onto its outer side a stride away.
     const right = spezial(shoes, false);
     if (right) {
-        place(right, 'Kicked-off Spezial (right)', 9800, 15000, 2.25);
+        place(right, 'Kicked-off Spezial (right)', 12000, 16000, 2.25);
         rest(right, [], floor, 0, false, true);
     }
     const left = spezial(shoes, true);
     if (left) {
-        place(left, 'Kicked-off Spezial (left)', 10550, 15650, 0);
+        place(left, 'Kicked-off Spezial (left)', 12750, 16650, 0);
         left.rotation.set(-Math.PI / 2 + 0.14, -2.05, 0.06, 'YXZ');
         rest(left, [], floor, 0, false, true);
     }

@@ -1,5 +1,7 @@
 import bus from '../UI/EventBus';
 
+/** Background level for the album player. */
+const VOLUME = 0.06;
 export const ALBUMS = {
     mbdtf: 'MBDTF',
     jackboys: 'JACKBOYS',
@@ -44,12 +46,14 @@ export default class AlbumAudio {
     error = false;
     failures = 0; // consecutive tracks that failed to load since the last one played
     userPaused = false; // the visitor pressed pause (not Sound off): stay paused
+    sleepPaused = false; // stopped by Good Night; resumes on waking
+    fade: ReturnType<typeof setInterval> | undefined;
 
     constructor() {
         this.audio.id = 'album-audio';
         this.audio.hidden = true;
         this.audio.preload = 'none';
-        this.audio.volume = 0.06;
+        this.audio.volume = VOLUME;
         document.body.append(this.audio);
         this.audio.onplaying = () => {
             this.failures = 0;
@@ -69,6 +73,20 @@ export default class AlbumAudio {
             this.muted = muted;
             if (muted) this.audio.pause();
             else this.play();
+        });
+        // Good Night: the music fades out and stops with the lights; waking
+        // the room brings it back if it was playing.
+        bus.on('goodNight', (asleep: boolean) => {
+            if (asleep) {
+                this.sleepPaused = !this.audio.paused && !this.error;
+                if (this.sleepPaused) this.fadeOut();
+            } else {
+                // Waking mid-fade: stop the fade before it pauses anything.
+                clearInterval(this.fade);
+                this.audio.volume = VOLUME;
+                if (this.sleepPaused && !this.userPaused) this.play();
+                this.sleepPaused = false;
+            }
         });
         bus.on('loadingScreenDone', () => {
             this.entered = true;
@@ -142,8 +160,25 @@ export default class AlbumAudio {
         }
     }
 
+    /** Ease the volume down over ~1.2 s, then pause and restore the level. */
+    fadeOut() {
+        clearInterval(this.fade);
+        const volume = VOLUME;
+        let step = 0;
+        this.fade = setInterval(() => {
+            step++;
+            this.audio.volume = volume * Math.max(0, 1 - step / 12);
+            if (step < 12) return;
+            clearInterval(this.fade);
+            this.audio.pause();
+            this.audio.volume = volume;
+        }, 100);
+    }
+
     play() {
         if (!this.entered || this.muted || !this.tracks.length) return;
+        clearInterval(this.fade);
+        this.audio.volume = VOLUME;
         this.userPaused = false;
         if (this.error) this.audio.src = this.tracks[this.index].src;
         this.error = false;

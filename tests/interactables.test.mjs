@@ -47,7 +47,9 @@ test('room objects open their apps; hidden records count once and persist', () =
             currentKeyframe: 'idle',
             trigger: (name, args) => events.push([name, ...args]),
         },
-        world: { audioManager: { album: { playAlbum: (a) => picked.push(a) } } },
+        world: {
+            audioManager: { album: { playAlbum: (a) => picked.push(a) } },
+        },
     };
     const exports = {};
     const ts = require('typescript');
@@ -56,7 +58,10 @@ test('room objects open their apps; hidden records count once and persist', () =
         'exports',
         ts.transpileModule(
             fs.readFileSync(
-                new URL('../src/Application/World/Interactables.ts', import.meta.url),
+                new URL(
+                    '../src/Application/World/Interactables.ts',
+                    import.meta.url,
+                ),
                 'utf8',
             ),
             { compilerOptions: { module: ts.ModuleKind.CommonJS } },
@@ -64,23 +69,42 @@ test('room objects open their apps; hidden records count once and persist', () =
     )((name) => {
         if (name === 'three') return THREE;
         if (name === '../Application')
-            return { default: class { constructor() { return app; } } };
+            return {
+                default: class {
+                    constructor() {
+                        return app;
+                    }
+                },
+            };
         if (name === '../UI/EventBus')
             return { default: { dispatch: (n, d) => events.push([n, d]) } };
         return require(name);
     }, exports);
 
     const interact = new exports.default(room);
-    const centre = { clientX: 500, clientY: 500, target: {}, preventDefault() {} };
+    const centre = {
+        clientX: 500,
+        clientY: 500,
+        target: {},
+        preventDefault() {},
+    };
     listeners.pointermove(centre);
     assert.equal(label.hidden, false);
     assert.equal(label.textContent, 'Music');
     listeners.pointerdown(centre);
     listeners.pointerup({ ...centre, clientX: 560 });
-    assert.equal(events.length, 1, 'a drag that starts on an object never opens it');
+    assert.equal(
+        events.length,
+        1,
+        'a drag that starts on an object never opens it',
+    );
     listeners.pointerdown(centre);
     listeners.pointerup(centre);
-    assert.deepEqual(events.at(-1), ['enterMonitor', 'music', undefined], 'a click on the turntable opens Music');
+    assert.deepEqual(
+        events.at(-1),
+        ['enterMonitor', 'music', undefined],
+        'a click on the turntable opens Music',
+    );
     const tap = { ...centre, pointerType: 'touch' };
     const before = events.length;
     listeners.pointerdown(tap);
@@ -89,7 +113,27 @@ test('room objects open their apps; hidden records count once and persist', () =
     assert.equal(label.textContent, 'Music · tap again');
     listeners.pointerdown(tap);
     listeners.pointerup(tap);
-    assert.deepEqual(events.at(-1), ['enterMonitor', 'music', undefined], 'second tap opens it');
+    assert.deepEqual(
+        events.at(-1),
+        ['enterMonitor', 'music', undefined],
+        'second tap opens it',
+    );
+
+    // Petting Begu acts on the first tap too: there is nothing to preview.
+    let pets = 0;
+    const dog = make('Begu', 0);
+    dog.position.z = 100;
+    scene.updateMatrixWorld(true);
+    interact.add(dog, () => ({
+        label: 'Pet Begu',
+        run: () => pets++,
+        instant: true,
+    }));
+    listeners.pointerdown(tap);
+    listeners.pointerup(tap);
+    assert.equal(pets, 1, 'one tap pets him');
+    dog.removeFromParent();
+    scene.updateMatrixWorld(true);
 
     app.camera.currentKeyframe = 'monitor';
     listeners.pointermove(centre);
@@ -100,8 +144,16 @@ test('room objects open their apps; hidden records count once and persist', () =
     interact.sleeves = 11;
     interact.find('graduation');
     interact.find('graduation');
-    assert.deepEqual(picked, ['graduation', 'graduation'], 'a found record plays its album');
+    assert.deepEqual(
+        picked,
+        ['graduation', 'graduation'],
+        'a found record plays its album',
+    );
     assert.equal(interact.found.size, 1, 'each record counts once');
-    assert.deepEqual(JSON.parse(storage[exports.FOUND_KEY]), ['graduation'], 'progress persists');
+    assert.deepEqual(
+        JSON.parse(storage[exports.FOUND_KEY]),
+        ['graduation'],
+        'progress persists',
+    );
     assert.deepEqual(events.at(-1), ['recordsFound', { found: 1, total: 11 }]);
 });

@@ -1894,26 +1894,39 @@ export default class Environment {
         floorPlant.rotation.y = 0.7;
         room.add(floorPlant);
 
-        // Begu's corner, away from chair wheels and desk legs.
-        cylinder(1050, 220, fabric, -4800, FLOOR + 110, 800 + DESK_Z);
+        // Begu's corner, away from chair wheels and desk legs: a bed big
+        // enough to curl up in (0.73 m across), and his bowl on open floor in
+        // front of the bookshelf, where he can stand to eat.
+        const BEGU_BED = { x: -4650, z: 800 + DESK_Z };
+        const beguBed = cylinder(
+            1200,
+            220,
+            fabric,
+            BEGU_BED.x,
+            FLOOR + 110,
+            BEGU_BED.z,
+        );
+        beguBed.name = 'Begu bed';
         cylinder(
-            880,
+            1020,
             80,
             material('#6b727e'),
-            -4800,
+            BEGU_BED.x,
             FLOOR + 255,
-            800 + DESK_Z,
-        );
-        cylinder(280, 140, brass, -4600, FLOOR + 70, -800 + DESK_Z);
+            BEGU_BED.z,
+        ).name = 'Begu bed cushion';
+        const BOWL = { x: -7000, z: 950 + DESK_Z };
+        cylinder(280, 140, brass, BOWL.x, FLOOR + 70, BOWL.z).name =
+            'Begu bowl';
         cylinder(
             240,
             12,
             material('#5187a0', 0.2),
-            -4600,
+            BOWL.x,
             FLOOR + 143,
-            -800 + DESK_Z,
-        );
-        label('BEGU', 1000, 200, -4800, FLOOR + 155, 1865 + DESK_Z);
+            BOWL.z,
+        ).name = 'Begu bowl water';
+        label('BEGU', 1000, 200, BEGU_BED.x, FLOOR + 155, BEGU_BED.z + 1215);
         return room;
     }
 

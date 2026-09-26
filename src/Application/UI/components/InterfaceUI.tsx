@@ -58,7 +58,7 @@ export default function InterfaceUI() {
             <button
                 id="begu-label"
                 onClick={() => new Application().world.decor.openBegu()}
-                aria-label="Say hi to Begu, the husky"
+                aria-label="Chat with Begu, the husky (click Begu himself to pet him)"
             >
                 Begu <span>Say hi</span>
             </button>
