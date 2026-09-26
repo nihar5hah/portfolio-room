@@ -59,7 +59,7 @@ Everything is derived from the model's footprint in `Layout.ts`:
   and clear of the cushions and pit walls, holding the controllers. It replaced
   a thin round table whose disc overhung the tatami and cut into the TV-side
   pit wall.
-- The LIVE.LOVE.A$AP sleeve leans on the tatami against the window-side wall.
+- The ASTROWORLD sleeve leans on the tatami against the window-side wall.
 
 Around it: the Graduation rug moved to the window nook beside the reading bench
 (`RUG_AT`); the bean bags flank the pit's TV end. Begu's walk ends well short

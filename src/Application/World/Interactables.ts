@@ -29,6 +29,7 @@ export default class Interactables {
         JSON.parse(localStorage.getItem(FOUND_KEY) || '[]') as string[],
     );
     sleeves = 0;
+    sleeveAlbums = new Set<string>();
     asleep = false;
 
     constructor(room: THREE.Object3D) {
@@ -75,6 +76,7 @@ export default class Interactables {
             else if (name.startsWith('Album sleeve: poster_')) {
                 this.sleeves++;
                 const album = name.slice('Album sleeve: poster_'.length);
+                this.sleeveAlbums.add(album);
                 this.add(object, () => ({
                     label: this.found.has(album)
                         ? `Found · ${this.found.size}/${this.sleeves}`
@@ -83,6 +85,11 @@ export default class Interactables {
                 }));
             }
         });
+        // Progress saved before a sleeve was swapped for another album no
+        // longer counts, so the tally never reads more than the room holds.
+        if (this.sleeveAlbums.size)
+            for (const album of this.found)
+                if (!this.sleeveAlbums.has(album)) this.found.delete(album);
         this.publish();
         const label = document.createElement('div');
         label.id = 'object-label';

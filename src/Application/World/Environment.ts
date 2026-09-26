@@ -949,7 +949,7 @@ export default class Environment {
                 -0.12,
             ], // on the right speaker tower
             [
-                'poster_graduation',
+                'poster_melodicblue',
                 -16700,
                 FLOOR + 1275,
                 4100,
@@ -960,7 +960,7 @@ export default class Environment {
             ['poster_808s', 15480, FLOOR + 310, 1410, -Math.PI / 2, -0.18], // floor, against the bedside table
             ['poster_jackboys', 17500, FLOOR + 310, -2400, -Math.PI / 2, -0.18], // skirting, by the mirror
             [
-                'poster_livelove',
+                'poster_astroworld',
                 pitX0 + 450,
                 tatamiTop + 310,
                 tatamiZ0 + TATAMI.depth / 2,
