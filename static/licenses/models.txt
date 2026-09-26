@@ -152,9 +152,11 @@ The rain loop (static/audio/atmosphere/rain.mp3) and distant thunder (static/aud
 Graduation Bear (the Dropout Bear in his Graduation-era, Takashi Murakami design), 3D model supplied by Nihar as DropoutBear.blend.
 Source: https://www.mediafire.com/file/cmk5la3bu3lumrk/DropoutBear.blend/file (Blender 4.0 scene; no author or licence stated in the file).
 Changes: posed sitting (legs out, arms down, head slightly lowered) and baked from its armature to static meshes; toon shader graphs replaced with plain textured PBR materials; simplified to ~45% and textures resized to 512 px WebP, meshopt-compressed (static/models/Bear/dropout-bear.glb, ~360 KB).
-Before publishing, find the model's author and confirm it may be used on a public website. The character is Kanye West's mascot (designed by Sam Hansen, Graduation redesign by Takashi Murakami); this room is not affiliated with them.
+Its creator has given Nihar permission to use it on this site. The character is Kanye West's mascot (designed by Sam Hansen, Graduation redesign by Takashi Murakami); this room is not affiliated with them.
 
-Adidas Brazuca football, CadNav model 37220 (an alternative Brazuca mesh): https://www.cadnav.com/3d-models/model-37220.html
-The source lists a non-commercial licence and asks that it not be resold or redistributed as a standalone asset: fine for a personal, non-commercial portfolio, but confirm before any commercial use.
-Changes: the ball alone (grass and soil removed), one subdivision level, texture resized to 1024 px WebP, meshopt-compressed (static/models/Football/brazuca.glb, ~200 KB).
+Adidas Brazuca football by Willams9991 (model) and Sepak (UV mapping and textures), released free for FIFA 14 modding.
+Source: https://www.moddingway.com/file/39696.html (announcement: https://soccergaming.com/forums/threads/download-brazuca-ball.178525/)
+The creators ask for credit and do not allow use in paid patches; this is a free, non-commercial portfolio, with credit here and in the site's Credits.
+Changes: converted from FIFA's RX3 format (mesh and DXT5 textures read directly; normal map converted from DirectX to OpenGL orientation) to glTF; radial normals; simplified to ~8.8k triangles; textures 1024 px WebP; meshopt-compressed (static/models/Football/brazuca.glb, ~420 KB). scripts/brazuca-rx3.py does the conversion.
 Adidas and Brazuca are trademarks of adidas AG; this room is not affiliated with adidas.
+The backpack on the bed and the hard-shell suitcase are original procedural models (Fixtures.ts: backpack, spinnerSuitcase).

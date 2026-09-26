@@ -29,7 +29,12 @@ function load(file) {
         'exports',
         ts.transpileModule(
             fs.readFileSync(
-                new URL(`../src/Application/World/${file}`, import.meta.url),
+                new URL(
+                    file.startsWith('../')
+                        ? `../src/Application/${file.slice(3)}`
+                        : `../src/Application/World/${file}`,
+                    import.meta.url,
+                ),
                 'utf8',
             ),
             {
@@ -43,6 +48,7 @@ function load(file) {
         if (name === 'three') return THREE;
         if (name.includes('EventBus')) return { default: bus };
         if (name.startsWith('./')) return load(`${name.slice(2)}.ts`);
+        if (name.startsWith('../Utils/')) return load(`../${name.slice(3)}.ts`);
         return require(name);
     }, exports);
     return exports;
@@ -65,6 +71,65 @@ globalThis.document = {
 };
 const seeded = (seed) => () =>
     ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+
+/** A glb from static/models, geometry only (node cannot decode WebP). */
+async function geometryOnly(path) {
+    const { GLTFLoader } = await import(
+        'three/examples/jsm/loaders/GLTFLoader.js'
+    );
+    const { MeshoptDecoder } = await import(
+        'three/examples/jsm/libs/meshopt_decoder.module.js'
+    );
+    const bytes = fs.readFileSync(
+        new URL(`../static/models/${path}`, import.meta.url),
+    );
+    const json = JSON.parse(
+        new TextDecoder().decode(
+            bytes.subarray(20, 20 + bytes.readUInt32LE(12)),
+        ),
+    );
+    delete json.textures;
+    delete json.images;
+    for (const m of json.materials ?? []) {
+        delete m.pbrMetallicRoughness?.baseColorTexture;
+        delete m.normalTexture;
+        delete m.occlusionTexture;
+        delete m.emissiveTexture;
+    }
+    const text = new TextEncoder().encode(JSON.stringify(json));
+    const padded = new Uint8Array(Math.ceil(text.length / 4) * 4).fill(32);
+    padded.set(text);
+    const bin = bytes.subarray(20 + bytes.readUInt32LE(12));
+    const glb = new Uint8Array(20 + padded.length + bin.length);
+    const view = new DataView(glb.buffer);
+    view.setUint32(0, 0x46546c67, true);
+    view.setUint32(4, 2, true);
+    view.setUint32(8, glb.length, true);
+    view.setUint32(12, padded.length, true);
+    view.setUint32(16, 0x4e4f534a, true);
+    glb.set(padded, 20);
+    glb.set(bin, 20 + padded.length);
+    await MeshoptDecoder.ready;
+    const gltf = await new Promise((resolve, reject) =>
+        new GLTFLoader()
+            .setMeshoptDecoder(MeshoptDecoder)
+            .parse(glb.buffer, '', resolve, reject),
+    );
+    return gltf;
+}
+
+/** Does a straight-down ray at the object's centre hit it (a click)? */
+function clickable(object) {
+    object.updateMatrixWorld(true);
+    const centre = new THREE.Box3()
+        .setFromObject(object)
+        .getCenter(new THREE.Vector3());
+    const ray = new THREE.Raycaster(
+        centre.clone().add(new THREE.Vector3(0, 5000, 0)),
+        new THREE.Vector3(0, -1, 0),
+    );
+    return ray.intersectObject(object, true).length > 0;
+}
 
 test('Bangalore weather drives rain, cloud and storms, and the room eases into it', async () => {
     const { weatherOf, default: Weather } = load('Weather.ts');
@@ -100,7 +165,7 @@ test('Bangalore weather drives rain, cloud and storms, and the room eases into i
     assert.equal(weather.level.rain, 0, 'and clears again');
 });
 
-test('the football rolls to its kick target, bounces off furniture and rolls when carried', () => {
+test('the football rolls to its kick target, bounces off furniture and rolls when carried', async () => {
     const NavGrid = load('NavGrid.ts').default;
     const { default: Football, BALL_RADIUS } = load('Football.ts');
     const nav = new NavGrid(
@@ -139,6 +204,36 @@ test('the football rolls to its kick target, bounces off furniture and rolls whe
     }
     assert.ok(maxX < 3000 - BALL_RADIUS + 150, 'never inside the furniture');
     assert.ok(ball.position.x < maxX - 100, 'bounced back');
+    // Boxed in against furniture (the chair and a desk leg): a click still
+    // moves it, a shorter kick or along its one open line.
+    const tight = new NavGrid(
+        { minX: -3000, maxX: 3000, minZ: -3000, maxZ: 3000 },
+        150,
+        -3015,
+    );
+    tight.block({ minX: -3000, maxX: 3000, minZ: 250, maxZ: 3000 });
+    tight.block({ minX: -3000, maxX: -300, minZ: -3000, maxZ: 3000 });
+    tight.block({ minX: 300, maxX: 3000, minZ: -3000, maxZ: 3000 });
+    const stuck = new Football(tight, { x: 0, z: 100 });
+    const out = stuck.target({ x: 0, z: 1 }, seeded(4));
+    assert.ok(out && out.z < -500, 'kicked down its one open lane');
+    stuck.kick(out);
+    for (let t = 0; t < 10 && stuck.speed > 0; t += 1 / 60)
+        stuck.update(1 / 60);
+    assert.ok(stuck.position.z < -300, 'and it rolled');
+    // The Brazuca scan: sized to a real ball, and clickable (to kick it).
+    const brazuca = await geometryOnly('Football/brazuca.glb');
+    const scan = new Football(
+        nav,
+        { x: -2000, z: 0 },
+        undefined,
+        brazuca.scene,
+    );
+    const size = new THREE.Box3()
+        .setFromObject(scan.group, true)
+        .getSize(new THREE.Vector3());
+    assert.ok(Math.abs(size.x - 2 * BALL_RADIUS) < 10, '22 cm across');
+    assert.ok(clickable(scan.group), 'clicking the ball hits it');
     ball.carry({ x: ball.position.x - 500, z: 0 });
     assert.ok(ball.carried);
     ball.update(1);
@@ -188,45 +283,7 @@ test('the wall clock shows Bangalore time and the lamps switch on and off by han
 
 test('finding every record puts up a gold record and the Graduation Bear', async () => {
     const { default: RecordsReward } = load('Reward.ts');
-    const { GLTFLoader } = await import(
-        'three/examples/jsm/loaders/GLTFLoader.js'
-    );
-    const { MeshoptDecoder } = await import(
-        'three/examples/jsm/libs/meshopt_decoder.module.js'
-    );
-    // Geometry only: node has no image decoder for the WebP textures.
-    const bytes = fs.readFileSync(
-        new URL('../static/models/Bear/dropout-bear.glb', import.meta.url),
-    );
-    const json = JSON.parse(
-        new TextDecoder().decode(
-            bytes.subarray(20, 20 + bytes.readUInt32LE(12)),
-        ),
-    );
-    delete json.textures;
-    delete json.images;
-    for (const m of json.materials ?? []) {
-        delete m.pbrMetallicRoughness?.baseColorTexture;
-    }
-    const text = new TextEncoder().encode(JSON.stringify(json));
-    const padded = new Uint8Array(Math.ceil(text.length / 4) * 4).fill(32);
-    padded.set(text);
-    const bin = bytes.subarray(20 + bytes.readUInt32LE(12));
-    const glb = new Uint8Array(20 + padded.length + bin.length);
-    const view = new DataView(glb.buffer);
-    view.setUint32(0, 0x46546c67, true);
-    view.setUint32(4, 2, true);
-    view.setUint32(8, glb.length, true);
-    view.setUint32(12, padded.length, true);
-    view.setUint32(16, 0x4e4f534a, true);
-    glb.set(padded, 20);
-    glb.set(bin, 20 + padded.length);
-    await MeshoptDecoder.ready;
-    const gltf = await new Promise((resolve, reject) =>
-        new GLTFLoader()
-            .setMeshoptDecoder(MeshoptDecoder)
-            .parse(glb.buffer, '', resolve, reject),
-    );
+    const gltf = await geometryOnly('Bear/dropout-bear.glb');
     const names = [];
     gltf.scene.traverse((o) => names.push(o.name));
     for (const part of ['Head', 'glasses', 'Jacket', 'shoes'])
@@ -262,10 +319,12 @@ test('finding every record puts up a gold record and the Graduation Bear', async
     assert.equal(reward.plaque.scale.x, 1);
     assert.equal(reward.bear.scale.x, 1);
     reward.bear.updateMatrixWorld(true);
-    const bear = new THREE.Box3().setFromObject(reward.bear);
+    const bear = new THREE.Box3().setFromObject(reward.bear, true);
     assert.ok(Math.abs(bear.min.y - (-3015 + 965)) < 5, 'sits on the bench');
     const size = bear.getSize(new THREE.Vector3());
     assert.ok(Math.abs(size.y - 1150) < 5, 'plush sized (about 35 cm)');
+    // The packed model's integer vertices are unpacked, so a click lands.
+    assert.ok(clickable(reward.bear), 'clicking the bear hits him');
     // A returning visitor with all eleven already found: there straight away.
     const again = new RecordsReward(new THREE.Group(), 11, 11, () => {});
     assert.equal(again.plaque.scale.x, 1);

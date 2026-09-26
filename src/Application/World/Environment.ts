@@ -21,7 +21,14 @@ import { bakeDune, shadeCreases, splitDune, wovenFabric } from './DuneSofa';
 import { furnishLounge, rest, throwBlanket } from './Lounge';
 import { bangaloreHour, paintSky, skyState, SkyState } from './DayNight';
 import Weather from './Weather';
-import { deskLamp, softPillow, towerSpeaker, wallClock } from './Fixtures';
+import {
+    backpack as makeBackpack,
+    deskLamp,
+    softPillow,
+    spinnerSuitcase,
+    towerSpeaker,
+    wallClock,
+} from './Fixtures';
 /** Brightness groups for the room's own lights (see `lighting`). */
 type Practical =
     | 'lamp'
@@ -656,6 +663,9 @@ export default class Environment {
         );
         this.dust.name = 'Dust in the lamp light';
         this.dust.frustumCulled = false;
+        // Motes are atmosphere: never let them catch a click meant for
+        // something behind them.
+        this.dust.raycast = () => undefined;
         room.add(this.dust);
 
         // Bookshelf: technical books and records.
@@ -1336,17 +1346,12 @@ export default class Environment {
             bedPillows.push(pillow);
         }
         // Backpack dropped on the bed, and a folded tee with a tablet on it.
-        const backpack = new THREE.Group();
+        // A proper daypack (Fixtures.ts), not a box: domed body, zips,
+        // front pocket, bottle pockets, straps and a grab handle.
+        const backpack = makeBackpack();
         backpack.name = 'Backpack on the bed';
-        backpack.add(box(1050, 1280, 560, black, -1500, 1960, 1770, 180));
-        backpack.add(box(830, 590, 110, fabric, -1500, 1630, 2100, 90));
-        const handle = new THREE.Mesh(
-            new THREE.TorusGeometry(220, 35, 8, 20, Math.PI),
-            black,
-        );
-        handle.position.set(-1500, 2600, 1760);
-        backpack.add(handle);
-        backpack.rotation.y = 0.2;
+        backpack.position.set(-1500, 1330, 1770);
+        backpack.rotation.set(-0.06, 0.2, 0.03);
         bed.add(backpack);
         const tee = new THREE.Group();
         tee.name = 'Folded tee and tablet';
@@ -1686,14 +1691,15 @@ export default class Environment {
         const luggage = new THREE.Group();
         luggage.name = 'Travel suitcase';
         luggage.position.set(14600, FLOOR, -350);
-        luggage.add(box(1330, 1910, 850, material('#4c3038'), 0, 1090, 0, 140));
-        for (let i = 0; i < 6; i++)
-            luggage.add(box(34, 1460, 18, black, -520 + i * 210, 1110, 436, 8));
-        for (const x of [-390, 390]) {
-            luggage.add(cylinder(90, 160, black, x, 100, 0));
-            luggage.add(box(35, 690, 35, brass, x, 2190, 0));
-        }
-        luggage.add(box(850, 80, 70, black, 0, 2540, 0, 25));
+        // A ribbed hard-shell spinner (Fixtures.ts): shells, zip band,
+        // telescopic handle, carry handles, lock and twin-wheel casters.
+        luggage.add(
+            spinnerSuitcase('#4c3038', {
+                width: 1330,
+                height: 1760,
+                depth: 850,
+            }),
+        );
         room.add(luggage);
 
         // A dedicated listening surface: sleeve, 12-inch record, platter and tonearm.

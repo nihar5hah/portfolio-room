@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import bus from '../UI/EventBus';
+import { dequantize } from '../Utils/Dequantize';
 
 /**
  * The reward for finding every hidden record sleeve: a framed gold record
@@ -139,7 +140,8 @@ const BEAR_HEIGHT = 1150;
 export function graduationBear(model: THREE.Object3D) {
     const bear = new THREE.Group();
     bear.name = 'Graduation Bear';
-    const copy = model.clone(true);
+    // Unpacked to floats, or clicks (raycasts) miss him.
+    const copy = dequantize(model).clone(true);
     copy.traverse((part) => {
         const mesh = part as THREE.Mesh;
         if (!mesh.isMesh) return;
@@ -158,7 +160,7 @@ export function graduationBear(model: THREE.Object3D) {
             }
         }
     });
-    const box = new THREE.Box3().setFromObject(copy);
+    const box = new THREE.Box3().setFromObject(copy, true);
     const size = box.getSize(new THREE.Vector3());
     copy.scale.setScalar(BEAR_HEIGHT / size.y);
     const centre = box.getCenter(new THREE.Vector3());

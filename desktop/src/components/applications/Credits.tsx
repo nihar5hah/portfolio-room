@@ -141,17 +141,19 @@ export default function Credits(props: WindowAppProps) {
                     <dt>Graduation Bear</dt>
                     <dd>
                         The Dropout Bear in his Graduation-era design (Takashi
-                        Murakami / Kanye West), from a fan-made Blender model,
-                        posed sitting on the window bench. It appears once every
-                        hidden record is found.
+                        Murakami / Kanye West), from a fan-made Blender model
+                        used with its creator’s permission, posed sitting on the
+                        window bench. It appears once every hidden record is
+                        found.
                     </dd>
-                    <dt>CadNav</dt>
+                    <dt>Willams9991 &amp; Sepak</dt>
                     <dd>
-                        The adidas Brazuca football Begu fetches (model 37220,
-                        non-commercial licence); adidas marks belong to adidas
-                        AG.{' '}
+                        The adidas Brazuca football Begu fetches: model by
+                        Willams9991, UV mapping and textures by Sepak (a free
+                        FIFA 14 release), converted for the web; adidas marks
+                        belong to adidas AG.{' '}
                         <a
-                            href="https://www.cadnav.com/3d-models/model-37220.html"
+                            href="https://www.moddingway.com/file/39696.html"
                             target="_blank"
                             rel="noreferrer"
                         >

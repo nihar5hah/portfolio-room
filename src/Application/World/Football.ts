@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type NavGrid from './NavGrid';
+import { dequantize } from '../Utils/Dequantize';
 import type { Point } from './NavGrid';
 
 /** A size 5 football: 22 cm across, in room units (3300 per metre). */
@@ -32,8 +33,10 @@ export default class Football {
         this.group.name = 'Football';
         if (model) {
             // Adidas Brazuca (CadNav 37220): a unit-radius textured sphere.
-            const ball = model.clone(true);
-            const box = new THREE.Box3().setFromObject(ball);
+            // Unpacked to floats, or clicks (raycasts) miss it.
+            const ball = dequantize(model).clone(true);
+            // Precise (vertex) bounds: the scan's node is rotated.
+            const box = new THREE.Box3().setFromObject(ball, true);
             const size = box.getSize(new THREE.Vector3());
             ball.scale.setScalar(
                 (2 * BALL_RADIUS) / Math.max(size.x, size.y, size.z),
@@ -120,8 +123,11 @@ export default class Football {
 
     /**
      * Pick a landing spot for a kick from here: open floor with a clear
-     * run, `min`–`max` away, preferring the direction `toward` (the way the
-     * visitor is looking). `reachable` says whether Begu can get there.
+     * run, preferring the direction `toward` (the way the visitor is
+     * looking) and somewhere `reachable` by Begu. A long kick out into the
+     * room first; boxed in (between the chair and a desk leg, say) a
+     * shorter one; failing that, whichever way has the longest free run.
+     * Only a ball walled in on every side stays put.
      */
     target(
         toward: Point,
@@ -132,31 +138,62 @@ export default class Football {
     ): Point | null {
         const from = this.position;
         const look = Math.hypot(toward.x, toward.z) || 1;
+        const cell = this.nav.cell;
+        for (const [lo, hi] of [
+            [min, max],
+            [min * 0.5, max * 0.6],
+            [Math.min(1200, min), Math.min(4000, max)],
+        ]) {
+            let best: Point | null = null,
+                score = -Infinity;
+            for (let tries = 0; tries < 100; tries++) {
+                const angle = random() * Math.PI * 2;
+                const d = lo + random() * (hi - lo);
+                const dx = Math.sin(angle),
+                    dz = Math.cos(angle);
+                const p = { x: from.x + dx * d, z: from.z + dz * d };
+                // Test the run from a cell out: a ball resting against
+                // furniture would otherwise fail every line at its start.
+                const ahead = { x: from.x + dx * cell, z: from.z + dz * cell };
+                if (
+                    !this.nav.free(p.x, p.z) ||
+                    !this.nav.free(ahead.x, ahead.z) ||
+                    !this.nav.clear(ahead, p) ||
+                    !reachable(p)
+                )
+                    continue;
+                const along = (dx * toward.x + dz * toward.z) / look;
+                // Out into open floor, loosely the way the visitor is facing.
+                const s =
+                    0.35 * along +
+                    Math.min(this.nav.clearance(p.x, p.z), 3000) / 1500 +
+                    random() * 0.6;
+                if (s > score) {
+                    score = s;
+                    best = p;
+                }
+            }
+            if (best) return best;
+        }
+        // Boxed in: roll it along the longest free line (it will bounce).
         let best: Point | null = null,
-            score = -Infinity;
-        for (let tries = 0; tries < 80; tries++) {
-            const angle = random() * Math.PI * 2;
-            const d = min + random() * (max - min);
-            const p = {
-                x: from.x + Math.sin(angle) * d,
-                z: from.z + Math.cos(angle) * d,
-            };
-            if (!this.nav.free(p.x, p.z) || !this.nav.clear(from, p)) continue;
-            if (!reachable(p)) continue;
-            const along =
-                (Math.sin(angle) * toward.x + Math.cos(angle) * toward.z) /
-                look;
-            // Out into open floor, loosely the way the visitor is facing.
-            const s =
-                0.35 * along +
-                Math.min(this.nav.clearance(p.x, p.z), 3000) / 1500 +
-                random() * 0.6;
-            if (s > score) {
-                score = s;
-                best = p;
+            run = 0;
+        for (let i = 0; i < 32; i++) {
+            const angle = (i / 32) * Math.PI * 2;
+            const dx = Math.sin(angle),
+                dz = Math.cos(angle);
+            let d = 0;
+            while (
+                d < max &&
+                this.nav.free(from.x + dx * (d + 60), from.z + dz * (d + 60))
+            )
+                d += 60;
+            if (d > run) {
+                run = d;
+                best = { x: from.x + dx * d * 0.85, z: from.z + dz * d * 0.85 };
             }
         }
-        return best;
+        return run > 150 ? best : null;
     }
 
     /** Begu pushes it: move toward `to` if the ball fits there. */

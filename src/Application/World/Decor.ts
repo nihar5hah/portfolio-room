@@ -431,7 +431,11 @@ export default class Decor {
         const target = ball.target(
             { x: forward.x, z: forward.z },
             Math.random,
-            (p) => !!this.nav.path(from, p),
+            // Somewhere he can get to (cheap: close to his own free floor).
+            (p) => {
+                const q = this.nav.nearestFree(p);
+                return !!q && Math.hypot(q.x - p.x, q.z - p.z) < 900;
+            },
         );
         if (!target) return;
         if (this.app.reducedMotion.matches) return ball.place(target);
