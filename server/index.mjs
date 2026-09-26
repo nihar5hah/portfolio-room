@@ -113,7 +113,8 @@ export function createPortfolioServer({
                     return json(res, 405, { error: 'Use GET for weather.' });
                 try {
                     return json(res, 200, await weather());
-                } catch {
+                } catch (error) {
+                    console.warn('weather unavailable:', error?.message);
                     return json(res, 503, {
                         error: 'Weather is temporarily unavailable.',
                     });
