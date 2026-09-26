@@ -160,10 +160,10 @@ export default class Environment {
             });
             chair.scale.setScalar(3300);
             // It faces +Z: turn it toward the desk (-Z), but pushed back
-            // about a third of a metre and swivelled out to the left, the
-            // way it is left when someone has just stood up.
+            // about a third of a metre, and swivelled toward the left, the
+            // way it is left when someone stands up and walks off that side.
             chair.rotation.y = Math.PI + 0.5;
-            chair.position.set(-1950, -3015, -1150 + DESK_Z + 4650);
+            chair.position.set(1350, -3015, -1150 + DESK_Z + 4650);
             app.scene.add(chair);
         }
         app.scene.add(this.buildRoom());
