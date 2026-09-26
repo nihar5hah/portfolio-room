@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 const CopyPlugin = require('copy-webpack-plugin');
 const HtmlPlugin = require('html-webpack-plugin');
 const CSSPlugin = require('mini-css-extract-plugin');
@@ -39,6 +40,25 @@ module.exports = {
             patterns: [
                 {
                     from: 'static',
+                    // The album library is local-only (git-ignored): list
+                    // only tracks whose files exist, so a deploy without the
+                    // music ships an empty playlist and the room hides the
+                    // player instead of showing an error.
+                    transform(content, absoluteFrom) {
+                        if (
+                            !absoluteFrom.endsWith(
+                                path.join('audio', 'playlist.json'),
+                            )
+                        )
+                            return content;
+                        const list = JSON.parse(content.toString());
+                        list.tracks = list.tracks.filter((track) =>
+                            fs.existsSync(
+                                path.join(__dirname, '../static', track.src),
+                            ),
+                        );
+                        return JSON.stringify(list);
+                    },
                     globOptions: {
                         ignore: [
                             '**/draco/**',
