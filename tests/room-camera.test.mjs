@@ -869,6 +869,28 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         return map;
     });
     assert.equal(new Set(covers).size, 3, 'three different cushion covers');
+    // No tear down the seat: neighbouring points on the bag's surface stay
+    // close together (the old shell split along one meridian from the seat
+    // hollow to the top of the backrest).
+    const shell = room.getObjectByName('Blue match night bean bag').geometry;
+    const pos = shell.getAttribute('position');
+    const idx = shell.getIndex();
+    let longest = 0;
+    for (let i = 0; i < idx.count; i += 3)
+        for (let k = 0; k < 3; k++) {
+            const a = idx.getX(i + k),
+                b = idx.getX(i + ((k + 1) % 3));
+            const d = Math.hypot(
+                pos.getX(a) - pos.getX(b),
+                pos.getY(a) - pos.getY(b),
+                pos.getZ(a) - pos.getZ(b),
+            );
+            longest = Math.max(longest, d);
+        }
+    assert.ok(
+        longest < 0.12 * metre,
+        `bean bag has no torn seam (${Math.round(longest)})`,
+    );
     const bag = room.getObjectByName('Blue match night bean bag').material;
     assert.ok(
         bag.sheen < 0.4 && bag.roughness >= 0.95 && bag.envMapIntensity < 0.5,

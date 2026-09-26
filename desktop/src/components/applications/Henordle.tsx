@@ -7,8 +7,14 @@ export interface HenordleAppProps extends WindowAppProps {}
 const HenordleApp: React.FC<HenordleAppProps> = (props) => {
     return (
         <Window
-            top={Math.max(40, (innerHeight - 90 - Math.min(780, innerHeight - 140)) / 2)}
-            left={Math.max(12, (innerWidth - Math.min(560, innerWidth - 24)) / 2)}
+            top={Math.max(
+                40,
+                (innerHeight - 90 - Math.min(780, innerHeight - 140)) / 2,
+            )}
+            left={Math.max(
+                12,
+                (innerWidth - Math.min(560, innerWidth - 24)) / 2,
+            )}
             width={Math.min(560, innerWidth - 24)}
             height={Math.min(780, innerHeight - 140)}
             windowBarIcon="windowGameIcon"
@@ -17,7 +23,7 @@ const HenordleApp: React.FC<HenordleAppProps> = (props) => {
             onInteract={props.onInteract}
             active={props.active}
             minimizeWindow={props.onMinimize}
-            bottomLeftText="Word game by Henry Heffernan"
+            bottomLeftText="Daily and unlimited · stats saved on this device"
         >
             <div className="site-page">
                 <Wordle />

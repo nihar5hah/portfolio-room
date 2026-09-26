@@ -52,14 +52,21 @@ function shell(
         positions.push(p.x, p.y, p.z);
         uvs.push(u, v);
     };
+    // One extra column closes the seam with its own UVs (u = 1), so the
+    // texture never runs backwards across the last strip; the duplicate
+    // column shares normals with the first (see `seamNormals`).
+    const columns = segments + 1;
     push(shape(0, 0), 0.5, 0);
     for (let r = 1; r < rings; r++)
-        for (let s = 0; s < segments; s++)
-            push(shape(s / segments, r / rings), s / segments, r / rings);
+        for (let s = 0; s < columns; s++)
+            push(
+                shape((s % segments) / segments, r / rings),
+                s / segments,
+                r / rings,
+            );
     push(shape(0, 1), 0.5, 1);
     const top = positions.length / 3 - 1;
-    const at = (r: number, s: number) =>
-        1 + (r - 1) * segments + (s % segments);
+    const at = (r: number, s: number) => 1 + (r - 1) * columns + s;
     const index: number[] = [];
     for (let s = 0; s < segments; s++) index.push(0, at(1, s + 1), at(1, s));
     for (let r = 1; r < rings - 1; r++)
@@ -79,8 +86,28 @@ function shell(
     );
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     geometry.setIndex(index);
+    geometry.userData.seam = Array.from({ length: rings - 1 }, (_, r) => [
+        at(r + 1, 0),
+        at(r + 1, segments),
+    ]);
     geometry.computeVertexNormals();
+    seamNormals(geometry);
     return geometry;
+}
+
+/** Give each seam vertex pair of a `shell` one shared, averaged normal. */
+function seamNormals(geometry: THREE.BufferGeometry) {
+    const normal = geometry.getAttribute('normal') as THREE.BufferAttribute;
+    const a = new THREE.Vector3(),
+        b = new THREE.Vector3();
+    for (const [i, j] of geometry.userData.seam as number[][]) {
+        a.fromBufferAttribute(normal, i);
+        b.fromBufferAttribute(normal, j);
+        a.add(b).normalize();
+        normal.setXYZ(i, a.x, a.y, a.z);
+        normal.setXYZ(j, a.x, a.y, a.z);
+    }
+    normal.needsUpdate = true;
 }
 
 /**
@@ -123,8 +150,12 @@ export function beanBagGeometry(
         let z = Math.cos(phi) * s * bulge * (D / 2);
         let y = ((t + 1) / 2) * body;
         // The back is shoved up behind the sitter; the front rolls forward.
-        y += 0.5 * H * Math.pow(back, 1.3) * Math.pow(upper, 1.1);
-        z += 0.07 * D * upper * front;
+        // Both scale with the distance from the bag's axis (s), so points
+        // that meet at the middle of the seat move together: lifting by
+        // angle alone tore the shell into a crease from the seat to the top
+        // of the backrest. Powers above 1 keep the sides free of kinks.
+        y += 0.85 * H * Math.pow(back * s, 1.3) * Math.pow(upper, 1.1);
+        z += 0.07 * D * upper * Math.pow(front, 1.5) * s;
         // The seat hollow, a little off-centre where someone usually sits.
         const dent = Math.exp(
             -Math.pow((x - dentX) / (0.3 * W), 2) -
@@ -142,6 +173,8 @@ export function beanBagGeometry(
         const radiating =
             0.012 * Math.sin(around * 9 + twist * 6) * ring * upper;
         const pooling = Math.exp(-Math.pow((t + 0.55) / 0.22, 2));
+        // Folds fade out toward the middle of the seat, which they would pinch.
+        fold *= THREE.MathUtils.smoothstep(s, 0.05, 0.45);
         const along = (0.5 + 1.2 * pooling + 0.8 * front * upper) * M;
         x += Math.sin(phi) * fold * along;
         z += Math.cos(phi) * fold * along;
@@ -161,6 +194,7 @@ export function beanBagGeometry(
     geometry.computeBoundingBox();
     geometry.translate(0, -geometry.boundingBox!.min.y, 0);
     geometry.computeVertexNormals();
+    seamNormals(geometry);
     shadeCreases(geometry, 0.05 * M, 0.5);
     return geometry;
 }
@@ -326,10 +360,12 @@ export function throwBlanket(
     floor: number,
     seed: number,
     stripes = true,
+    /** Grid spacing; defaults to a 44 × 36 grid over the throw. */
+    spacing?: number,
 ) {
     const random = seeded(seed);
-    const nx = 44,
-        nz = 36;
+    const nx = spacing ? Math.ceil(size.width / spacing) : 44,
+        nz = spacing ? Math.ceil(size.depth / spacing) : 36;
     const cell = Math.max(size.width / nx, size.depth / nz);
     const cos = Math.cos(at.yaw),
         sin = Math.sin(at.yaw);
@@ -351,6 +387,26 @@ export function throwBlanket(
                 floor,
             );
         }
+    // Rest on the highest thing within a cell of each point, so the cloth
+    // clears an edge before it starts to fall: otherwise the straight strip
+    // from a point on top to the next one hanging below cuts through the
+    // rounded corner in between (mattress and frame corners poked through).
+    {
+        const lifted = Float32Array.from(support);
+        for (let j = 0; j <= nz; j++)
+            for (let i = 0; i <= nx; i++) {
+                let top = support[j * (nx + 1) + i];
+                for (let dj = -1; dj <= 1; dj++)
+                    for (let di = -1; di <= 1; di++) {
+                        const a = i + di,
+                            b = j + dj;
+                        if (a < 0 || b < 0 || a > nx || b > nz) continue;
+                        top = Math.max(top, support[b * (nx + 1) + a]);
+                    }
+                lifted[j * (nx + 1) + i] = top;
+            }
+        support.set(lifted);
+    }
     // Hang: never below support, and falling at most `slope` per cell away
     // from where it rests, so it drops steeply off an edge.
     const thick = 0.022 * M;

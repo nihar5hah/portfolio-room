@@ -86,8 +86,14 @@ export default class Environment {
             app.resources.items.texture.environmentTexture,
             900,
         ).getModel();
-        // Keep the original room layout and chair mesh; replace the desk, floor and material treatment.
-        for (const name of ['desk', 'Background']) {
+        // Keep the original room layout; replace the desk, the chair (a
+        // Herman Miller Embody, below), the floor and the material treatment.
+        const embody = app.resources.items.gltfModel.chairModel?.scene;
+        for (const name of [
+            'desk',
+            'Background',
+            ...(embody ? ['chair_base', 'chair_seat'] : []),
+        ]) {
             const part = original.getObjectByName(name);
             if (part) part.visible = false;
         }
@@ -143,6 +149,21 @@ export default class Environment {
         desk.position.z = DESK_Z;
         original.position.z += DESK_Z;
         app.scene.add(desk);
+        // Herman Miller's Embody Chair with Arms (their published 3D model),
+        // pulled up to the desk where the old chair stood, a touch askew.
+        if (embody) {
+            const chair = embody.clone(true);
+            chair.name = 'Embody chair';
+            chair.traverse((part) => {
+                const mesh = part as THREE.Mesh;
+                if (mesh.isMesh) mesh.castShadow = mesh.receiveShadow = true;
+            });
+            chair.scale.setScalar(3300);
+            // It faces +Z: turn it to face the desk (-Z).
+            chair.rotation.y = Math.PI - 0.12;
+            chair.position.set(760, -3015, -2250 + DESK_Z + 4650);
+            app.scene.add(chair);
+        }
         app.scene.add(this.buildRoom());
         // Hemisphere fill is free per-fragment; it replaces the room-wide
         // "Ceiling fill" point light that cost a full light loop everywhere.
@@ -1244,11 +1265,12 @@ export default class Environment {
         const quilt = new THREE.Mesh(
             throwBlanket(
                 [mattress, frame],
-                { x: 12150, z: 5650, yaw: 0 },
-                { width: 6300, depth: 7050 },
+                { x: 12100, z: 5650, yaw: 0 },
+                { width: 6500, depth: 7300 },
                 FLOOR,
                 41,
                 false,
+                100,
             ),
             duvetCloth,
         );
@@ -1260,10 +1282,11 @@ export default class Environment {
             throwBlanket(
                 [quilt, mattress],
                 { x: 14900, z: 5650, yaw: 0 },
-                { width: 900, depth: 6950 },
+                { width: 900, depth: 7200 },
                 FLOOR,
                 43,
                 false,
+                100,
             ),
             new THREE.MeshStandardMaterial({
                 color: '#7d6a70',
@@ -1281,10 +1304,11 @@ export default class Environment {
             throwBlanket(
                 [reverse, quilt, mattress, frame],
                 { x: 10150, z: 5500, yaw: 0.06 },
-                { width: 1500, depth: 7300 },
+                { width: 1500, depth: 7500 },
                 FLOOR,
                 47,
                 true,
+                100,
             ),
             new THREE.MeshStandardMaterial({
                 color: '#c0aa87',
@@ -1898,23 +1922,71 @@ export default class Environment {
         // enough to curl up in (0.73 m across), and his bowl on open floor in
         // front of the bookshelf, where he can stand to eat.
         const BEGU_BED = { x: -4650, z: 800 + DESK_Z };
-        const beguBed = cylinder(
-            1200,
-            220,
-            fabric,
-            BEGU_BED.x,
-            FLOOR + 110,
-            BEGU_BED.z,
+        // A round plush dog bed: a cushion with a rolled rim he can step
+        // over, a dished middle to curl up in, and a softer inner pad.
+        const lathe = (points: [number, number][], mat: THREE.Material) => {
+            const mesh = new THREE.Mesh(
+                new THREE.LatheGeometry(
+                    points.map(([r, y]) => new THREE.Vector2(r, y)),
+                    72,
+                ),
+                mat,
+            );
+            mesh.position.set(BEGU_BED.x, FLOOR, BEGU_BED.z);
+            mesh.castShadow = mesh.receiveShadow = true;
+            room.add(mesh);
+            return mesh;
+        };
+        const plush = pile.clone();
+        plush.wrapS = plush.wrapT = THREE.RepeatWrapping;
+        plush.repeat.set(4, 2);
+        const beguBed = lathe(
+            [
+                [0, 0],
+                [1080, 0],
+                [1170, 40],
+                [1205, 130],
+                [1195, 210],
+                [1150, 275],
+                [1080, 305],
+                [1000, 300],
+                [930, 265],
+                [860, 225],
+                [600, 205],
+                [0, 200],
+            ],
+            new THREE.MeshPhysicalMaterial({
+                color: '#2f3a4f',
+                roughness: 1,
+                bumpMap: plush,
+                bumpScale: 18,
+                sheen: 0.45,
+                sheenRoughness: 0.7,
+                sheenColor: new THREE.Color('#8894ad'),
+                envMapIntensity: 0.4,
+            }),
         );
         beguBed.name = 'Begu bed';
-        cylinder(
-            1020,
-            80,
-            material('#6b727e'),
-            BEGU_BED.x,
-            FLOOR + 255,
-            BEGU_BED.z,
-        ).name = 'Begu bed cushion';
+        // He lies on the pad, not the rim.
+        beguBed.userData.surface = FLOOR + 225;
+        const bedPad = new THREE.Mesh(
+            new THREE.SphereGeometry(1, 48, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+            new THREE.MeshPhysicalMaterial({
+                color: '#8d95a3',
+                roughness: 1,
+                bumpMap: plush,
+                bumpScale: 26,
+                sheen: 0.6,
+                sheenRoughness: 0.8,
+                sheenColor: new THREE.Color('#d9dee8'),
+                envMapIntensity: 0.4,
+            }),
+        );
+        bedPad.name = 'Begu bed cushion';
+        bedPad.scale.set(880, 45, 880);
+        bedPad.position.set(BEGU_BED.x, FLOOR + 196, BEGU_BED.z);
+        bedPad.castShadow = bedPad.receiveShadow = true;
+        room.add(bedPad);
         const BOWL = { x: -7000, z: 950 + DESK_Z };
         cylinder(280, 140, brass, BOWL.x, FLOOR + 70, BOWL.z).name =
             'Begu bowl';
@@ -1926,7 +1998,8 @@ export default class Environment {
             FLOOR + 143,
             BOWL.z,
         ).name = 'Begu bowl water';
-        label('BEGU', 1000, 200, BEGU_BED.x, FLOOR + 155, BEGU_BED.z + 1215);
+        // Embroidered on the front of the rim.
+        label('BEGU', 700, 140, BEGU_BED.x, FLOOR + 150, BEGU_BED.z + 1212);
         return room;
     }
 

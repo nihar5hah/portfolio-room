@@ -125,6 +125,19 @@ export default function Credits(props: WindowAppProps) {
                             Model page ↗
                         </a>
                     </dd>
+                    <dt>Herman Miller</dt>
+                    <dd>
+                        The Embody Chair with Arms at the desk, from Herman
+                        Miller’s published 3D product models, converted for the
+                        web; not affiliated with Herman Miller.{' '}
+                        <a
+                            href="https://www.hermanmiller.com/resources/3d-models-and-planning-tools/product-models/individual/embody-chair-with-arms/"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Product models ↗
+                        </a>
+                    </dd>
                     <dt>Tigertigertiger</dt>
                     <dd>
                         The scanned Handball Spezial kicked off by the bean bag

@@ -196,7 +196,7 @@ export default class Decor {
             !o || (o.visible && shown(o.parent));
         const scene = this.app.scene;
         scene.updateMatrixWorld(true);
-        const bed: THREE.Box3[] = [];
+        const bed: { box: THREE.Box3; y: number }[] = [];
         scene.traverse((object) => {
             const mesh = object as THREE.Mesh;
             if (!mesh.isMesh || !shown(mesh)) return;
@@ -216,7 +216,8 @@ export default class Decor {
                 maxZ: box.max.z,
             };
             if (mesh.name.startsWith('Begu bed')) {
-                bed.push(box.clone());
+                if (mesh.userData.surface !== undefined)
+                    bed.push({ box: box.clone(), y: mesh.userData.surface });
                 return;
             }
             if (box.max.y < FLOOR + 130) {
@@ -263,7 +264,7 @@ export default class Decor {
             PAD + 150,
         );
         // His bed is his: walkable, and he lies on the cushion.
-        for (const b of bed) {
+        for (const { box: b, y } of bed) {
             const rect = {
                 minX: b.min.x + 250,
                 maxX: b.max.x - 250,
@@ -271,7 +272,7 @@ export default class Decor {
                 maxZ: b.max.z - 250,
             };
             nav.open(rect);
-            nav.surface(rect, b.max.y - 25);
+            nav.surface(rect, y);
         }
         return nav;
     }

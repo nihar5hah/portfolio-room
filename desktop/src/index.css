@@ -1110,12 +1110,69 @@ img {
 .word-game p {
     font-size: 12px;
 }
-.word-game .button-border {
-    border: 1px solid #c5d4df;
+.word-game .word-tile {
+    font-family: var(--sys, -apple-system, sans-serif);
+    color: #1d1d1f;
+    will-change: transform;
+}
+.word-game .word-key {
+    cursor: pointer;
+    color: #1d1d1f;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+.word-game .word-key:active {
+    transform: translateY(1px);
+}
+.word-game .word-mode {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #1d1d1f;
+}
+.word-game .word-mode[data-active='true'] {
+    background: #0a84ff;
+    border-color: #0a84ff;
+    color: #fff;
+}
+.word-game .word-toast {
+    background: #1d1d1f;
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 8px 14px;
     border-radius: 6px;
 }
-.word-game .button-border h3 {
-    font-size: 25px;
+.word-game .word-stats {
+    background: #fff;
+    border: 1px solid #d6e1e9;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+}
+.word-game .word-stats h3 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 6px 0;
+    justify-content: center;
+}
+.word-game .word-stats b {
+    font-size: 26px;
+}
+.word-game .word-stats p b,
+.word-game .word-stats small {
+    font-size: 11px;
+}
+.word-game .word-stats p b {
+    font-size: 15px;
+    letter-spacing: 0.08em;
+}
+.word-game .word-bar {
+    background: var(--tile-absent, #787c7e);
+    border-radius: 2px;
+}
+.word-game .word-bar[data-now='true'] {
+    background: var(--tile-correct, #6aaa64);
 }
 @media (max-width: 1100px) {
     .portfolio-page {
@@ -1976,10 +2033,10 @@ img {
         padding: 10px 4px !important;
         margin: 2px !important;
     }
-    .word-game .button-border {
+    .word-game .word-tile {
         width: 46px !important;
         height: 46px !important;
-        margin: 3px !important;
+        font-size: 24px !important;
     }
     .credits-page {
         padding: 23px;
@@ -2608,6 +2665,32 @@ html[data-theme='dark'] .word-game :is(h1, h2, h3, p) {
 html[data-theme='dark'] .word-game .site-button {
     background: #3a3a3c !important;
     border-color: #4a4a4c !important;
+    color: #f5f5f7;
+}
+html[data-theme='dark'] .word-game .word-key[data-mark='correct'] {
+    background: var(--tile-correct) !important;
+}
+html[data-theme='dark'] .word-game .word-key[data-mark='present'] {
+    background: var(--tile-present) !important;
+}
+html[data-theme='dark'] .word-game .word-key[data-mark='absent'] {
+    background: #242426 !important;
+    color: #8e8e93;
+}
+html[data-theme='dark'] .word-game .word-mode[data-active='true'] {
+    background: #0a84ff !important;
+    border-color: #0a84ff !important;
+}
+html[data-theme='dark'] .word-game .word-tile {
+    color: #f5f5f7;
+}
+html[data-theme='dark'] .word-game .word-stats {
+    background: #2c2c2e;
+    border-color: #3a3a3c;
+}
+html[data-theme='dark'] .word-game .word-toast {
+    background: #f5f5f7;
+    color: #1d1d1f;
 }
 html[data-theme='dark'] .shutdown-screen {
     background: #1c1c1e;
@@ -2701,6 +2784,7 @@ html[data-theme='dark'] {
     --tile-correct: #538d4e;
     --tile-present: #b59f3b;
     --tile-absent: #3a3a3c;
+    --tile-typed: #636366;
 }
 
 /* ───────────── Desktop drawn on the room's 3D laptop screen ─────────────

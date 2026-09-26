@@ -138,3 +138,9 @@ Playstation 5 Dualsense by AHarmlessPotato, CC BY 4.0: https://creativecommons.o
 Source: https://sketchfab.com/3d-models/playstation-5-dualsense-878c1f882808477ab81c2fe86d5a3936
 Changes: simplified from ~112k to ~25k triangles, textures resized to 1024 px WebP, alpha blending replaced with opaque materials, light bar switched off (static/models/PS5/dualsense.glb).
 PlayStation, PS5 and DualSense are trademarks of Sony Interactive Entertainment; this room is not affiliated with Sony.
+
+Embody Chair with Arms, 3D model by Herman Miller.
+Source: https://www.hermanmiller.com/resources/3d-models-and-planning-tools/product-models/individual/embody-chair-with-arms/ (HMI_Embody_Chair_With_Arms_3D.dwg)
+Herman Miller publishes these models for designers to place their products in plans and visualisations. It is not an open-licence model: before publishing the site, confirm that Herman Miller's terms for its product models allow use on a public website.
+Changes: converted from AutoCAD 3D faces to glTF with LibreDWG and a custom script (inches to metres, Y up, facing +Z, crease-aware normals), graphite frame and black fabric finish (static/models/Chair/embody.glb, ~0.9 MB).
+Embody and Herman Miller are trademarks of MillerKnoll; this room is not affiliated with them.

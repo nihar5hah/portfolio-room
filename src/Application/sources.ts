@@ -52,6 +52,7 @@ const sources: Resource[] = [
         path: 'models/Room/room-props.glb',
     },
     { name: 'ps5Model', type: 'gltfModel', path: 'models/PS5/ps5.glb' },
+    { name: 'chairModel', type: 'gltfModel', path: 'models/Chair/embody.glb' },
     {
         name: 'dualSenseModel',
         type: 'gltfModel',

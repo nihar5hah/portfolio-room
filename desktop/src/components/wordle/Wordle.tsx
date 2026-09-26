@@ -1,481 +1,584 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, useAnimation } from 'framer-motion';
-import WORDS from './Words';
-import { Easing } from '../general/Animation';
+import {
+    LENGTH,
+    Mark,
+    TRIES,
+    Stats,
+    dailyWord,
+    dayNumber,
+    emptyStats,
+    isWord,
+    letterHints,
+    randomWord,
+    record,
+    score,
+    shareText,
+} from './Game';
 
-export interface KeyboardLetterProps {
-    letter: string;
-    word: string;
+/**
+ * A Wordle clone: a daily word (the same for everyone that day) and an
+ * unlimited mode with a new word every game. Guess in six tries; tiles flip
+ * to show green (right letter, right place), yellow (in the word elsewhere)
+ * or grey. Type or click the keyboard. Progress and stats stay in the browser.
+ */
+type Mode = 'daily' | 'endless';
+interface Saved {
+    mode: Mode;
+    answer: string;
     guesses: string[];
-    currentGuess: string;
-    setGuesses: React.Dispatch<React.SetStateAction<string[]>>;
-    setCurrentGuess: React.Dispatch<React.SetStateAction<string>>;
+    day: number;
+    recent: string[];
 }
+const SAVE = 'nihar-word-game';
+const STATS = 'nihar-word-game-stats';
 
-const KeyboardLetter: React.FC<KeyboardLetterProps> = ({
-    letter,
-    guesses,
-    word,
-    currentGuess,
-    setGuesses,
-    setCurrentGuess,
-}) => {
-    const [isInWord, setIsInWord] = useState(false);
-    const [isInPlace, setIsInPlace] = useState(false);
-    const [notInWord, setNotInWord] = useState(false);
-
-    useEffect(() => {
-        guesses.forEach((guess) => {
-            if (word.includes(letter) && guess.includes(letter)) {
-                setIsInWord(true);
-                if (word.indexOf(letter) === guess.indexOf(letter)) {
-                    setIsInPlace(true);
-                }
-            }
-            if (!word.includes(letter) && guess.includes(letter)) {
-                setNotInWord(true);
-            }
-        });
-        if (guesses.length === 0) {
-            setIsInPlace(false);
-            setIsInWord(false);
-            setNotInWord(false);
-        }
-    }, [guesses, letter, word]);
-
-    const handleClick = () => {
-        if (letter === 'ENTER') {
-            if (currentGuess.length === word.length) {
-                if (WORDS.includes(currentGuess.toLowerCase())) {
-                    setGuesses([...guesses, currentGuess]);
-                    setCurrentGuess('');
-                }
-            }
-        } else if (letter === 'DEL') {
-            setCurrentGuess(currentGuess.slice(0, -1));
-        } else if (currentGuess.length < word.length) {
-            setCurrentGuess(currentGuess + letter.toUpperCase());
-        }
-    };
-
-    return (
-        <button
-            type="button"
-            onClick={handleClick}
-            className="site-button"
-            style={Object.assign(
-                {},
-                styles.letterBox,
-                isInWord && { backgroundColor: 'var(--tile-present, yellow)' },
-                isInPlace && { backgroundColor: 'var(--tile-correct, lightgreen)' },
-                notInWord && { backgroundColor: 'var(--tile-absent, gray)' },
-            )}
-        >
-            <p>{letter}</p>
-        </button>
-    );
+const load = <T,>(key: string, fallback: T): T => {
+    try {
+        const raw = localStorage.getItem(key);
+        return raw ? { ...fallback, ...JSON.parse(raw) } : fallback;
+    } catch {
+        return fallback;
+    }
+};
+const store = (key: string, value: unknown) => {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+        /* private browsing: play without saving */
+    }
 };
 
-export interface GuessLetterProps {
-    letter: string;
-    word: string;
-    guess: string;
-    guessed: boolean;
-}
-
-const GuessLetter: React.FC<GuessLetterProps> = ({
-    guessed,
-    letter,
-    guess,
-    word,
-}) => {
-    const [isInWord, setIsInWord] = useState(false);
-    const [isInPlace, setIsInPlace] = useState(false);
-
-    useEffect(() => {
-        if (guessed) {
-            if (word.includes(letter)) {
-                setIsInWord(true);
-                if (word.indexOf(letter) === guess.indexOf(letter)) {
-                    setIsInPlace(true);
-                }
-            }
-        }
-    }, [guessed, guess, letter, word]);
-
-    return (
-        <div
-            className="button-border"
-            style={Object.assign(
-                {},
-                styles.guessLetterBox,
-                isInWord && { backgroundColor: 'var(--tile-present, yellow)' },
-                isInPlace && { backgroundColor: 'var(--tile-correct, lightgreen)' },
-                !guessed && { backgroundColor: 'var(--tile-empty, white)' },
-                letter === ' ' && styles.emptyBox,
-            )}
-        >
-            <h3>
-                <b>{letter.toUpperCase()}</b>
-            </h3>
-        </div>
-    );
+const fresh = (mode: Mode, recent: string[] = []): Saved => {
+    const day = dayNumber();
+    const answer = mode === 'daily' ? dailyWord(day) : randomWord(recent);
+    return { mode, answer, guesses: [], day, recent };
 };
 
-export interface GuessWordProps {
-    guess: string;
-    guesses: string[];
-    word: string;
-    active: boolean;
-    noClear?: boolean;
-}
+/** Resume the saved game; a new day brings a new daily word. */
+const restore = (): Saved => {
+    const saved = load<Saved | null>(SAVE, null);
+    if (!saved || !saved.answer) return fresh('daily');
+    if (saved.mode === 'daily' && saved.day !== dayNumber())
+        return fresh('daily', saved.recent);
+    return { ...saved, recent: saved.recent ?? [] };
+};
 
-const GuessWord: React.FC<GuessWordProps> = ({
-    guess,
-    guesses,
-    word,
-    active,
-    noClear,
-}) => {
-    const [savedGuess, setSavedGuess] = useState(guess);
+const COLORS: Record<Mark | 'empty', string> = {
+    correct: 'var(--tile-correct, #6aaa64)',
+    present: 'var(--tile-present, #c9b458)',
+    absent: 'var(--tile-absent, #787c7e)',
+    empty: 'var(--tile-empty, #fff)',
+};
+
+const Tile: React.FC<{
+    letter: string;
+    mark?: Mark;
+    index: number;
+    reveal: boolean;
+    pop: boolean;
+    bounce: boolean;
+}> = ({ letter, mark, index, reveal, pop, bounce }) => {
     const controls = useAnimation();
-
+    const [shown, setShown] = useState<Mark | undefined>(
+        reveal ? undefined : mark,
+    );
     useEffect(() => {
-        if (active) {
-            setSavedGuess(guess);
-            if (
-                guess.length === word.length &&
-                !WORDS.includes(guess.toLowerCase())
-            ) {
-                controls
-                    .start({
-                        backgroundColor: '#f00',
-                        x: 2,
-                        transition: {
-                            duration: 0.1,
-                        },
-                    })
-                    .then(() => {
-                        controls
-                            .start({
-                                x: -4,
-                                backgroundColor: tileEmpty(),
-                                transition: {
-                                    duration: 0.1,
-                                },
-                            })
-                            .then(() => {
-                                controls.start({
-                                    x: 0,
-                                    backgroundColor: tileEmpty(),
-                                    transition: {
-                                        duration: 0.09,
-                                    },
-                                });
-                            });
-                    });
-            }
+        if (!mark) {
+            setShown(undefined);
+            return;
         }
-    }, [guess, active, word, controls]);
-
+        if (!reveal) {
+            setShown(mark);
+            return;
+        }
+        // Flip one after another, turning colour at the halfway point. A
+        // timer backs the animation up, so colours always appear even when
+        // animation frames are paused (a background tab) or motion is off.
+        let cancelled = false;
+        const delay = index * 0.28;
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            setShown(mark);
+            return;
+        }
+        const backup = setTimeout(
+            () => !cancelled && setShown(mark),
+            (delay + 0.2) * 1000,
+        );
+        controls
+            .start({ rotateX: 90, transition: { delay, duration: 0.18 } })
+            .then(() => {
+                if (cancelled) return;
+                setShown(mark);
+                return controls.start({
+                    rotateX: 0,
+                    transition: { duration: 0.18 },
+                });
+            })
+            .then(() => {
+                if (cancelled || !bounce) return;
+                return controls.start({
+                    y: [0, -14, 0],
+                    transition: { delay: index * 0.09, duration: 0.35 },
+                });
+            });
+        return () => {
+            cancelled = true;
+            clearTimeout(backup);
+        };
+    }, [mark, reveal, index, bounce, controls]);
     useEffect(() => {
-        if (guesses.length === 0 && !noClear) setSavedGuess('');
-    }, [guesses, noClear]);
-
+        if (pop && letter)
+            controls.start({
+                scale: [1, 1.1, 1],
+                transition: { duration: 0.1 },
+            });
+    }, [letter, pop, controls]);
+    const filled = !!shown;
     return (
-        <motion.div animate={controls} style={styles.guessWordRow}>
-            {savedGuess.split('').map((letter, index) => (
-                <GuessLetter
-                    guessed={!active}
-                    key={index}
-                    letter={letter}
-                    guess={savedGuess}
-                    word={word}
-                />
-            ))}
-            {[...Array(word.length - savedGuess.length)].map((e, i) => (
-                <GuessLetter
-                    guessed={!active}
-                    key={`empty-${i}`}
-                    letter={' '}
-                    guess={savedGuess}
-                    word={word}
-                />
-            ))}
+        <motion.div
+            animate={controls}
+            className="word-tile"
+            data-mark={shown ?? (letter ? 'typed' : 'empty')}
+            aria-label={
+                letter ? `${letter}${shown ? `, ${shown}` : ''}` : 'empty'
+            }
+            style={{
+                ...styles.tile,
+                backgroundColor: filled ? COLORS[shown!] : COLORS.empty,
+                borderColor: filled
+                    ? 'transparent'
+                    : letter
+                      ? 'var(--tile-typed, #878a8c)'
+                      : 'var(--tile-border, #d3d6da)',
+                color: filled ? '#fff' : undefined,
+            }}
+        >
+            {letter}
         </motion.div>
     );
 };
 
-export interface WordleProps {}
+const ROWS = ['QWERTYUIOP', 'ASDFGHJKL', '+ZXCVBNM-'];
 
-const TOP_ROW = ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'];
-const MIDDLE_ROW = ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'];
-// Resolved colour for framer-motion, which cannot animate CSS variables.
-const tileEmpty = () =>
-    getComputedStyle(document.documentElement)
-        .getPropertyValue('--tile-empty')
-        .trim() || '#fff';
+const Wordle: React.FC = () => {
+    const [game, setGame] = useState<Saved>(restore);
+    const [stats, setStats] = useState<Stats>(() => load(STATS, emptyStats()));
+    const [typing, setTyping] = useState('');
+    const [message, setMessage] = useState('');
+    const [revealing, setRevealing] = useState(-1);
+    const [showStats, setShowStats] = useState(false);
+    const shake = useAnimation();
 
-const BOTTOM_ROW = ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'DEL'];
-const ROWS = [TOP_ROW, MIDDLE_ROW, BOTTOM_ROW];
-const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const { answer, guesses, mode } = game;
+    const won = guesses.at(-1) === answer;
+    const over = won || guesses.length >= TRIES;
+    const hints = useMemo(
+        () => letterHints(guesses, answer),
+        [guesses, answer],
+    );
 
-const Wordle: React.FC<WordleProps> = () => {
-    const word = 'BUILD';
-    const [guesses, setGuesses] = useState<string[]>([]);
-    const [gameOver, setGameOver] = useState(false);
-    const [won, setWon] = useState(false);
-    const [currentGuess, setCurrentGuess] = useState('');
+    useEffect(() => store(SAVE, game), [game]);
+    useEffect(() => store(STATS, stats), [stats]);
 
-    const restart = () => {
-        setGuesses([]);
-        setGameOver(false);
-        setWon(false);
-        document
-            .querySelector<HTMLElement>('.word-game')
-            ?.closest<HTMLElement>('.os-window')
-            ?.focus();
-        setCurrentGuess('');
-    };
+    const say = useCallback((text: string, ms = 1600) => {
+        setMessage(text);
+        if (ms) setTimeout(() => setMessage((m) => (m === text ? '' : m)), ms);
+    }, []);
 
-    // listen to keyboard events
+    const submit = useCallback(() => {
+        if (over) return;
+        if (typing.length < LENGTH) {
+            say('Not enough letters');
+            shake.start({
+                x: [0, -8, 8, -6, 6, 0],
+                transition: { duration: 0.35 },
+            });
+            return;
+        }
+        if (!isWord(typing)) {
+            say('Not in word list');
+            shake.start({
+                x: [0, -8, 8, -6, 6, 0],
+                transition: { duration: 0.35 },
+            });
+            return;
+        }
+        const next = [...guesses, typing];
+        setRevealing(guesses.length);
+        setGame({ ...game, guesses: next });
+        setTyping('');
+        const done = typing === answer || next.length >= TRIES;
+        if (!done) return;
+        const result = {
+            won: typing === answer,
+            tries: next.length,
+            daily: mode === 'daily' ? game.day : null,
+        };
+        setStats((s) => record(s, result));
+        const praise = [
+            'Genius',
+            'Magnificent',
+            'Impressive',
+            'Splendid',
+            'Great',
+            'Phew',
+        ];
+        setTimeout(
+            () => {
+                if (result.won) say(praise[next.length - 1], 2200);
+                else say(answer, 0);
+                setTimeout(() => setShowStats(true), 1400);
+            },
+            LENGTH * 280 + 300,
+        );
+    }, [over, typing, guesses, game, answer, mode, say, shake]);
+
+    const press = useCallback(
+        (key: string) => {
+            if (over) return;
+            if (key === '+') return submit();
+            if (key === '-') return setTyping((t) => t.slice(0, -1));
+            if (/^[A-Z]$/.test(key))
+                setTyping((t) => (t.length < LENGTH ? t + key : t));
+        },
+        [over, submit],
+    );
+
+    // Physical keyboard, only while this window is the active one.
     useEffect(() => {
-        const handleKeyDown = (event: KeyboardEvent) => {
-            const gameWindow = document
+        const onKey = (event: KeyboardEvent) => {
+            const win = document
                 .querySelector('.word-game')
                 ?.closest('.os-window');
-            if (
-                gameOver ||
-                !gameWindow?.getClientRects().length ||
-                gameWindow.getAttribute('data-active') !== 'true'
-            )
-                return;
-            if ((event.target as Element)?.closest('input,textarea')) return;
-            if (
-                (event.target as Element)?.closest('button') &&
-                event.key === 'Enter'
-            )
-                return;
-            if (event.key === 'Backspace') {
-                setCurrentGuess(currentGuess.slice(0, -1));
-            } else if (event.key === 'Enter') {
-                if (currentGuess.length === word.length) {
-                    if (WORDS.includes(currentGuess.toLowerCase())) {
-                        setGuesses([...guesses, currentGuess]);
-                        setCurrentGuess('');
-                    }
-                }
-            } else if (
-                event.key.length === 1 &&
-                ALPHABET.includes(event.key.toUpperCase())
-            ) {
-                if (currentGuess.length < word.length) {
-                    setCurrentGuess(currentGuess + event.key.toUpperCase());
-                }
-            }
+            if (!win?.getClientRects().length) return;
+            if (win.getAttribute('data-active') !== 'true') return;
+            if ((event.target as Element)?.closest?.('input,textarea')) return;
+            if (event.metaKey || event.ctrlKey || event.altKey) return;
+            if (event.key === 'Enter') {
+                if ((event.target as Element)?.closest?.('button')) return;
+                event.preventDefault();
+                press('+');
+            } else if (event.key === 'Backspace') press('-');
+            else if (/^[a-z]$/i.test(event.key)) press(event.key.toUpperCase());
         };
-        // add listener
-        window.addEventListener('keydown', handleKeyDown);
-        // cleanup listener
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [guesses, currentGuess, gameOver]);
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [press]);
 
+    const start = (next: Mode) => {
+        setShowStats(false);
+        setMessage('');
+        setTyping('');
+        setRevealing(-1);
+        const recent = [...(game.recent ?? []), answer].slice(-30);
+        if (next === 'daily') {
+            // Back to today's puzzle, finished or not.
+            const saved = load<Saved | null>(SAVE + '-daily', null);
+            setGame(
+                saved && saved.day === dayNumber()
+                    ? { ...saved, recent }
+                    : fresh('daily', recent),
+            );
+        } else setGame(fresh('endless', recent));
+    };
+    // Keep today's daily board when switching away from it.
     useEffect(() => {
-        if (guesses.length === 6) {
-            setGameOver(true);
+        if (mode === 'daily') store(SAVE + '-daily', game);
+    }, [game, mode]);
+
+    const share = async () => {
+        const label =
+            mode === 'daily' ? `Word game #${game.day + 1}` : 'Word game';
+        const text = shareText(guesses, answer, label);
+        try {
+            await navigator.clipboard.writeText(text);
+            say('Copied results');
+        } catch {
+            say('Could not copy');
         }
-        guesses.forEach((guess) => {
-            if (guess === word) {
-                setGameOver(true);
-                setWon(true);
-            }
-        });
-    }, [guesses]);
+    };
+
+    const rows = [...Array(TRIES)].map((_, r) => {
+        if (r < guesses.length)
+            return { word: guesses[r], marks: score(guesses[r], answer) };
+        if (r === guesses.length && !over)
+            return { word: typing, marks: [] as Mark[] };
+        return { word: '', marks: [] as Mark[] };
+    });
+    const best = Math.max(1, ...stats.spread);
 
     return (
         <div style={styles.container} className="word-game">
             <div style={styles.header}>
-                <h2>Word game</h2>
-                <p>A five-letter break from building.</p>
-            </div>
-            <motion.div
-                variants={gameOverAnimations}
-                animate={gameOver ? 'show' : 'hidden'}
-                initial={false}
-                style={Object.assign(
-                    {},
-                    styles.gameOverContainer,
-                    { display: gameOver ? 'flex' : 'none' },
-                    gameOver && { zIndex: 1000 },
-                )}
-            >
-                <h2>{won ? 'You win!' : 'Game Over'}</h2>
-                <p>Thanks for playing. The word was "BUILD".</p>
-                <br />
-                <GuessWord
-                    key={'winning-guess'}
-                    guess={word}
-                    word={word}
-                    guesses={guesses}
-                    active={false}
-                    noClear={true}
-                />
-                <br />
-                <button className="site-button" onClick={restart}>
-                    Restart game
-                </button>
-            </motion.div>
-            <motion.div
-                variants={gameAnimations}
-                animate={!gameOver ? 'show' : 'hidden'}
-                initial={false}
-                style={{
-                    ...styles.gameContainer,
-                    display: gameOver ? 'none' : 'flex',
-                }}
-            >
-                <div style={styles.playArea}>
-                    {[...Array(6)].map((e, i) => (
-                        <GuessWord
-                            key={i}
-                            guess={currentGuess}
-                            word={word}
-                            guesses={guesses}
-                            active={i === guesses.length}
-                        />
-                    ))}
+                <div style={styles.title}>
+                    <h2>Word game</h2>
+                    <p>Guess the five-letter word in six tries.</p>
                 </div>
-                <div style={styles.keyboardContainer}>
-                    {ROWS.map((row) => (
-                        <div style={styles.keyboardRow} key={`row-${row[0]}`}>
-                            {row.map((letter) => (
-                                <KeyboardLetter
-                                    key={letter}
-                                    word={word}
-                                    setGuesses={setGuesses}
-                                    guesses={guesses}
-                                    letter={letter}
-                                    currentGuess={currentGuess}
-                                    setCurrentGuess={setCurrentGuess}
-                                />
-                            ))}
+                <div style={styles.modes} role="tablist" aria-label="Game mode">
+                    {(['daily', 'endless'] as Mode[]).map((m) => (
+                        <button
+                            key={m}
+                            role="tab"
+                            aria-selected={mode === m}
+                            className="site-button word-mode"
+                            data-active={mode === m}
+                            onClick={() => start(m)}
+                        >
+                            {m === 'daily' ? 'Daily' : 'Unlimited'}
+                        </button>
+                    ))}
+                    <button
+                        className="site-button word-mode"
+                        aria-label="Statistics"
+                        onClick={() => setShowStats((s) => !s)}
+                    >
+                        Stats
+                    </button>
+                </div>
+            </div>
+            <div style={styles.toast} aria-live="polite">
+                {message && <span className="word-toast">{message}</span>}
+            </div>
+            <div style={styles.board}>
+                {rows.map((row, r) => (
+                    <motion.div
+                        key={`${game.answer}-${r}`}
+                        style={styles.row}
+                        animate={r === guesses.length ? shake : undefined}
+                    >
+                        {[...Array(LENGTH)].map((_, i) => (
+                            <Tile
+                                key={i}
+                                index={i}
+                                letter={row.word[i] ?? ''}
+                                mark={row.marks[i]}
+                                reveal={r === revealing}
+                                pop={r === guesses.length}
+                                bounce={
+                                    r === revealing &&
+                                    won &&
+                                    r === guesses.length - 1
+                                }
+                            />
+                        ))}
+                    </motion.div>
+                ))}
+            </div>
+            <div style={styles.keyboard}>
+                {ROWS.map((row) => (
+                    <div style={styles.keyRow} key={row}>
+                        {row.split('').map((key) => {
+                            const mark = hints[key];
+                            return (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    className="site-button word-key"
+                                    data-mark={mark ?? 'none'}
+                                    onClick={() => press(key)}
+                                    aria-label={
+                                        key === '+'
+                                            ? 'Enter'
+                                            : key === '-'
+                                              ? 'Delete'
+                                              : key
+                                    }
+                                    style={{
+                                        ...styles.key,
+                                        ...(key === '+' || key === '-'
+                                            ? styles.wide
+                                            : {}),
+                                        ...(mark
+                                            ? {
+                                                  backgroundColor: COLORS[mark],
+                                                  color: '#fff',
+                                              }
+                                            : {}),
+                                    }}
+                                >
+                                    {key === '+'
+                                        ? 'ENTER'
+                                        : key === '-'
+                                          ? '⌫'
+                                          : key}
+                                </button>
+                            );
+                        })}
+                    </div>
+                ))}
+            </div>
+            {showStats && (
+                <div
+                    className="word-stats"
+                    style={styles.stats}
+                    role="dialog"
+                    aria-label="Statistics"
+                >
+                    <button
+                        className="word-close"
+                        aria-label="Close"
+                        onClick={() => setShowStats(false)}
+                        style={styles.close}
+                    >
+                        ×
+                    </button>
+                    {over && (
+                        <p style={styles.result}>
+                            {won ? 'Solved it!' : 'The word was'}{' '}
+                            <b>{answer}</b>
+                        </p>
+                    )}
+                    <h3>Statistics</h3>
+                    <div style={styles.numbers}>
+                        {[
+                            [stats.played, 'Played'],
+                            [
+                                stats.played
+                                    ? Math.round(
+                                          (stats.won / stats.played) * 100,
+                                      )
+                                    : 0,
+                                'Win %',
+                            ],
+                            [stats.streak, 'Streak'],
+                            [stats.best, 'Best'],
+                        ].map(([n, label]) => (
+                            <div key={label} style={styles.number}>
+                                <b>{n}</b>
+                                <small>{label}</small>
+                            </div>
+                        ))}
+                    </div>
+                    <h3>Guesses</h3>
+                    {stats.spread.map((n, i) => (
+                        <div key={i} style={styles.bar}>
+                            <span>{i + 1}</span>
+                            <span
+                                className="word-bar"
+                                data-now={
+                                    over && won && guesses.length === i + 1
+                                }
+                                style={{
+                                    ...styles.fill,
+                                    width: `${Math.max(7, (n / best) * 100)}%`,
+                                }}
+                            >
+                                {n}
+                            </span>
                         </div>
                     ))}
+                    <div style={styles.actions}>
+                        {over && (
+                            <button
+                                className="site-button word-mode"
+                                data-active="true"
+                                onClick={share}
+                            >
+                                Share
+                            </button>
+                        )}
+                        <button
+                            className="site-button word-mode"
+                            onClick={() => start('endless')}
+                        >
+                            {mode === 'endless' || over
+                                ? 'New word'
+                                : 'Play unlimited'}
+                        </button>
+                    </div>
+                    {mode === 'daily' && over && (
+                        <p style={styles.note}>A new daily word tomorrow.</p>
+                    )}
                 </div>
-            </motion.div>
+            )}
         </div>
     );
-};
-
-const gameAnimations = {
-    hidden: {
-        opacity: 0,
-        y: -12,
-        transition: {
-            duration: 0.5,
-        },
-    },
-    show: {
-        y: 0,
-        opacity: 1,
-        transition: {
-            delay: 0.5,
-            duration: 0.5,
-        },
-    },
-};
-
-const gameOverAnimations = {
-    hidden: {
-        opacity: 0,
-        y: 32,
-        transition: {
-            duration: 0.5,
-        },
-    },
-    show: {
-        opacity: 1,
-        y: 0,
-        transition: {
-            delay: 0.4,
-            duration: 0.5,
-            ease: Easing.expOut,
-        },
-    },
 };
 
 const styles: StyleSheetCSS = {
     container: {
         flex: 1,
         flexDirection: 'column',
-        overflowY: 'scroll',
-    },
-    gameContainer: {
-        flex: 1,
-        flexDirection: 'column',
-    },
-    gameOverContainer: {
-        zIndex: -1000,
-        textAlign: 'center',
-        width: '100%',
-        height: '100%',
-        position: 'absolute',
-        flexDirection: 'column',
-        justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'var(--tile-surface, #fff)',
+        position: 'relative',
+        overflowY: 'auto',
+        padding: '4px 8px 12px',
     },
     header: {
-        flexShrink: 1,
-        paddingTop: 20,
+        width: '100%',
+        maxWidth: 480,
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 6,
+    },
+    title: { flexDirection: 'column', gap: 2 },
+    modes: { gap: 6 },
+    toast: { height: 34, justifyContent: 'center', alignItems: 'center' },
+    board: { flexDirection: 'column', gap: 6, marginBottom: 14 },
+    row: { gap: 6 },
+    tile: {
+        width: 54,
+        height: 54,
+        border: '2px solid',
+        borderRadius: 4,
+        justifyContent: 'center',
+        alignItems: 'center',
+        fontSize: 28,
+        fontWeight: 700,
+        textTransform: 'uppercase',
+        userSelect: 'none',
+    },
+    keyboard: { flexDirection: 'column', gap: 7, alignItems: 'center' },
+    keyRow: { gap: 5 },
+    key: {
+        minWidth: 34,
+        height: 50,
+        padding: '0 6px',
+        justifyContent: 'center',
+        alignItems: 'center',
+        fontSize: 14,
+        fontWeight: 700,
+    },
+    wide: { minWidth: 58, fontSize: 12 },
+    stats: {
+        position: 'absolute',
+        top: 60,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: 'min(360px, 92%)',
         flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
+        alignItems: 'stretch',
+        padding: '22px 22px 18px',
+        borderRadius: 12,
+        zIndex: 5,
+        gap: 6,
     },
-    keyboardContainer: {
-        flexShrink: 1,
-
-        paddingBottom: 16,
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
+    close: {
+        position: 'absolute',
+        top: 8,
+        right: 12,
+        border: 0,
+        background: 'none',
+        fontSize: 22,
+        cursor: 'pointer',
+        color: 'inherit',
     },
-    playArea: {
-        flex: 1,
-        flexDirection: 'column',
-
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 10,
-        marginBottom: 12,
+    result: { justifyContent: 'center', fontSize: 15, gap: 6, marginBottom: 6 },
+    numbers: { justifyContent: 'space-between', marginBottom: 8 },
+    number: { flexDirection: 'column', alignItems: 'center', gap: 2, flex: 1 },
+    bar: { alignItems: 'center', gap: 8, fontSize: 13 },
+    fill: {
+        justifyContent: 'flex-end',
+        padding: '1px 7px',
+        color: '#fff',
+        fontWeight: 700,
+        fontSize: 12,
     },
-    letterBox: {
-        padding: 10,
-        paddingTop: 12,
-        minWidth: 42,
-
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingBottom: 12,
-        margin: 3,
-    },
-    keyboardRow: {},
-    guessLetterBox: {
-        width: 46,
-        height: 46,
-        justifyContent: 'center',
-        alignItems: 'center',
-
-        margin: 4,
-    },
-    guessWordRow: {},
-    emptyBox: {
-        border: '2px solid var(--tile-border, gray)',
-        backgroundColor: 'var(--tile-empty, white)',
-        boxShadow: 'none',
-    },
+    actions: { gap: 8, justifyContent: 'center', marginTop: 12 },
+    note: { justifyContent: 'center', marginTop: 8, opacity: 0.7 },
 };
 
 export default Wordle;
