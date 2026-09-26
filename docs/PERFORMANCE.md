@@ -54,7 +54,7 @@ and integrated GPUs medium; the rest high).
 | Small shadow casters (< 5–8 cm) | yes | no | no |
 | Clearcoat/sheen materials | yes | yes | plain PBR |
 | Textures | full | full | ≤ 512 px, no anisotropy |
-| Film grain, dust, fast rain beads | yes | desktop only | no |
+| Dust motes, fast rain beads | yes | yes | no |
 | Desktop in the Mac | preloaded when idle | preloaded on desktops | on demand |
 
 The governor watches the median frame time in 2-second windows once the
@@ -75,7 +75,8 @@ fast Mac. Later drops trade resolution, shadow updates, casters and effects.
   the ball; the curtains, the MacBook lid and the gold record on every tier).
 - Seated at the Mac, the room behind the screen is drawn at a quarter of
   the frame rate; the CSS3D screen is skipped while the lid is shut.
-- Film grain is one 128 px noise tile moved by a CSS transform.
+- There is no film grain any more: it was a second full-screen WebGL canvas
+  redrawing noise every frame, then briefly a CSS noise layer, and is gone.
 - A lost WebGL context (memory pressure on phones) pauses drawing and
   redraws the shadows when it is restored.
 

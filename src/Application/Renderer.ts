@@ -8,12 +8,11 @@ import Time from './Utils/Time';
 import type { QualitySettings } from './Utils/Quality';
 
 /**
- * The room's WebGL renderer, the CSS3D layer the Mac's screen lives on, and
- * the film grain. Performance-critical choices (see docs/PERFORMANCE.md):
+ * The room's WebGL renderer and the CSS3D layer the Mac's screen lives on.
+ * Performance-critical choices (see docs/PERFORMANCE.md):
  *
  * - Antialiasing, resolution and shadows follow the quality tier
  *   (Utils/Quality.ts), and the resolution follows the frame-time governor.
- * - Grain is a tiled CSS noise layer, not a second full-screen WebGL canvas.
  * - The shadow map is redrawn only when something under the key light
  *   moves (Begu, the ball, the curtains), at most every few frames.
  * - Seated at the Mac, the room behind the screen is drawn at a quarter of
@@ -28,7 +27,6 @@ export default class Renderer {
     camera: Camera;
     instance: THREE.WebGLRenderer;
     cssInstance: CSS3DRenderer;
-    grain: HTMLDivElement | null = null;
 
     constructor() {
         this.application = new Application();
@@ -79,7 +77,6 @@ export default class Renderer {
             .querySelector('#css')
             ?.appendChild(this.cssInstance.domElement);
 
-        this.setGrain(settings);
         quality.onChange((next) => this.applyQuality(next));
 
         // Dim the room (not the CSS3D screen) while the visitor is on the Mac.
@@ -106,37 +103,6 @@ export default class Renderer {
         });
     }
 
-    /**
-     * Film grain: one small tile of noise, repeated and nudged a few times a
-     * second by a compositor-only transform. Replaces a second full-screen
-     * WebGL canvas that redrew the noise every frame.
-     */
-    setGrain(settings: QualitySettings) {
-        if (!settings.grain) {
-            this.grain?.remove();
-            this.grain = null;
-            return;
-        }
-        if (this.grain) return;
-        const tile = document.createElement('canvas');
-        tile.width = tile.height = 128;
-        const ctx = tile.getContext('2d');
-        if (!ctx) return;
-        const image = ctx.createImageData(128, 128);
-        for (let i = 0; i < image.data.length; i += 4) {
-            const v = Math.random() * 255;
-            image.data[i] = image.data[i + 1] = image.data[i + 2] = v;
-            image.data[i + 3] = 255;
-        }
-        ctx.putImageData(image, 0, 0);
-        const grain = document.createElement('div');
-        grain.className = 'film-grain';
-        grain.style.backgroundImage = `url(${tile.toDataURL()})`;
-        grain.setAttribute('aria-hidden', 'true');
-        document.querySelector('#overlay')?.appendChild(grain);
-        this.grain = grain;
-    }
-
     /** A new tier or resolution from the quality governor. */
     applyQuality(settings: QualitySettings) {
         const ratio = this.application.quality.pixelRatio;
@@ -145,7 +111,6 @@ export default class Renderer {
             this.instance.setPixelRatio(ratio);
             this.instance.setSize(this.sizes.width, this.sizes.height);
         }
-        this.setGrain(settings);
         this.application.world?.applyQuality?.(settings);
         this.shadowFrames = 2;
     }

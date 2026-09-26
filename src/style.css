@@ -26,44 +26,6 @@ body {
 #css {
     cursor: pointer;
 }
-/*
- * Film grain (Renderer.setGrain): one 128px noise tile, nudged by a
- * transform a few times a second. Transforms stay on the compositor, so
- * the grain never repaints the page.
- */
-#overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 3;
-    pointer-events: none;
-    overflow: hidden;
-}
-.film-grain {
-    position: absolute;
-    inset: -128px;
-    opacity: 0.05;
-    mix-blend-mode: soft-light;
-    background-repeat: repeat;
-    animation: film-grain 0.9s steps(1) infinite;
-    will-change: transform;
-}
-@keyframes film-grain {
-    0% {
-        transform: translate3d(0, 0, 0);
-    }
-    20% {
-        transform: translate3d(-37px, 21px, 0);
-    }
-    40% {
-        transform: translate3d(19px, -48px, 0);
-    }
-    60% {
-        transform: translate3d(-61px, -13px, 0);
-    }
-    80% {
-        transform: translate3d(44px, 57px, 0);
-    }
-}
 #ui,
 #ui-interactive {
     position: fixed;

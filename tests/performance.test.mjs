@@ -106,7 +106,6 @@ test('each tier trades resolution, shadows, lights and effects', () => {
     assert.equal(low.shadowInterval, 0, 'shadows drawn once and kept');
     assert.equal(low.dynamicShadows, false);
     assert.equal(low.lights, 'minimal');
-    assert.equal(low.grain, false);
     assert.equal(low.preloadDesktop, false);
     const medium = settingsFor('medium', phone);
     assert.ok(medium.maxPixelRatio <= 1.25);

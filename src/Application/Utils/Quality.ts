@@ -52,8 +52,6 @@ export interface QualitySettings {
      * into the fill.
      */
     lights: 'all' | 'key' | 'minimal';
-    /** Film grain over the room. */
-    grain: boolean;
     /** Dust motes, rain beads and other small ambient effects. */
     ambientDetail: boolean;
     /** Load the laptop's desktop early (idle) rather than on demand. */
@@ -99,7 +97,6 @@ export function settingsFor(tier: Tier, d: DeviceInfo): QualitySettings {
             shadowInterval: 2,
             dynamicShadows: true,
             lights: 'all',
-            grain: true,
             ambientDetail: true,
             preloadDesktop: true,
         };
@@ -113,7 +110,6 @@ export function settingsFor(tier: Tier, d: DeviceInfo): QualitySettings {
             shadowInterval: 4,
             dynamicShadows: true,
             lights: 'key',
-            grain: !small,
             ambientDetail: true,
             preloadDesktop: !small,
         };
@@ -126,7 +122,6 @@ export function settingsFor(tier: Tier, d: DeviceInfo): QualitySettings {
         shadowInterval: 0,
         dynamicShadows: false,
         lights: 'minimal',
-        grain: false,
         ambientDetail: false,
         preloadDesktop: false,
     };
