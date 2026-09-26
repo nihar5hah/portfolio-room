@@ -49,7 +49,7 @@ export default class Interactables {
                 }));
             else if (name.endsWith(' jersey frame'))
                 this.add(object, () => ({
-                    label: 'Lionel Messi · my idol',
+                    label: 'GOAT',
                     run: () => bus.dispatch('openMessi', {}),
                 }));
             else if (name === 'Match night media wall')

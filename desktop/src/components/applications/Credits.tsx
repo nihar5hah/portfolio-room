@@ -214,6 +214,19 @@ function Credits(props: WindowAppProps) {
                             Original photograph ↗
                         </a>
                     </dd>
+                    <dt>Agencia de Noticias ANDES</dt>
+                    <dd>
+                        Messi pointing to the sky in Quito, 2017, shown when a
+                        framed shirt is clicked. CC BY-SA 2.0; cut out from its
+                        background and cropped.{' '}
+                        <a
+                            href="https://commons.wikimedia.org/wiki/File:ECUADOR_VS_ARGENTINA_(36956136633).jpg"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Original photograph ↗
+                        </a>
+                    </dd>
                     <dt>Graduation rug</dt>
                     <dd>
                         Texture rectified from Nihar’s supplied rug reference
