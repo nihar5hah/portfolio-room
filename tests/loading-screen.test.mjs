@@ -24,31 +24,46 @@ function load() {
                 esModuleInterop: true,
             },
         }).outputText,
-    )((name) => {
-        if (name === 'react') return require('react');
-        if (name.endsWith('AlbumAudio')) return { ALBUMS: { mbdtf: 'MBDTF' } };
-        return { default: {} };
-    }, exports);
+    )(
+        (name) => (name === 'react' ? require('react') : { default: {} }),
+        exports,
+    );
     return exports;
 }
 
-test('the tonearm is the progress bar: rest, then across to the lead-in groove', () => {
-    const { armAngle, ARM } = load();
-    assert.equal(armAngle(0), ARM.rest);
-    assert.equal(armAngle(1), ARM.lead);
-    assert.equal(armAngle(2), ARM.lead, 'never past the lead-in');
-    assert.equal(armAngle(-1), ARM.rest);
-    let last = -Infinity;
-    for (let p = 0; p <= 1; p += 0.1) {
-        assert.ok(armAngle(p) >= last, 'only ever swings inward');
-        last = armAngle(p);
+test('the drawing starts blank even though album-art placeholders count at once', () => {
+    const { drafted } = load();
+    // 58 sources, 38 of them lazy placeholders counted immediately.
+    assert.equal(drafted(38, 58, 38), 0);
+    assert.equal(drafted(48, 58, 38), 0.5);
+    assert.equal(drafted(58, 58, 38), 1);
+    assert.equal(drafted(0, 0, 0), 1, 'nothing to load is done');
+});
+
+test('the plate lines up with the camera on wide, laptop and portrait screens', () => {
+    const { visibleSpan, PLATE_ASPECT } = load();
+    // Exactly the plate's aspect: all of it.
+    assert.deepEqual(visibleSpan(2400, 1000), [0, 1]);
+    // 16:10 laptop: the middle two-thirds (the camera keeps its vertical angle).
+    const [a, b] = visibleSpan(1280, 800);
+    assert.ok(Math.abs(b - a - 1.6 / PLATE_ASPECT) < 1e-9);
+    assert.ok(Math.abs(a + b - 1) < 1e-9, 'centred');
+    // Portrait phone: the horizontal angle is kept, so 1/2.4 of the plate.
+    const [c, d] = visibleSpan(390, 844);
+    assert.ok(Math.abs(d - c - 1 / PLATE_ASPECT) < 1e-9);
+});
+
+test('every callout points at something inside the plate', () => {
+    const { CALLOUTS } = load();
+    assert.equal(CALLOUTS.length, 4);
+    for (const c of CALLOUTS) {
+        assert.ok(c.u > 0 && c.u < 1 && c.v > 0 && c.v < 1, c.title);
+        assert.ok(['up', 'down'].includes(c.dir));
     }
 });
 
-test('loading lines read as things being set out, sleeves grouped', () => {
-    const { label } = load();
-    assert.equal(label('beguModel'), 'Begu');
-    assert.equal(label('poster_mbdtf'), 'the record sleeves');
-    assert.equal(label('mbdtfVinyl'), 'the record sleeves');
-    assert.equal(label('somethingNew'), 'somethingNew');
+test('the blueprint the screen draws is shipped and small', () => {
+    const file = new URL('../static/room/blueprint.webp', import.meta.url);
+    assert.ok(fs.existsSync(file), 'scripts/render-blueprint.js makes it');
+    assert.ok(fs.statSync(file).size < 250_000);
 });

@@ -1,44 +1,54 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Application from '../../Application';
-import { ALBUMS } from '../../Audio/AlbumAudio';
 import eventBus from '../EventBus';
 
 /**
- * The loading screen is a record going on. A vinyl from Nihar's collection
- * spins at 33⅓ rpm, and the tonearm is the progress bar: it swings in from
- * its rest and tracks across the grooves as the room loads. When everything
- * is in, "Drop the needle" zooms the record into the room.
- *
- * It always says the room is made for a laptop or desktop; on a phone that
- * becomes a clear notice with the 2D portfolio as the alternative.
+ * The loading screen is a technical drawing of the room. The linework is
+ * rendered from the real scene, from the camera the room opens at
+ * (scripts/render-blueprint.js), so a plotter line can draw it in as the
+ * files arrive and the live room can fade in exactly underneath. Numbered
+ * callouts point at real objects; the title block says who this is and
+ * that the room is designed for a laptop or desktop (loudly on a phone).
  */
 
-/** Friendlier names for the loading line; unknown names show as they are. */
-const LABELS: Record<string, string> = {
-    macbookModel: 'the MacBook',
-    beguModel: 'Begu',
-    duneModel: 'the Dune sofa',
-    loungeProps: 'the lounge',
-    spezialModel: 'the Spezials',
-    roomProps: 'the plants and fan',
-    ps5Model: 'the PS5',
-    dualSenseModel: 'the controllers',
-    chairModel: 'the Embody chair',
-    footballModel: 'the Brazuca',
-    dropoutBearModel: 'the Graduation Bear',
-    duneFabricBump: 'the Dune fabric',
-    decorModel: 'the coffee mug',
-    decorTexture: 'the coffee',
-    messiJersey: 'the Barça shirt',
-    argentinaJersey: 'the Argentina shirt',
-    graduationRug: 'the Graduation rug',
-    barcaCrest: 'the Barça crest',
-};
-export const label = (name: string) =>
-    LABELS[name] ??
-    (name.startsWith('poster_') || name.endsWith('Vinyl')
-        ? 'the record sleeves'
-        : name);
+/** Blueprint plate: 2.4:1, rendered with the loading camera's 44° lens. */
+export const PLATE_ASPECT = 2.4;
+
+/** Where objects sit on the plate (0–1), from scripts/render-blueprint.js. */
+export const CALLOUTS = [
+    {
+        n: '01',
+        title: 'MacBook Pro',
+        note: 'projects · résumé · contact',
+        u: 0.4415,
+        v: 0.3929,
+        dir: 'up',
+    },
+    {
+        n: '02',
+        title: 'Begu',
+        note: 'AI companion · ask about my work',
+        u: 0.3646,
+        v: 0.5971,
+        dir: 'down',
+    },
+    {
+        n: '03',
+        title: 'Bookshelf',
+        note: 'notes on what I build',
+        u: 0.2015,
+        v: 0.3764,
+        dir: 'up',
+    },
+    {
+        n: '04',
+        title: 'Match night',
+        note: 'Barça, live on the TV',
+        u: 0.6989,
+        v: 0.8838,
+        dir: 'up',
+    },
+] as const;
 
 /** Phones and tablets: touch-first, or too narrow for the room. */
 export const handheld = () =>
@@ -47,55 +57,55 @@ export const handheld = () =>
         !matchMedia('(hover: hover)').matches);
 
 /**
- * Tonearm angle (degrees clockwise from straight down, about its pivot).
- * With the deck's proportions (measured in the browser) the stylus is off
- * the record at `rest` and over the lead-in groove, 94% of the radius out,
- * at `lead`. While
- * the room loads the arm swings from its rest to the record's edge; it is
- * over the lead-in exactly when everything has arrived.
+ * The part of the plate a screen shows (u from, to). The live camera keeps
+ * its vertical angle in landscape and its horizontal angle in portrait
+ * (Camera.ts), and the plate is sized the same way (style.css).
  */
-export const ARM = { rest: 0, lead: 24 };
-export const armAngle = (progress: number) =>
-    ARM.rest + (ARM.lead - ARM.rest) * Math.min(1, Math.max(0, progress));
+export function visibleSpan(width: number, height: number) {
+    const aspect = width / height;
+    const fraction =
+        aspect >= 1 ? Math.min(1, aspect / PLATE_ASPECT) : 1 / PLATE_ASPECT;
+    return [0.5 - fraction / 2, 0.5 + fraction / 2] as const;
+}
 
-const Laptop = () => (
-    <svg viewBox="0 0 32 22" aria-hidden="true">
-        <rect x="5" y="2" width="22" height="14" rx="1.6" />
-        <path d="M2 18.5h28l-1.5 2H3.5z" />
-    </svg>
-);
-const Phone = () => (
-    <svg viewBox="0 0 14 22" aria-hidden="true">
-        <rect x="1.5" y="1" width="11" height="20" rx="2.2" />
-        <path d="M5.5 3.4h3" />
-    </svg>
-);
+/**
+ * Loading progress without the album art, whose placeholders are counted
+ * the moment the page starts (Resources.ts): otherwise the drawing would
+ * begin two-thirds done.
+ */
+export const drafted = (loaded: number, toLoad: number, lazy: number) =>
+    toLoad - lazy <= 0 ? 1 : Math.max(0, (loaded - lazy) / (toLoad - lazy));
+
+/** The drawing always takes at least this long, even from cache. */
+const DRAW_SECONDS = 1.6;
 
 export default function LoadingScreen() {
     const app = useRef(new Application()).current;
-    const [progress, setProgress] = useState(
-        () => app.resources.loaded / app.resources.toLoad,
+    const lazy = app.resources.lazySources?.size ?? 0;
+    const [target, setTarget] = useState(() =>
+        drafted(app.resources.loaded, app.resources.toLoad, lazy),
     );
-    const [current, setCurrent] = useState('');
+    const [shown, setShown] = useState(0);
+    const position = useRef(0);
     const [failed, setFailed] = useState(() => app.resources.failed);
     const [leaving, setLeaving] = useState(false);
     const [gone, setGone] = useState(false);
     const [mobile, setMobile] = useState(handheld);
-    // A different record on each visit.
-    const [album] = useState(() => {
-        const slugs = Object.keys(ALBUMS);
-        return slugs[Math.floor(Math.random() * slugs.length)];
-    });
+    const [span, setSpan] = useState(() =>
+        visibleSpan(innerWidth, innerHeight),
+    );
     const reduced = app.reducedMotion.matches;
-    const ready = progress >= 1 && !failed;
+    const drawn = shown >= 1 && target >= 1 && !failed;
 
     useEffect(() => {
-        const offLoaded = eventBus.on('loadedSource', (data) => {
-            setProgress(data.progress);
-            setCurrent(label(data.sourceName));
-        });
+        const offLoaded = eventBus.on('loadedSource', (data) =>
+            setTarget(drafted(data.loaded, data.toLoad, lazy)),
+        );
         const offError = eventBus.on('resourceError', () => setFailed(true));
-        const onResize = () => setMobile(handheld());
+        const onResize = () => {
+            setMobile(handheld());
+            setSpan(visibleSpan(innerWidth, innerHeight));
+        };
         window.addEventListener('resize', onResize);
         return () => {
             offLoaded();
@@ -104,18 +114,48 @@ export default function LoadingScreen() {
         };
     }, []);
 
-    const start = useCallback(() => {
-        if (leaving || !ready) return;
-        document.getElementById('css')?.removeAttribute('inert');
-        setLeaving(true);
-        eventBus.dispatch('loadingScreenDone', {});
-        document.getElementById('ui')!.style.pointerEvents = 'none';
-        setTimeout(() => setGone(true), reduced ? 0 : 700);
-    }, [leaving, ready]);
-
-    // ?debug skips straight in; Enter drops the needle; P opens the 2D site.
+    // The plotter: eases toward real progress, never faster than a full
+    // sheet in DRAW_SECONDS.
     useEffect(() => {
-        if (ready && new URLSearchParams(location.search).has('debug')) start();
+        if (reduced) {
+            position.current = target;
+            setShown(target);
+            return;
+        }
+        let frame = 0;
+        let last = performance.now();
+        const step = (now: number) => {
+            const dt = Math.min(0.1, (now - last) / 1000);
+            last = now;
+            const next = Math.min(target, position.current + dt / DRAW_SECONDS);
+            position.current = next;
+            setShown(next);
+            if (next < target) frame = requestAnimationFrame(step);
+        };
+        frame = requestAnimationFrame(step);
+        return () => cancelAnimationFrame(frame);
+    }, [target]);
+
+    const start = useCallback(() => {
+        if (leaving || !drawn) return;
+        setLeaving(true);
+        // The camera leaves the drawing's viewpoint as soon as the room is
+        // entered, so the linework clears first. Well inside the ~1 s a
+        // browser keeps the click's permission to start sound.
+        setTimeout(
+            () => {
+                document.getElementById('css')?.removeAttribute('inert');
+                eventBus.dispatch('loadingScreenDone', {});
+                document.getElementById('ui')!.style.pointerEvents = 'none';
+                setGone(true);
+            },
+            reduced ? 0 : 420,
+        );
+    }, [leaving, drawn]);
+
+    // ?debug skips straight in; Enter goes in; P opens the 2D portfolio.
+    useEffect(() => {
+        if (drawn && new URLSearchParams(location.search).has('debug')) start();
         const onKey = (event: KeyboardEvent) => {
             if (event.key === 'Enter') start();
             else if (event.key === 'p' || event.key === 'P')
@@ -123,124 +163,118 @@ export default function LoadingScreen() {
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [ready, start]);
+    }, [drawn, start]);
 
     if (gone) return null;
-    const percent = Math.round(progress * 100);
+
+    // The plotter's position on the plate, across what this screen shows.
+    const scan = span[0] + (span[1] - span[0]) * shown;
+    const percent = Math.round(target * 100);
+    const status = failed
+        ? 'Error · reload the page'
+        : drawn
+          ? 'Rendered · ready'
+          : `Drafting · ${percent}%`;
 
     return (
         <main
             className="boot-screen"
-            data-ready={ready}
+            data-drawn={drawn}
             data-leaving={leaving}
             data-mobile={mobile}
-            aria-busy={!ready}
+            aria-busy={!drawn}
             aria-label="Loading Nihar Shah's room"
         >
-            <header className="deck-title">
-                <h1>Nihar Shah</h1>
-                <p>Applied AI systems · Ahmedabad</p>
+            <div className="bp-paper" aria-hidden="true" />
+            <div
+                className="bp-plate"
+                aria-hidden="true"
+                style={{ '--scan': `${scan * 100}%` } as React.CSSProperties}
+            >
+                <img
+                    className="bp-lines"
+                    src="/room/blueprint.webp"
+                    alt=""
+                    decoding="async"
+                />
+                {!drawn && !reduced && <span className="bp-plotter" />}
+                {CALLOUTS.map((c) => {
+                    const onScreen =
+                        c.u > span[0] + 0.02 && c.u < span[1] - 0.12;
+                    return (
+                        <div
+                            key={c.n}
+                            className="bp-callout"
+                            data-dir={c.dir}
+                            data-shown={onScreen && scan > c.u}
+                            style={{
+                                left: `${c.u * 100}%`,
+                                top: `${c.v * 100}%`,
+                            }}
+                        >
+                            <span className="bp-callout-dot" />
+                            <span className="bp-callout-leader" />
+                            <span className="bp-callout-tag">
+                                <b>{c.n}</b> {c.title}
+                                <small>{c.note}</small>
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+
+            <header className="bp-sheet-head">
+                <span>DWG NS-A101</span>
+                <span>ROOM 01 · PERSPECTIVE</span>
+                <span>SCALE 1:50</span>
             </header>
 
-            <div className="deck" aria-hidden="true">
-                <div className="deck-platter">
-                    <div className="deck-record" data-spinning={!reduced}>
-                        <img
-                            className="deck-label"
-                            src={`/room/albums/thumbs/${album}-264.webp`}
-                            alt=""
-                            decoding="async"
-                        />
-                        <span className="deck-spindle" />
-                    </div>
+            <section className="bp-title" aria-live="polite">
+                <div className="bp-title-name">
+                    <h1>Nihar Shah</h1>
+                    <p>Applied AI systems builder</p>
                 </div>
-                <div
-                    className="deck-arm"
-                    style={{
-                        transform: `rotate(${armAngle(progress)}deg)`,
-                    }}
-                >
-                    <span className="deck-arm-pivot" />
-                    <span className="deck-arm-tube" />
-                    <span className="deck-arm-head" />
+                <dl>
+                    <dt>Project</dt>
+                    <dd>My room, as a portfolio</dd>
+                    <dt>Location</dt>
+                    <dd>Ahmedabad · Bengaluru</dd>
+                    <dt>Status</dt>
+                    <dd className="bp-status">{status}</dd>
+                </dl>
+                <p className="bp-note" data-warn={mobile}>
+                    <b>Note 1</b>
+                    {mobile ? (
+                        <span>
+                            You’re on a phone. This room is designed for a{' '}
+                            <b>laptop or desktop</b>: a big screen, a mouse and
+                            a keyboard. It works here, but it’s at its best on a
+                            computer.
+                        </span>
+                    ) : (
+                        <span>
+                            Designed for a <b>laptop or desktop</b>. Look around
+                            with the mouse; type at the Mac.
+                        </span>
+                    )}
+                </p>
+                <div className="bp-actions">
+                    <button
+                        className="bp-enter"
+                        onClick={start}
+                        disabled={!drawn}
+                    >
+                        {drawn
+                            ? mobile
+                                ? 'Enter anyway'
+                                : 'Enter the room'
+                            : 'Drafting…'}
+                    </button>
+                    <a className="bp-plain" href="/desktop/">
+                        {mobile ? 'Open the 2D portfolio' : '2D portfolio'}
+                    </a>
                 </div>
-            </div>
-
-            <div className="deck-status" aria-live="polite">
-                {failed ? (
-                    <p className="deck-error">
-                        The room couldn’t load. Check your connection and
-                        reload, or open the 2D portfolio.
-                    </p>
-                ) : ready ? (
-                    <p>
-                        {ALBUMS[album as keyof typeof ALBUMS]} is on the
-                        platter.
-                    </p>
-                ) : (
-                    <p>
-                        <span className="deck-percent">{percent}%</span>
-                        {current
-                            ? ` · setting out ${current}`
-                            : ' · warming up'}
-                    </p>
-                )}
-                <div
-                    className="deck-progress"
-                    role="progressbar"
-                    aria-label="Loading the room"
-                    aria-valuenow={percent}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                >
-                    <span style={{ transform: `scaleX(${progress})` }} />
-                </div>
-            </div>
-
-            <div className="deck-actions">
-                <button
-                    className="deck-start"
-                    onClick={start}
-                    disabled={!ready}
-                    autoFocus
-                >
-                    {ready
-                        ? mobile
-                            ? 'Enter anyway'
-                            : 'Drop the needle'
-                        : 'Loading…'}
-                </button>
-                <a className="deck-plain" href="/desktop/">
-                    {mobile ? 'Open the 2D portfolio' : 'or the 2D portfolio'}
-                </a>
-            </div>
-
-            <aside
-                className="deck-device"
-                data-warn={mobile}
-                aria-label="Best experienced on a laptop or desktop"
-            >
-                <div className="deck-device-icons">
-                    <span className="deck-device-on">
-                        <Laptop />
-                    </span>
-                    <span className="deck-device-off">
-                        <Phone />
-                    </span>
-                </div>
-                {mobile ? (
-                    <p>
-                        <b>You’re on a phone.</b> This room is built for a
-                        laptop or desktop: a big screen, a mouse and a keyboard.
-                        It works here, but it shines on a computer.
-                    </p>
-                ) : (
-                    <p>
-                        <b>Best on a laptop or desktop.</b> Use your mouse to
-                        look around and your keyboard at the Mac.
-                    </p>
-                )}
-            </aside>
+            </section>
         </main>
     );
 }

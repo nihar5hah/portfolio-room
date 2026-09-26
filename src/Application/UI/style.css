@@ -35,340 +35,345 @@ body {
     font-family: var(--sys);
 }
 
-/* ── Loading: a record going on (LoadingScreen.tsx) ───────────── */
+/* ── Loading: a blueprint of the room (LoadingScreen.tsx) ─────────── */
+@font-face {
+    font-family: Mono;
+    src: url('/fonts/ibm-plex-mono-latin-600-normal.woff2');
+    font-weight: 600;
+}
 .boot-screen {
-    --r: min(52vmin, 330px);
+    --ink: rgba(236, 244, 255, 0.92);
+    --ink-dim: rgba(236, 244, 255, 0.6);
+    --paper: #0f3460;
     position: absolute;
     inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: clamp(14px, 2.6vh, 26px);
-    padding: 28px 20px;
     overflow: hidden;
-    color: #f2ede6;
-    background:
-        radial-gradient(
-            ellipse 60% 55% at 50% 44%,
-            rgba(255, 196, 120, 0.1),
-            rgba(0, 0, 0, 0) 70%
-        ),
-        #0b0b0d;
+    color: var(--ink);
+    font:
+        12px/1.45 Mono,
+        ui-monospace,
+        Menlo,
+        monospace;
+    letter-spacing: 0.4px;
     transition:
-        opacity 0.7s ease,
-        visibility 0s linear 0.7s;
+        opacity 0.42s ease,
+        visibility 0s linear 0.42s;
 }
 .boot-screen[data-leaving='true'] {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
 }
-.boot-screen p {
+.boot-screen p,
+.boot-screen h1,
+.boot-screen dl,
+.boot-screen dd {
     margin: 0;
 }
-.deck-title {
-    text-align: center;
-}
-.deck-title h1 {
-    margin: 0;
-    font: 650 clamp(22px, 3.2vw, 30px) / 1.1 var(--sys);
-    letter-spacing: -0.4px;
-}
-.deck-title p {
-    margin-top: 6px;
-    font: 500 13px var(--sys);
-    letter-spacing: 0.3px;
-    color: rgba(242, 237, 230, 0.55);
-}
-
-/* The turntable: a walnut plinth, the platter and a tonearm. */
-.deck {
-    position: relative;
-    width: calc(var(--r) * 1.34);
-    height: calc(var(--r) * 1.12);
-    border-radius: 14px;
-    background:
-        linear-gradient(
-            160deg,
-            rgba(255, 255, 255, 0.08),
-            rgba(0, 0, 0, 0) 40%
-        ),
-        repeating-linear-gradient(
-            92deg,
-            #5b3a26 0 7px,
-            #62412b 7px 11px,
-            #563622 11px 19px
-        );
-    box-shadow:
-        0 30px 60px rgba(0, 0, 0, 0.55),
-        inset 0 1px 0 rgba(255, 255, 255, 0.12),
-        inset 0 -3px 0 rgba(0, 0, 0, 0.35);
-    transition: transform 0.7s cubic-bezier(0.5, 0, 0.2, 1);
-}
-.boot-screen[data-leaving='true'] .deck {
-    transform: scale(1.55);
-}
-.deck-platter {
+/* Drafting paper: blueprint blue with a fine and a coarse grid. When the
+   drawing is done it fades, and the live room shows through the lines. */
+.bp-paper {
     position: absolute;
-    left: calc(var(--r) * 0.08);
+    inset: 0;
+    background:
+        linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px) 0 0 /
+            120px 120px,
+        linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px) 0
+            0 / 120px 120px,
+        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px) 0 0 /
+            24px 24px,
+        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px)
+            0 0 / 24px 24px,
+        radial-gradient(ellipse at 50% 40%, #174a82, var(--paper) 70%);
+    transition: opacity 1.4s ease 0.2s;
+}
+.boot-screen[data-drawn='true'] .bp-paper {
+    opacity: 0;
+}
+/* The plate matches the live camera: its vertical angle in landscape,
+   its horizontal angle in portrait (Camera.ts, visibleSpan()). */
+.bp-plate {
+    position: absolute;
+    left: 50%;
     top: 50%;
-    width: var(--r);
-    height: var(--r);
-    margin-top: calc(var(--r) * -0.5);
-    border-radius: 50%;
-    background: #1c1d20;
-    box-shadow:
-        0 6px 14px rgba(0, 0, 0, 0.5),
-        inset 0 0 0 2px #2a2b2f;
+    height: 100vh;
+    height: 100dvh;
+    width: calc(100vh * 2.4);
+    width: calc(100dvh * 2.4);
+    transform: translate(-50%, -50%);
 }
-.deck-record {
-    position: absolute;
-    inset: 3%;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    background:
-        conic-gradient(
-            from 30deg,
-            rgba(255, 255, 255, 0) 0deg,
-            rgba(255, 255, 255, 0.07) 40deg,
-            rgba(255, 255, 255, 0) 90deg,
-            rgba(255, 255, 255, 0) 180deg,
-            rgba(255, 255, 255, 0.06) 220deg,
-            rgba(255, 255, 255, 0) 270deg
-        ),
-        repeating-radial-gradient(circle, #0d0d0f 0 1.2px, #18181b 1.2px 2.6px);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-}
-/* 33⅓ rpm: one turn every 1.8 s. */
-.deck-record[data-spinning='true'] {
-    animation: deck-spin 1.8s linear infinite;
-}
-@keyframes deck-spin {
-    to {
-        transform: rotate(360deg);
+@media (max-aspect-ratio: 1/1) {
+    .bp-plate {
+        width: 240vw;
+        height: 100vw;
     }
 }
-.deck-label {
-    width: 36%;
-    height: 36%;
-    border-radius: 50%;
-    object-fit: cover;
-    box-shadow: 0 0 0 3px #0d0d0f;
-}
-.deck-spindle {
+.bp-lines {
     position: absolute;
-    width: 3.2%;
-    height: 3.2%;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, #f4f4f4, #8a8a8a);
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    -webkit-mask-image: linear-gradient(
+        90deg,
+        #000 var(--scan),
+        transparent calc(var(--scan) + 0.4%)
+    );
+    mask-image: linear-gradient(
+        90deg,
+        #000 var(--scan),
+        transparent calc(var(--scan) + 0.4%)
+    );
+    transition: opacity 1.4s ease 0.2s;
 }
-/* Tonearm: pivots at the top right; the angle is the loading progress. */
-.deck-arm {
+/* Rendered: the linework stays over the real room for a moment. */
+.boot-screen[data-drawn='true'] .bp-lines {
+    opacity: 0.4;
+}
+.bp-plotter {
     position: absolute;
-    right: calc(var(--r) * 0.13);
-    top: calc(var(--r) * 0.12);
+    top: 0;
+    bottom: 0;
+    left: var(--scan);
+    width: 1.5px;
+    background: #eaf4ff;
+    box-shadow:
+        0 0 12px 2px rgba(150, 205, 255, 0.7),
+        0 0 40px 8px rgba(120, 180, 255, 0.25);
+}
+.bp-callout {
+    position: absolute;
     width: 0;
     height: 0;
-    transform-origin: 0 0;
-    transition: transform 0.9s cubic-bezier(0.3, 0.8, 0.3, 1);
-}
-.deck-arm-pivot {
-    position: absolute;
-    left: calc(var(--r) * -0.075);
-    top: calc(var(--r) * -0.075);
-    width: calc(var(--r) * 0.15);
-    height: calc(var(--r) * 0.15);
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #d9d9dc, #6f7075 70%);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
-}
-.deck-arm-tube {
-    position: absolute;
-    left: calc(var(--r) * -0.012);
-    top: 0;
-    width: calc(var(--r) * 0.024);
-    height: calc(var(--r) * 0.74);
-    border-radius: 99px;
-    background: linear-gradient(90deg, #9c9ea3, #eceef0 45%, #8b8d92);
-    box-shadow: 2px 6px 8px rgba(0, 0, 0, 0.35);
-}
-.deck-arm-head {
-    position: absolute;
-    left: calc(var(--r) * -0.035);
-    top: calc(var(--r) * 0.72);
-    width: calc(var(--r) * 0.07);
-    height: calc(var(--r) * 0.11);
-    border-radius: 3px;
-    background: linear-gradient(90deg, #2c2d31, #45464b);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45);
-    transform: rotate(18deg);
-}
-
-/* Drop the needle: the head settles onto the record. */
-.boot-screen[data-leaving='true'] .deck-arm-head {
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
-    transform: rotate(18deg) scale(0.94);
-    transition:
-        transform 0.2s,
-        box-shadow 0.2s;
-}
-.deck-status {
-    width: min(360px, 84vw);
-    text-align: center;
-    font: 500 14px var(--sys);
-    color: rgba(242, 237, 230, 0.78);
-}
-.deck-percent {
-    font-variant-numeric: tabular-nums;
-    color: #f2ede6;
-    font-weight: 650;
-}
-.deck-error {
-    color: #ff8a7a;
-}
-.deck-progress {
-    height: 2px;
-    margin-top: 12px;
-    border-radius: 2px;
-    background: rgba(242, 237, 230, 0.12);
-    overflow: hidden;
-}
-.deck-progress span {
-    display: block;
-    height: 100%;
-    background: #e8b86b;
-    transform-origin: left;
-    transition: transform 0.4s ease-out;
-}
-.boot-screen[data-ready='true'] .deck-progress {
     opacity: 0;
-    transition: opacity 0.4s;
-}
-
-.deck-actions {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-}
-.deck-start {
-    min-width: 200px;
-    height: 44px;
-    padding: 0 26px;
-    border: 0;
-    border-radius: 999px;
-    background: #f2ede6;
-    color: #141416;
-    font: 650 15px var(--sys);
+    transform: translateY(4px);
     transition:
-        transform 0.15s,
+        opacity 0.4s ease,
+        transform 0.4s ease;
+}
+.bp-callout[data-shown='true'] {
+    opacity: 1;
+    transform: none;
+}
+.boot-screen[data-drawn='true'] .bp-callout {
+    opacity: 0;
+    transition-delay: 0.6s;
+}
+.bp-callout-dot {
+    position: absolute;
+    left: -4px;
+    top: -4px;
+    width: 8px;
+    height: 8px;
+    border: 1.5px solid var(--ink);
+    border-radius: 50%;
+}
+.bp-callout-leader {
+    position: absolute;
+    left: 0;
+    width: 1px;
+    height: 54px;
+    background: var(--ink-dim);
+}
+.bp-callout[data-dir='up'] .bp-callout-leader {
+    bottom: 4px;
+}
+.bp-callout[data-dir='down'] .bp-callout-leader {
+    top: 4px;
+}
+.bp-callout-tag {
+    position: absolute;
+    left: -1px;
+    padding: 5px 9px 6px;
+    border: 1px solid var(--ink-dim);
+    background: rgba(15, 52, 96, 0.82);
+    white-space: nowrap;
+    text-transform: uppercase;
+}
+.bp-callout[data-dir='up'] .bp-callout-tag {
+    bottom: 58px;
+}
+.bp-callout[data-dir='down'] .bp-callout-tag {
+    top: 58px;
+}
+.bp-callout-tag b {
+    font-weight: 600;
+    margin-right: 4px;
+}
+.bp-callout-tag small {
+    display: block;
+    font-size: 10px;
+    color: var(--ink-dim);
+    text-transform: none;
+}
+.bp-sheet-head {
+    position: absolute;
+    top: 20px;
+    left: 24px;
+    display: flex;
+    border: 1px solid var(--ink-dim);
+    background: rgba(15, 52, 96, 0.85);
+    font-size: 10.5px;
+    letter-spacing: 1px;
+}
+.bp-sheet-head span {
+    padding: 5px 10px;
+}
+.bp-sheet-head span + span {
+    border-left: 1px solid var(--ink-dim);
+}
+/* The title block: who drew this, and Note 1: laptop or desktop. */
+.bp-title {
+    position: absolute;
+    right: 24px;
+    bottom: 24px;
+    width: 400px;
+    border: 1.5px solid var(--ink);
+    background: var(--paper);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+}
+.bp-title > * + * {
+    border-top: 1px solid var(--ink-dim);
+}
+.bp-title-name {
+    padding: 12px 14px 11px;
+}
+.bp-title h1 {
+    font: 700 22px/1.1 var(--sys);
+    letter-spacing: -0.2px;
+    color: #fff;
+}
+.bp-title-name p {
+    margin-top: 3px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 10.5px;
+}
+.bp-title dl {
+    display: grid;
+    grid-template-columns: 92px 1fr;
+}
+.bp-title dt,
+.bp-title dd {
+    padding: 6px 14px;
+}
+.bp-title dt {
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 10.5px;
+    border-right: 1px solid var(--ink-dim);
+}
+.bp-title dt:not(:first-of-type),
+.bp-title dd:not(:first-of-type) {
+    border-top: 1px solid rgba(236, 244, 255, 0.22);
+}
+.bp-status {
+    font-variant-numeric: tabular-nums;
+    color: #fff;
+}
+.bp-note {
+    display: flex;
+    gap: 12px;
+    padding: 10px 14px;
+    font-size: 12px;
+}
+.bp-note > b {
+    flex: none;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 10.5px;
+    padding-top: 1px;
+}
+.bp-note span b {
+    color: #fff;
+    font-weight: 600;
+}
+.bp-note[data-warn='true'] {
+    background: #ffd166;
+    color: #16233a;
+}
+.bp-note[data-warn='true'] span b {
+    color: #16233a;
+}
+.bp-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+}
+.bp-enter {
+    flex: 1;
+    height: 42px;
+    border: 1.5px solid #fff;
+    background: #fff;
+    color: var(--paper);
+    font:
+        600 13px Mono,
+        ui-monospace,
+        monospace;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    transition:
         background 0.2s,
+        color 0.2s,
         opacity 0.3s;
 }
-.deck-start:not(:disabled):hover {
-    background: #fff;
-    transform: translateY(-1px);
+.bp-enter:not(:disabled):hover {
+    background: transparent;
+    color: #fff;
 }
-.deck-start:not(:disabled):active {
-    transform: scale(0.98);
-}
-.deck-start:disabled {
-    opacity: 0.35;
+.bp-enter:disabled {
+    opacity: 0.45;
+    background: transparent;
+    color: #fff;
     cursor: progress;
 }
-.deck-plain {
-    font: 500 13px var(--sys);
-    color: rgba(242, 237, 230, 0.6);
+.bp-plain {
+    color: var(--ink-dim);
+    font-size: 12px;
     text-decoration: none;
+    white-space: nowrap;
 }
-.deck-plain:hover {
-    color: #f2ede6;
+.bp-plain:hover {
+    color: #fff;
     text-decoration: underline;
 }
-
-/* Laptop or desktop, always said; on a phone, said loudly. */
-.deck-device {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    max-width: min(520px, 92vw);
-    padding: 12px 18px;
-    border: 1px solid rgba(242, 237, 230, 0.14);
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.04);
-    font: 400 13px/1.45 var(--sys);
-    color: rgba(242, 237, 230, 0.72);
-}
-.deck-device b {
-    color: #f2ede6;
-    font-weight: 650;
-}
-.deck-device-icons {
-    display: flex;
-    align-items: flex-end;
-    gap: 8px;
-    flex: none;
-}
-.deck-device svg {
-    display: block;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.6;
-    stroke-linejoin: round;
-    stroke-linecap: round;
-}
-.deck-device-on {
-    color: #e8b86b;
-}
-.deck-device-on svg {
-    width: 34px;
-}
-.deck-device-off {
-    position: relative;
-    color: rgba(242, 237, 230, 0.35);
-}
-.deck-device-off svg {
-    width: 13px;
-}
-/* A slash through the phone. */
-.deck-device-off::after {
-    content: '';
-    position: absolute;
-    left: -3px;
-    top: 50%;
-    width: 19px;
-    height: 1.6px;
-    background: currentColor;
-    transform: rotate(-55deg);
-}
-.deck-device[data-warn='true'] {
-    border-color: rgba(232, 184, 107, 0.55);
-    background: rgba(232, 184, 107, 0.1);
-    color: rgba(242, 237, 230, 0.85);
-}
 @media (max-width: 767px), (pointer: coarse) and (hover: none) {
-    .boot-screen {
-        --r: min(62vw, 270px);
-        justify-content: flex-start;
-        padding-top: max(28px, env(safe-area-inset-top));
+    .bp-sheet-head {
+        left: 12px;
+        top: max(12px, env(safe-area-inset-top));
+        font-size: 9px;
     }
-    /* On a phone the notice comes before the buttons. */
-    .boot-screen[data-mobile='true'] .deck-device {
-        order: 3;
+    .bp-sheet-head span:last-child {
+        display: none;
     }
-    .boot-screen[data-mobile='true'] .deck-actions {
-        order: 4;
+    .bp-title {
+        left: 12px;
+        right: 12px;
+        bottom: max(12px, env(safe-area-inset-bottom));
+        width: auto;
     }
-    .deck-device {
-        padding: 12px 14px;
+    .bp-callout-tag small {
+        display: none;
+    }
+    .bp-actions {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+    .bp-enter {
+        flex: none;
+        height: 46px;
     }
 }
 @media (prefers-reduced-motion: reduce) {
     .boot-screen,
-    .deck,
-    .deck-arm {
+    .bp-paper,
+    .bp-lines,
+    .bp-callout {
         transition: none;
     }
 }
