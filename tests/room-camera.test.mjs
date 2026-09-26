@@ -12,9 +12,9 @@ const require = createRequire(import.meta.url);
 // The shipped Dune GLB (geometry only; Meshopt-compressed, quantized).
 // The shipped Poly Haven lounge props, geometry only: Node cannot decode
 // their WebP textures, so images and texture references are dropped.
-async function loungeProps() {
+async function texturelessModel(file) {
     const bytes = fs.readFileSync(
-        new URL('../static/models/Lounge/lounge-props.glb', import.meta.url),
+        new URL(`../static/models/${file}`, import.meta.url),
     );
     const length = bytes.readUInt32LE(12);
     const json = JSON.parse(bytes.subarray(20, 20 + length));
@@ -226,7 +226,12 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
             items: {
                 gltfModel: {
                     duneModel: await duneModel(),
-                    loungeProps: await loungeProps(),
+                    loungeProps: await texturelessModel(
+                        'Lounge/lounge-props.glb',
+                    ),
+                    spezialModel: await texturelessModel(
+                        'Spezial/spezial-night-indigo.glb',
+                    ),
                 },
                 texture: {
                     duneFabricBump: new THREE.Texture(),
@@ -650,16 +655,16 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         'Wicker blanket basket',
         'Side table succulent',
         'Half-drunk coffee mug',
-        'Throw dragged off the blue bean bag',
         'Pillow on the burgundy bean bag',
         'Pillow tossed on the Dune',
-        'Kicked-off slide (left)',
+        'Kicked-off Spezial (left)',
+        'Kicked-off Spezial (right)',
     ])
         assert.ok(items.includes(expected), `${expected} in the lounge`);
     const keepOut = ['Media console', 'Bed and walnut headboard', 'Entry door'];
     const pitArea = opening.clone().expandByScalar(150);
     for (const item of livedIn.children) {
-        const b = new THREE.Box3().setFromObject(item);
+        const b = new THREE.Box3().setFromObject(item, true);
         const ground =
             item.name === 'Pillow tossed on the Dune' ? pitFloor : -3015;
         assert.ok(
@@ -703,11 +708,40 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
             bagPillow.intersectsBox(bounds('Burgundy match night bean bag')),
         'pillow sits in the burgundy bag',
     );
-    const throwOff = bounds('Throw dragged off the blue bean bag');
+    // The kicked-off pair: real UK 9 size, mirrored left, both on the floor.
+    const leftShoe = room.getObjectByName('Kicked-off Spezial (left)');
+    const rightModel = room.getObjectByName('Kicked-off Spezial (right)');
+    const shoeGeometry = rightModel.children[0].geometry;
+    shoeGeometry.computeBoundingBox();
+    const shoeLength =
+        (shoeGeometry.boundingBox.max.x - shoeGeometry.boundingBox.min.x) *
+        rightModel.scale.x;
     assert.ok(
-        throwOff.min.y < -3015 + 0.05 * metre &&
-            throwOff.max.y > -3015 + 0.3 * metre,
-        'throw hangs off the bag onto the floor',
+        shoeLength > 0.26 * metre && shoeLength < 0.34 * metre,
+        `Spezial is shoe-sized (${(shoeLength / metre).toFixed(2)} m)`,
+    );
+    assert.ok(leftShoe.scale.z < 0, 'left Spezial mirrors the right scan');
+    for (const shoe of [
+        'Kicked-off Spezial (left)',
+        'Kicked-off Spezial (right)',
+    ])
+        assert.ok(
+            Math.abs(bounds(shoe).min.y + 3015) < 2,
+            `${shoe} rests on the floor`,
+        );
+    assert.equal(
+        room.getObjectByName('Kicked-off slide (left)'),
+        undefined,
+        'the slides are gone',
+    );
+    assert.equal(
+        room.getObjectByName('Throw dragged off the blue bean bag'),
+        undefined,
+        'blue bean bag stays uncovered',
+    );
+    assert.ok(
+        room.getObjectByName('Grey throw on the ottoman (fold 1)'),
+        'small ottoman throw remains',
     );
     // The seating starts right under the screen: the pit's TV-side nosing
     // meets the console's doors, with no walkway between.

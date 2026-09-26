@@ -10,7 +10,7 @@ across the TV axis, every angle a little off, and the everyday mess left out.
 Window side:
 
 - **Blue bean bag**, dragged close to the pit and twisted ~18° off the screen,
-  with an oatmeal throw dragged half off its arm and pooling on the floor.
+  left uncovered (the oversized throw was removed).
 - **Side table** (Poly Haven), set crooked, with a half-drunk coffee and the
   succulent (Poly Haven); a pile of hardbacks on the floor beside it, one slid off.
 - **Wicker basket** (Poly Haven, shown at 2.4× as a blanket basket), its lid
@@ -22,7 +22,8 @@ Bed side:
   with a chevron pillow (Poly Haven) sunk in its seat.
 - **Leather ottoman** (Poly Haven) pulled up as a footrest, skewed, with a grey
   throw folded in a hurry on top; the other pillow fallen on the floor.
-- A pair of **slides** kicked off (one upside down) and a mug left on the floor.
+- A pair of **adidas Handball Spezials** in Night Indigo kicked off (one rolled
+  onto its side) and a mug left on the floor.
 
 On the Dune's front row: a third pillow, tossed.
 
@@ -40,8 +41,18 @@ On the Dune's front row: a third pillow, tossed.
   into the crease shading.
 - `rest(object, supports, …)`: drops an object until its footprint touches the
   highest surface below; with `soft`, until its middle settles into a cushion.
-  Mugs, plants, books, pillows and slides are all placed this way.
-- Mugs, books and slides are small procedural meshes.
+  Mugs, plants, books, pillows and shoes are all placed this way.
+- Mugs and books are small procedural meshes.
+- The Spezials are a CC BY 4.0 photoscan (Tigertigertiger, Sketchfab) of the red
+  and gum colourway. Its base-colour texture was recoloured to Night Indigo /
+  Cream White (IF7087): each texel is classed softly as suede, white leather,
+  gum or gold by hue and saturation, laces, tongue label, heel tab and lining are
+  told apart by their 3D position on the shoe, and each class is re-tinted in
+  linear light to the colour measured from the IF7087 product photo, keeping
+  the scan's brightness variation (nap, creases, stitching, serrations). The
+  scan is a right shoe; the left is it mirrored, lying on its outer side so the
+  mirrored lettering faces the floor. `static/models/Spezial/spezial-night-indigo.glb`
+  (690 KB): welded, simplified to ~11k triangles, 1024 px WebP textures.
 
 ## Assets
 
@@ -58,5 +69,5 @@ cannot decode WebP) and checks that the bags rest on the floor and face the TV
 askew, not squared up or mirrored; that every lounge item is above the floor
 (or on the sofa, for its pillow), inside the walls, clear of the pit, media
 console, bed and doorway; that the mug and plant stand on the side table, the
-pillows sit in the bag and on the sofa seat, and the throw hangs from the bag to
-the floor.
+pillows sit in the bag and on the sofa seat, the blue bean bag remains uncovered,
+and the small ottoman throw remains.

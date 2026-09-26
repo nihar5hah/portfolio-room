@@ -42,6 +42,11 @@ const sources: Resource[] = [
         path: 'models/Lounge/lounge-props.glb',
     },
     {
+        name: 'spezialModel',
+        type: 'gltfModel',
+        path: 'models/Spezial/spezial-night-indigo.glb',
+    },
+    {
         name: 'duneFabricBump',
         type: 'texture',
         path: 'models/Dune/fabric-bump.webp',

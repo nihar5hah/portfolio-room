@@ -1684,6 +1684,7 @@ export default class Environment {
             room,
             floor: FLOOR,
             props: app.resources.items.gltfModel.loungeProps?.scene,
+            shoes: app.resources.items.gltfModel.spezialModel?.scene,
             sofa: lounge,
         });
         box(1000, 220, 660, black, 3650, FLOOR + 1740, 17000, 45).name =

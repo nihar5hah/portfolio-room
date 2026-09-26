@@ -99,6 +99,19 @@ export default function Credits(props: WindowAppProps) {
                             Poly Haven models ↗
                         </a>
                     </dd>
+                    <dt>Tigertigertiger</dt>
+                    <dd>
+                        The scanned Handball Spezial kicked off by the bean bag
+                        (CC BY 4.0), recoloured to Night Indigo and simplified;
+                        adidas marks belong to adidas AG.{' '}
+                        <a
+                            href="https://sketchfab.com/3d-models/adidas-spezial-447d3b8fbbe54d07ab24623b4121d855"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Model page ↗
+                        </a>
+                    </dd>
                     <dt>Quaternius</dt>
                     <dd>
                         Begu’s animated husky, with smooth shading, coat colors,

@@ -5,8 +5,8 @@ import { METRE } from './Layout';
 /**
  * The lived-in lounge around the TV end of the pit: two slouched bean bags,
  * an ottoman, a side table and a wicker basket, with the mess of someone who
- * actually watches matches here: a throw dragged half onto the floor, pillows
- * tossed about, mugs left out, a book pile, kicked-off slides.
+ * actually watches matches here: a small throw on the ottoman, pillows
+ * tossed about, mugs left out, a book pile, kicked-off Spezials.
  *
  * Nothing is placed on a grid or mirrored across the TV axis; every angle is
  * a little off. Resting objects are dropped onto whatever is below them by
@@ -213,9 +213,11 @@ function rest(
     floor: number,
     sink = 0,
     soft = false,
+    precise = false,
 ) {
     object.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(object);
+    // `precise` for tilted meshes, whose loose box dips below their bottom.
+    const box = new THREE.Box3().setFromObject(object, precise);
     let top = floor;
     // On a soft seat, settle into it where the middle lands.
     const samples = soft
@@ -443,66 +445,26 @@ function book(width: number, depth: number, thick: number, color: string) {
     return mesh;
 }
 
-/** A slide sandal: a foot-shaped sole with one broad strap. */
-function slide(left: boolean) {
-    const group = new THREE.Group();
-    const length = 0.27 * M,
-        width = 0.1 * M;
-    const outline = new THREE.Shape();
-    const w = (f: number) => width * (0.42 + 0.58 * Math.sin(Math.PI * f));
-    const steps = 18;
-    for (let i = 0; i <= steps; i++) {
-        const f = i / steps;
-        const x = (w(f) / 2) * (left ? 1 : -1) * (f > 0.55 ? 1.05 : 0.92);
-        const y = f * length - length / 2;
-        if (i === 0) outline.moveTo(x, y);
-        else outline.lineTo(x, y);
-    }
-    for (let i = steps; i >= 0; i--) {
-        const f = i / steps;
-        outline.lineTo(-(w(f) / 2) * (left ? 1 : -1), f * length - length / 2);
-    }
-    const sole = new THREE.Mesh(
-        new THREE.ExtrudeGeometry(outline, {
-            depth: 0.018 * M,
-            bevelEnabled: true,
-            bevelThickness: 0.004 * M,
-            bevelSize: 0.004 * M,
-            bevelSegments: 2,
-        }),
-        new THREE.MeshStandardMaterial({
-            color: srgb('#2a2a2d'),
-            roughness: 0.75,
-        }),
-    );
-    sole.rotation.x = -Math.PI / 2;
-    sole.position.y = 0.004 * M;
-    const strap = new THREE.Mesh(
-        new THREE.CylinderGeometry(
-            0.056 * M,
-            0.056 * M,
-            0.075 * M,
-            24,
-            1,
-            true,
-            Math.PI / 2,
-            Math.PI,
-        ),
-        new THREE.MeshStandardMaterial({
-            color: srgb('#e6e6e3'),
-            roughness: 0.6,
-            side: THREE.DoubleSide,
-        }),
-    );
-    // Axis along the foot, the half-tube arching up over it.
-    strap.rotation.x = Math.PI / 2;
-    strap.scale.set(1, 1, 0.62);
-    strap.position.set(0, 0.022 * M, -0.05 * M);
-    group.add(sole, strap);
-    group.traverse((part) => {
-        part.castShadow = part.receiveShadow = true;
+/** Scanned shoe length (353 mm) scaled to a UK 9 Spezial (~300 mm). */
+const SHOE = 0.3 / 0.353;
+
+/**
+ * One of a pair of Night Indigo Handball Spezials. The scan is a right
+ * shoe; the left one is the same mesh mirrored across its length, so keep
+ * its outer side (and the mirrored gold lettering) out of view.
+ */
+function spezial(model: THREE.Object3D | undefined, left: boolean) {
+    let source: THREE.Mesh | undefined;
+    model?.traverse((o) => {
+        if (!source && (o as THREE.Mesh).isMesh) source = o as THREE.Mesh;
     });
-    return group;
+    if (!source) return undefined;
+    const mesh = new THREE.Mesh(source.geometry, source.material);
+    mesh.castShadow = mesh.receiveShadow = true;
+    const shoe = new THREE.Group();
+    shoe.add(mesh);
+    shoe.scale.set(SHOE * M, SHOE * M, (left ? -1 : 1) * SHOE * M);
+    return shoe;
 }
 
 /** Take a named prop mesh out of the Poly Haven bundle, as a fresh copy. */
@@ -520,6 +482,8 @@ export interface LoungeOptions {
     floor: number;
     /** The Poly Haven prop bundle's scene, if it loaded. */
     props?: THREE.Object3D;
+    /** The Night Indigo Handball Spezial scan, if it loaded. */
+    shoes?: THREE.Object3D;
     /** Surfaces things may be tossed onto besides the new furniture. */
     sofa?: THREE.Object3D;
 }
@@ -528,7 +492,13 @@ export interface LoungeOptions {
  * Furnish the lounge. Positions are room units with the TV at +Z (screen at
  * z ≈ 18100), the window at -X and the bed at +X.
  */
-export function furnishLounge({ room, floor, props, sofa }: LoungeOptions) {
+export function furnishLounge({
+    room,
+    floor,
+    props,
+    shoes,
+    sofa,
+}: LoungeOptions) {
     room.updateMatrixWorld(true);
     const lounge = new THREE.Group();
     lounge.name = 'Lived-in lounge';
@@ -589,7 +559,7 @@ export function furnishLounge({ room, floor, props, sofa }: LoungeOptions) {
         place(bag, name, x, z, towardTV(x, z, off));
         bags.push(bag);
     }
-    const [blueBag, redBag] = bags;
+    const [, redBag] = bags;
 
     // Window side: side table by the blue bag, a little crooked, with a mug
     // and the succulent; books piled on the floor beside it; the wicker
@@ -667,7 +637,7 @@ export function furnishLounge({ room, floor, props, sofa }: LoungeOptions) {
 
     // Bed side: the ottoman pulled up as a footrest, skewed; the grey throw
     // half off it; a pillow on the bag and another fallen on the floor;
-    // slides kicked off; a mug left on the floor by the bag.
+    // trainers kicked off; a mug left on the floor by the bag.
     const ottoman = prop(props, 'Ottoman_01');
     if (ottoman) {
         ottoman.scale.setScalar(M);
@@ -726,43 +696,21 @@ export function furnishLounge({ room, floor, props, sofa }: LoungeOptions) {
         -0.8,
     );
     rest(floorMug, [], floor);
-    const left = place(
-        slide(true),
-        'Kicked-off slide (left)',
-        9750,
-        15050,
-        2.4,
-    );
-    rest(left, [], floor);
-    const right = place(
-        slide(false),
-        'Kicked-off slide (right)',
-        10350,
-        15500,
-        -2.2,
-    );
-    // Upside down, where it landed.
-    right.rotation.set(Math.PI, -2.2, 0.1, 'YXZ');
-    rest(right, [], floor);
+    // Night Indigo Spezials, kicked off: one upright with its toe turned
+    // toward the bag, the other rolled onto its outer side a stride away.
+    const right = spezial(shoes, false);
+    if (right) {
+        place(right, 'Kicked-off Spezial (right)', 9800, 15000, 2.25);
+        rest(right, [], floor, 0, false, true);
+    }
+    const left = spezial(shoes, true);
+    if (left) {
+        place(left, 'Kicked-off Spezial (left)', 10550, 15650, 0);
+        left.rotation.set(-Math.PI / 2 + 0.14, -2.05, 0.06, 'YXZ');
+        rest(left, [], floor, 0, false, true);
+    }
 
-    // Throws last, dropped over whatever is now below them.
-    const oatmeal = upholstery('#ece3d1', 7, {
-        side: THREE.DoubleSide,
-        sheen: 0.3,
-    });
-    const blanket = new THREE.Mesh(
-        throwBlanket(
-            [blueBag],
-            { x: -6750, z: 12650, yaw: 0.35 },
-            { width: 1.15 * M, depth: 0.82 * M },
-            floor,
-            5,
-        ),
-        oatmeal,
-    );
-    blanket.name = 'Throw dragged off the blue bean bag';
-    blanket.castShadow = blanket.receiveShadow = true;
-    lounge.add(blanket);
+    // Keep the bean bags uncovered; only the ottoman gets a small throw.
     if (ottoman) {
         // Folded in a hurry and dropped on the ottoman, a corner sliding off.
         const wool = upholstery('#9aa0a6', 16, {

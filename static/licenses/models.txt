@@ -116,4 +116,9 @@ Poly Haven, CC0 1.0 Universal (public domain): https://creativecommons.org/publi
 - Wicker Basket 02 by Kuutti Siitonen: https://polyhaven.com/a/wicker_basket_02
 - Throw Pillows 01 by Serhii Khromov: https://polyhaven.com/a/throw_pillows_01
 Merged into static/models/Lounge/lounge-props.glb with glTF-Transform (dedup, prune, textures resized to 512 px and re-encoded as WebP). Geometry is unchanged; the basket is shown at 2.4x scale as a blanket basket.
-The bean bags, throws, mugs, books and slides are original procedural geometry.
+The bean bags, throws, mugs and books are original procedural geometry.
+
+Adidas SPEZIAL (Handball Spezial) by Tigertigertiger, CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+Source: https://sketchfab.com/3d-models/adidas-spezial-447d3b8fbbe54d07ab24623b4121d855
+Changes: the scan's red suede / gum colourway was recoloured to Night Indigo / Cream White (IF7087) in its base-colour texture; mesh welded and simplified to ~11k triangles; textures resized to 1024 px and re-encoded as WebP (static/models/Spezial/spezial-night-indigo.glb). The left shoe is the right scan mirrored.
+Adidas, Spezial and the 3-Stripes are trademarks of adidas AG; this room is not affiliated with adidas.
