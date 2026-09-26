@@ -32,8 +32,54 @@ test('both cities are read in one cached request and survive an outage', async (
     clock += 16 * 60_000;
     fail = true;
     const stale = await feed();
-    assert.equal(stale.stale, true, 'last good reading is kept when the provider fails');
+    assert.equal(
+        stale.stale,
+        true,
+        'last good reading is kept when the provider fails',
+    );
     assert.equal(stale.cities[0].temp, 31);
     assert.equal(describe(0, false), 'Clear night');
     assert.equal(describe(95, true), 'Thunderstorm');
+});
+
+test('when Open-Meteo rate-limits (shared hosts), MET Norway answers instead', async () => {
+    const { describeSymbol } = await import('../server/weather.mjs');
+    assert.equal(describeSymbol('lightrainshowers_day'), 'Rain');
+    assert.equal(describeSymbol('heavyrainandthunder'), 'Thunderstorm');
+    assert.equal(describeSymbol('partlycloudy_night'), 'Partly cloudy');
+    assert.equal(describeSymbol('clearsky_day'), 'Clear');
+    const asked = [];
+    const feed = createWeatherFeed({
+        now: () => Date.parse('2026-09-26T16:30:00Z'), // 22:00 IST
+        fetchImpl: async (url, options) => {
+            asked.push(String(url));
+            if (String(url).includes('open-meteo'))
+                return new Response('slow down', { status: 429 });
+            assert.match(options.headers['User-Agent'], /nihar-room/);
+            return Response.json({
+                properties: {
+                    timeseries: [
+                        {
+                            data: {
+                                instant: { details: { air_temperature: 21.6 } },
+                                next_1_hours: {
+                                    summary: { symbol_code: 'clearsky_night' },
+                                },
+                            },
+                        },
+                    ],
+                },
+            });
+        },
+    });
+    const value = await feed();
+    assert.equal(value.cities.length, 2);
+    assert.deepEqual(
+        value.cities.map((c) => [c.id, c.temp, c.condition, c.isDay]),
+        [
+            ['amd', 22, 'Clear night', false],
+            ['blr', 22, 'Clear night', false],
+        ],
+    );
+    assert.equal(asked.filter((u) => u.includes('api.met.no')).length, 2);
 });
