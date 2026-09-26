@@ -281,9 +281,7 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
                     ),
                     roomProps: await texturelessModel('Room/room-props.glb'),
                     ps5Model: await texturelessModel('PS5/ps5.glb'),
-                    dualSenseModel: await texturelessModel(
-                        'PS5/dualsense.glb',
-                    ),
+                    dualSenseModel: await texturelessModel('PS5/dualsense.glb'),
                 },
                 texture: {
                     duneFabricBump: new THREE.Texture(),
@@ -1185,7 +1183,10 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         ),
         'glowing strips, lampshade and TV go dark',
     );
-    assert.ok(environment.moon.intensity < 0.3, 'curtains shut out most of the moon');
+    assert.ok(
+        environment.moon.intensity < 0.3,
+        'curtains shut out most of the moon',
+    );
     const curtain = environment.curtains[0].mesh;
     assert.ok(Math.abs(curtain.position.x) < 1800, 'curtains are drawn');
     const stillVisible = [];
@@ -1207,7 +1208,10 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
             .every(({ light }) => light.intensity < 0.05),
         'lamps are off in the afternoon',
     );
-    assert.ok(environment.moon.intensity > 2, 'afternoon sun through the window');
+    assert.ok(
+        environment.moon.intensity > 2,
+        'afternoon sun through the window',
+    );
     Date.now = now;
     for (const name of [
         'Walnut record player',
