@@ -6,7 +6,7 @@ A portfolio you walk into. It's a 3D model of my room in the browser, with a Mac
 
 ## What's in the room
 
-- **A BIOS boot.** The room loads behind a retro power-on self-test: your device's memory and GPU, the quality tier it picked, Bengaluru's weather, and each file as it loads. Then press START. Phones are told the room is best on a computer and offered the 2D portfolio. This is a tribute to Henry Heffernan's original loading screen.
+- **Putting on a record.** The room loads behind a turntable: a random album from my collection spins at 33⅓ rpm, and the tonearm is the progress bar, swinging over to the lead-in groove as files arrive. Then drop the needle. It always says the room is made for a laptop or desktop; phones get a clear notice and the 2D portfolio.
 
 - **The Mac.** Sit down at the desk and the lid opens into a macOS-style desktop: portfolio, projects, notes, résumé, a music app and a word game.
 - **Begu.** My Siberian husky walks the room, naps, eats, and fetches the football when you kick it. Click him to pet him, or open his chat to ask about my work (Gemini, grounded in my profile).
@@ -80,7 +80,7 @@ tests/               node:test suites
 
 ## Credits and provenance
 
-This started from Henry Heffernan's two open-source repositories, and keeps their BIOS boot screen style, room → desk → screen camera journey and draggable windows:
+This started from Henry Heffernan's two open-source repositories, and keeps their room → desk → screen camera journey and draggable windows:
 
 - Room: [henryjeff/portfolio-website](https://github.com/henryjeff/portfolio-website) (MIT), base `c53c5a5`.
 - Desktop: [henryjeff/portfolio-inner-site](https://github.com/henryjeff/portfolio-inner-site), base `23cf84a`.
