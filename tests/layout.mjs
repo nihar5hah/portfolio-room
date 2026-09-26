@@ -4,8 +4,11 @@ import { createRequire } from 'node:module';
 import * as THREE from 'three';
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
+const cache = new Map();
 const load = (file) => {
+    if (cache.has(file)) return cache.get(file);
     const exports = {};
+    cache.set(file, exports);
     new Function(
         'require',
         'exports',
@@ -16,7 +19,15 @@ const load = (file) => {
             ),
             { compilerOptions: { module: ts.ModuleKind.CommonJS } },
         ).outputText,
-    )((name) => (name === 'three' ? THREE : require(name)), exports);
+    )(
+        (name) =>
+            name === 'three'
+                ? THREE
+                : name.startsWith('./')
+                  ? load(`${name.slice(2)}.ts`)
+                  : require(name),
+        exports,
+    );
     return exports;
 };
 export default load('Layout.ts');

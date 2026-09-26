@@ -10,6 +10,33 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 const require = createRequire(import.meta.url);
 
 // The shipped Dune GLB (geometry only; Meshopt-compressed, quantized).
+// The shipped Poly Haven lounge props, geometry only: Node cannot decode
+// their WebP textures, so images and texture references are dropped.
+async function loungeProps() {
+    const bytes = fs.readFileSync(
+        new URL('../static/models/Lounge/lounge-props.glb', import.meta.url),
+    );
+    const length = bytes.readUInt32LE(12);
+    const json = JSON.parse(bytes.subarray(20, 20 + length));
+    json.buffers[0].uri = `data:application/octet-stream;base64,${bytes.subarray(28 + length).toString('base64')}`;
+    for (const key of ['images', 'textures', 'samplers']) delete json[key];
+    for (const key of ['extensionsUsed', 'extensionsRequired'])
+        delete json[key];
+    for (const m of json.materials ?? []) {
+        delete m.normalTexture;
+        delete m.occlusionTexture;
+        delete m.emissiveTexture;
+        if (m.pbrMetallicRoughness) {
+            delete m.pbrMetallicRoughness.baseColorTexture;
+            delete m.pbrMetallicRoughness.metallicRoughnessTexture;
+        }
+    }
+    globalThis.ProgressEvent ??= class extends Event {};
+    return new Promise((resolve, reject) =>
+        new GLTFLoader().parse(JSON.stringify(json), '', resolve, reject),
+    );
+}
+
 async function duneModel() {
     const bytes = fs.readFileSync(
         new URL('../static/models/Dune/dune-sofa.glb', import.meta.url),
@@ -197,7 +224,10 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         time: { delta: 16 },
         resources: {
             items: {
-                gltfModel: { duneModel: await duneModel() },
+                gltfModel: {
+                    duneModel: await duneModel(),
+                    loungeProps: await loungeProps(),
+                },
                 texture: {
                     duneFabricBump: new THREE.Texture(),
                     messiJersey: new THREE.Texture(),
@@ -290,6 +320,7 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
             };
         if (name === './Layout') return layout;
         if (name === './DuneSofa') return world('DuneSofa.ts');
+        if (name === './Lounge') return world('Lounge.ts');
         if (name === './MatchBoard')
             return {
                 default: class {
@@ -489,8 +520,25 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         const target = new THREE.Vector3(0, -3015, 18100)
             .sub(bag.position)
             .normalize();
-        assert.ok(forward.dot(target) > 0.99999, 'seat opening faces TV');
+        // Roughly toward the TV, but shoved around: never squared up.
+        const facing = forward.dot(target);
+        assert.ok(
+            facing > 0.85 && facing < 0.999,
+            `${name} faces the TV, askew`,
+        );
     }
+    // Lived in, not staged: the bags are not mirrored across the TV axis.
+    const blue = room.getObjectByName('Blue match night bean bag');
+    const red = room.getObjectByName('Burgundy match night bean bag');
+    assert.ok(
+        Math.abs(blue.position.x + red.position.x) > 500 ||
+            Math.abs(blue.position.z - red.position.z) > 500,
+        'bean bags are placed asymmetrically',
+    );
+    assert.ok(
+        Math.abs(blue.rotation.y + red.rotation.y) > 0.1,
+        'bean bags are turned differently',
+    );
     // The downloaded Dune model sunk into a conversation pit sized to it:
     // boards stop at the opening, the hem stands on the pit floor, crests
     // just clear the floor, and a leather tatami on the TV side carries the
@@ -592,6 +640,75 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
             !bounds(name).intersectsBox(opening.clone().expandByScalar(150)),
             `${name} clears the pit`,
         );
+    // The lived-in lounge: real props and everyday mess, all resting on
+    // something, none in the pit, the console, the bed, the doorway or walls.
+    const livedIn = room.getObjectByName('Lived-in lounge');
+    const items = livedIn.children.map((c) => c.name);
+    for (const expected of [
+        'Leather ottoman footrest',
+        'Lounge side table',
+        'Wicker blanket basket',
+        'Side table succulent',
+        'Half-drunk coffee mug',
+        'Throw dragged off the blue bean bag',
+        'Pillow on the burgundy bean bag',
+        'Pillow tossed on the Dune',
+        'Kicked-off slide (left)',
+    ])
+        assert.ok(items.includes(expected), `${expected} in the lounge`);
+    const keepOut = ['Media console', 'Bed and walnut headboard', 'Entry door'];
+    const pitArea = opening.clone().expandByScalar(150);
+    for (const item of livedIn.children) {
+        const b = new THREE.Box3().setFromObject(item);
+        const ground =
+            item.name === 'Pillow tossed on the Dune' ? pitFloor : -3015;
+        assert.ok(
+            b.min.y >= ground - 1,
+            `${item.name} is not sunk into the floor`,
+        );
+        assert.ok(
+            b.min.x > -17800 && b.max.x < 17700 && b.max.z < 18000,
+            `${item.name} stays inside the walls`,
+        );
+        for (const other of keepOut)
+            assert.ok(
+                !b.intersectsBox(bounds(other)),
+                `${item.name} clears ${other}`,
+            );
+        if (item.name !== 'Pillow tossed on the Dune')
+            assert.ok(
+                !b.intersectsBox(pitArea),
+                `${item.name} stays out of the pit`,
+            );
+    }
+    const on = (name, support, tolerance = 15) =>
+        Math.abs(bounds(name).min.y - bounds(support).max.y) < tolerance;
+    assert.ok(
+        on('Half-drunk coffee mug', 'Lounge side table'),
+        'mug on the table',
+    );
+    assert.ok(
+        on('Side table succulent', 'Lounge side table'),
+        'plant on the table',
+    );
+    const tossed = bounds('Pillow tossed on the Dune');
+    assert.ok(
+        tossed.min.y > pitFloor + 0.15 * metre &&
+            tossed.min.y < -3015 - 0.15 * metre,
+        'pillow lies on the sofa seat',
+    );
+    const bagPillow = bounds('Pillow on the burgundy bean bag');
+    assert.ok(
+        bagPillow.min.y > -3015 + 0.1 * metre &&
+            bagPillow.intersectsBox(bounds('Burgundy match night bean bag')),
+        'pillow sits in the burgundy bag',
+    );
+    const throwOff = bounds('Throw dragged off the blue bean bag');
+    assert.ok(
+        throwOff.min.y < -3015 + 0.05 * metre &&
+            throwOff.max.y > -3015 + 0.3 * metre,
+        'throw hangs off the bag onto the floor',
+    );
     // The seating starts right under the screen: the pit's TV-side nosing
     // meets the console's doors, with no walkway between.
     const consoleFront = Math.min(

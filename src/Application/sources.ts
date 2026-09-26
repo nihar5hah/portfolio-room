@@ -37,6 +37,11 @@ const sources: Resource[] = [
     { name: 'beguModel', type: 'gltfModel', path: 'models/Begu/husky.glb' },
     { name: 'duneModel', type: 'gltfModel', path: 'models/Dune/dune-sofa.glb' },
     {
+        name: 'loungeProps',
+        type: 'gltfModel',
+        path: 'models/Lounge/lounge-props.glb',
+    },
+    {
         name: 'duneFabricBump',
         type: 'texture',
         path: 'models/Dune/fabric-bump.webp',

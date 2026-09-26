@@ -85,6 +85,20 @@ export default function Credits(props: WindowAppProps) {
                             Paulin, Paulin, Paulin ↗
                         </a>
                     </dd>
+                    <dt>Poly Haven</dt>
+                    <dd>
+                        The lounge’s leather ottoman (Caspian Fortune), side
+                        table and succulent (James Ray Cock), wicker basket
+                        (Kuutti Siitonen) and throw pillows (Serhii Khromov),
+                        CC0 scans with smaller textures.{' '}
+                        <a
+                            href="https://polyhaven.com/models"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Poly Haven models ↗
+                        </a>
+                    </dd>
                     <dt>Quaternius</dt>
                     <dd>
                         Begu’s animated husky, with smooth shading, coat colors,

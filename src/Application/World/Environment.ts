@@ -18,6 +18,7 @@ import {
     TATAMI,
 } from './Layout';
 import { bakeDune, shadeCreases, splitDune, wovenFabric } from './DuneSofa';
+import { furnishLounge } from './Lounge';
 type SkyPhase = 'day' | 'dusk' | 'night';
 const SKY: Record<
     SkyPhase,
@@ -1519,64 +1520,6 @@ export default class Environment {
         room.add(sleeve);
         label('ON ROTATION', 1950, 220, -12050, FLOOR + 1260, -4390);
 
-        // Two sculpted bean bags face the TV from either side of the pit's
-        // TV end, off the walkway between the pit and the media console.
-        for (const [x, color, name] of [
-            [PIT.x - 8000, '#33425d', 'Blue match night bean bag'],
-            [PIT.x + 8000, '#793e49', 'Burgundy match night bean bag'],
-        ] as const) {
-            const bag = new THREE.Group();
-            bag.name = name;
-            bag.position.set(x, FLOOR, 13200);
-            bag.rotation.y = Math.atan2(-x, 18100 - 13200);
-            const geometry = new THREE.SphereGeometry(1, 48, 32);
-            const vertices = geometry.attributes.position;
-            for (let i = 0; i < vertices.count; i++) {
-                const vx = vertices.getX(i),
-                    vy = vertices.getY(i),
-                    vz = vertices.getZ(i);
-                const upper = Math.max(0, vy);
-                // A settled seat hollow and a taller back, all one continuous fabric shell.
-                vertices.setXYZ(
-                    i,
-                    vx * 1550,
-                    Math.max(
-                        0,
-                        (vy + 1) * 700 +
-                            Math.max(0, -vz) * upper * 1550 -
-                            Math.pow(upper, 6) *
-                                Math.exp(-Math.pow(vz - 0.25, 2) / 0.3) *
-                                450,
-                    ),
-                    vz * 1720,
-                );
-            }
-            geometry.computeVertexNormals();
-            const cushion = new THREE.Mesh(geometry, material(color, 1));
-            cushion.castShadow = true;
-            cushion.receiveShadow = true;
-            bag.add(cushion);
-            const seamMaterial = new THREE.LineBasicMaterial({
-                color: color === '#33425d' ? '#475671' : '#8b5059',
-            });
-            for (const column of [6, 18, 30, 42]) {
-                const points = [];
-                for (let row = 0; row <= 32; row++)
-                    points.push(
-                        new THREE.Vector3().fromBufferAttribute(
-                            vertices,
-                            row * 49 + column,
-                        ),
-                    );
-                bag.add(
-                    new THREE.Line(
-                        new THREE.BufferGeometry().setFromPoints(points),
-                        seamMaterial,
-                    ),
-                );
-            }
-            room.add(bag);
-        }
         // The Dune (qasimroy, CC BY 4.0; static/licenses/models.txt), sunk into
         // the conversation pit. Its continuous backrest runs along the desk and
         // window sides and a double-backed spine splits the seating, so the
@@ -1736,6 +1679,13 @@ export default class Environment {
                 );
             room.add(pad);
         }
+        // The lived-in lounge around the pit's TV end (Lounge.ts).
+        furnishLounge({
+            room,
+            floor: FLOOR,
+            props: app.resources.items.gltfModel.loungeProps?.scene,
+            sofa: lounge,
+        });
         box(1000, 220, 660, black, 3650, FLOOR + 1740, 17000, 45).name =
             'Match night game console';
         box(930, 12, 580, cream, 3650, FLOOR + 1856, 17000, 25);

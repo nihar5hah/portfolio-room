@@ -107,3 +107,13 @@ Files: static/models/Dune/dune-sofa.glb, static/models/Dune/fabric-bump.webp.
 Changes: flat beige base-colour texture removed (the fabric is tinted navy at runtime), geometry welded and Meshopt-compressed with glTF-Transform (1.59 MB → 235 KB); the model's twill bump map converted to a 512 px greyscale WebP and tiled. Credit is also embedded in the GLB's asset.copyright.
 Provenance note: the local copy came from Sketchfab's viewer stream, not the site's Download button. Before publishing, re-download it through the official Download button (free account) and rebuild with the same steps so the file's source is clean.
 The Dune design is by Pierre Paulin (1968–72), produced by Paulin, Paulin, Paulin; this room is not affiliated with them. The leather tatami, pit and table are built in src/Application/World/Environment.ts. See docs/DUNE-MODEL.md.
+
+Lounge props (2026-09 room update)
+Poly Haven, CC0 1.0 Universal (public domain): https://creativecommons.org/publicdomain/zero/1.0/
+- Ottoman 01 by Caspian Fortune: https://polyhaven.com/a/Ottoman_01
+- Side Table 01 by James Ray Cock: https://polyhaven.com/a/side_table_01
+- Potted Plant 04 by James Ray Cock: https://polyhaven.com/a/potted_plant_04
+- Wicker Basket 02 by Kuutti Siitonen: https://polyhaven.com/a/wicker_basket_02
+- Throw Pillows 01 by Serhii Khromov: https://polyhaven.com/a/throw_pillows_01
+Merged into static/models/Lounge/lounge-props.glb with glTF-Transform (dedup, prune, textures resized to 512 px and re-encoded as WebP). Geometry is unchanged; the basket is shown at 2.4x scale as a blanket basket.
+The bean bags, throws, mugs, books and slides are original procedural geometry.
