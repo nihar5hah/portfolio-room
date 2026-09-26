@@ -1,5 +1,5 @@
 {
-  "repository": "#",
+  "repository": "github:nihar5hah/portfolio-room",
   "license": "UNLICENSED",
   "scripts": {
     "dev": "webpack serve --config bundler/webpack.dev.js",
