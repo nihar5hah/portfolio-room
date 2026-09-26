@@ -159,9 +159,11 @@ export default class Environment {
                 if (mesh.isMesh) mesh.castShadow = mesh.receiveShadow = true;
             });
             chair.scale.setScalar(3300);
-            // It faces +Z: turn it to face the desk (-Z).
-            chair.rotation.y = Math.PI - 0.12;
-            chair.position.set(760, -3015, -2250 + DESK_Z + 4650);
+            // It faces +Z: turn it toward the desk (-Z), but pushed back
+            // about a third of a metre and swivelled out to the right, the
+            // way it is left when someone has just stood up.
+            chair.rotation.y = Math.PI - 0.5;
+            chair.position.set(1350, -3015, -1150 + DESK_Z + 4650);
             app.scene.add(chair);
         }
         app.scene.add(this.buildRoom());
