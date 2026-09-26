@@ -173,7 +173,7 @@ test('Look Around keeps every orbit and zoom inside the walls, floor and ceiling
                         `back/front wall at ${p.z}`,
                     );
                     assert.ok(
-                        p.y > 2000 && p.y < 10500,
+                        p.y > -2200 && p.y < 10500,
                         `floor/ceiling at ${p.y}`,
                     );
                     assert.ok(
@@ -193,6 +193,50 @@ test('Look Around keeps every orbit and zoom inside the walls, floor and ceiling
                     );
                 }
             }
+    // Roaming: the orbit point slides across the floor, anywhere in the room
+    // but never through a wall, and the camera can come in close.
+    assert.ok(
+        camera.orbitControls.enablePan &&
+            !camera.orbitControls.screenSpacePanning,
+        'Look Around pans across the floor',
+    );
+    assert.ok(camera.orbitControls.minDistance <= 1500, 'can come in close');
+    camera.orbitControls.target.set(60000, -9000, 90000);
+    camera.update();
+    const roam = camera.orbitControls.target;
+    assert.ok(
+        roam.x <= 15800 && roam.y >= -3000 && roam.z <= 17000,
+        `orbit point stays inside the room (${roam.toArray()})`,
+    );
+    // Double-click flies to what was clicked: the shoes by the bean bag.
+    const scene = new THREE.Scene();
+    const shoes = new THREE.Mesh(new THREE.BoxGeometry(1000, 400, 400));
+    shoes.position.set(10000, -2815, 15300);
+    scene.add(shoes);
+    scene.updateMatrixWorld(true);
+    camera.scene = scene;
+    camera.application.reducedMotion = { matches: true };
+    dom.getBoundingClientRect = () => ({
+        left: 0,
+        top: 0,
+        width: 1600,
+        height: 900,
+    });
+    camera.orbitControls.target.set(-100, 1250, 0);
+    camera.instance.position.set(4000, 4000, 9000);
+    camera.instance.lookAt(shoes.position);
+    camera.instance.updateMatrixWorld(true);
+    camera.instance.updateProjectionMatrix();
+    camera.focusOn({ clientX: 800, clientY: 450 });
+    for (let frame = 0; frame < 3; frame++) camera.update();
+    assert.ok(
+        camera.orbitControls.target.distanceTo(shoes.position) < 400,
+        'double-click flies to the shoes',
+    );
+    assert.ok(
+        camera.instance.position.distanceTo(camera.orbitControls.target) < 5400,
+        'and comes in close to them',
+    );
     camera.orbitControls.dispose();
 });
 
@@ -794,8 +838,13 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         fabric.map && fabric.normalMap && fabric.vertexColors,
         'woven, crease-shaded upholstery',
     );
+    // The scanned coffee table stands wholly on the tatami, clear of the
+    // cushions and pit walls, its top in reach from the front row.
     const oasis = bounds('Match night controller table');
-    const tabletop = bounds('Dune round tabletop');
+    assert.ok(
+        room.getObjectByName('Concrete and oak coffee table'),
+        'scanned coffee table loaded',
+    );
     assert.ok(
         !oasis.intersectsBox(lounge),
         'table stands clear of the cushions',
@@ -808,21 +857,25 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         'table footprint sits on the tatami',
     );
     assert.ok(
-        Math.abs(oasis.min.y - tatami.max.y) < 1,
+        Math.abs(oasis.min.y - tatami.max.y) < 2,
         'table stands on the tatami',
     );
-    assert.ok(tabletop.max.y < -3015, 'tabletop stays below the room floor');
+    const tableHeight = (oasis.max.y - oasis.min.y) / metre;
     assert.ok(
-        tabletop.getSize(new THREE.Vector3()).y < 0.02 * metre,
-        'tabletop is thin, not a slab',
+        tableHeight > 0.35 && tableHeight < 0.43,
+        `coffee table is real height (${tableHeight.toFixed(2)} m)`,
     );
     for (const pad of room.children.filter(
         (p) => p.name === 'Match night gamepad',
     )) {
-        const b = new THREE.Box3().setFromObject(pad);
+        const b = new THREE.Box3().setFromObject(pad, true);
         assert.ok(
-            b.min.y >= tabletop.max.y - 5 && b.min.y < tabletop.max.y + 20,
+            b.min.y >= oasis.max.y - 5 && b.min.y < oasis.max.y + 20,
             'controllers rest on the tabletop',
+        );
+        assert.ok(
+            b.min.x > oasis.min.x && b.max.x < oasis.max.x,
+            'controllers stay on the tabletop',
         );
     }
     const cabinet = bounds('Display cabinet'),

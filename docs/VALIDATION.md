@@ -203,3 +203,9 @@ The interface uses the native system font, translucent menu/window/dock surfaces
 Testing used desktop browsers and mobile emulation, not physical phones. One existing Three.js 0.137 loader limitation remains: the MacBook material `gMtYExgrEUqPfln` asks for UV set 1 on a normal map, which that loader does not support. It emits a warning and uses the default UV; no corresponding visible defect was observed. Other messages are the decoder’s SIMD notice and development-tool information. Webpack reports the expected three asset/bundle-size warnings for this 3D site. The seven automated checks are behavior/content checks, not a cross-device rendering guarantee.
 
 V3 evidence is preserved in `VALIDATION-v3.md`; V2 in `VALIDATION-v2.md`.
+
+## Look Around roams the room (2026-09-26)
+
+Look Around used to orbit a fixed point near the desk from at least 4 m away and 2.6 m up, so corners such as the kicked-off Spezials by the bean bag could not be reached. The orbit point now slides across the floor plane (right-drag or Shift-drag, arrow keys, two fingers on touch), stays inside the walls (`ROAM` in `Camera.ts`), and double-click or double-tap flies it to whatever surface is under the pointer, coming in to 5.2 m or closer. The camera may come within 1.2 m of its target and down to 0.9 m above the floor. A short hint lists the controls for nine seconds each time Look Around starts. `tests/room-camera.test.mjs` checks floor panning, the target clamp, the camera clamp from every angle, and a double-click flight to the shoes. In the browser, arrow keys walked the orbit point across to the far wall and a double-click on the shoes landed within 0.35 m of them.
+
+Static files that keep their names when edited (models, textures, the résumé) are now served `no-cache` with an ETag, so browsers revalidate (a 304 when unchanged) instead of reusing an hour-old copy after a model is replaced. Hashed bundles and album tracks stay immutable.

@@ -31,7 +31,7 @@ Label occlusion and the tests depend on that.
 its 16 modules (loose pieces grouped by grid cell), so cushions can be re-posed
 individually (`DUNE_POSES` in `Layout.ts`: copy another module, mirror, or
 quarter-turn). As authored, the TV-side window corner had an L-shaped back
-along the window *and the screen*, running on into the next module: it rose in
+along the window _and the screen_, running on into the next module: it rose in
 peaks by the TV and those seats faced away from it. That pair is now built from
 the ensemble's own modules, the window-side seat behind it and a flat front
 seat, so the whole front row is open seating facing the screen.
@@ -54,8 +54,11 @@ Everything is derived from the model's footprint in `Layout.ts`:
 - Build: floor boards stop at a walnut nosing; walnut walls; carpeted pit floor.
 - `TATAMI`: four flat leather pads (Paulin's own Dune companion module), one
   per Dune column, at seat height along the TV side. They are the step down.
-- The round table stands on a tatami pad, fully clear of the cushions, its top
-  just below the floor, holding the controllers.
+- Poly Haven's Modern Coffee Table 01 (CC0, concrete and oak, 1.2 × 0.6 ×
+  0.39 m) stands on the tatami, turned so its depth fits inside the 0.7 m pads
+  and clear of the cushions and pit walls, holding the controllers. It replaced
+  a thin round table whose disc overhung the tatami and cut into the TV-side
+  pit wall.
 - The LIVE.LOVE.A$AP sleeve leans on the tatami against the window-side wall.
 
 Around it: the Graduation rug moved to the window nook beside the reading bench

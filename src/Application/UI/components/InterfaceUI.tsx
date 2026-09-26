@@ -15,6 +15,14 @@ export default function InterfaceUI() {
     const [album, setAlbum] = useState<AlbumState | null>(null);
     const [records, setRecords] = useState({ found: 0, total: 0 });
     const [asleep, setAsleep] = useState(false);
+    const [hint, setHint] = useState(false);
+    // Show how to move around for a few seconds each time Look Around starts.
+    useEffect(() => {
+        setHint(free);
+        if (!free) return;
+        const t = setTimeout(() => setHint(false), 9000);
+        return () => clearTimeout(t);
+    }, [free]);
     useEffect(() => {
         const off = [
             bus.on('loadingScreenDone', () => setVisible(true)),
@@ -27,6 +35,7 @@ export default function InterfaceUI() {
             bus.on('albumChange', setAlbum),
             bus.on('recordsFound', setRecords),
             bus.on('goodNight', setAsleep),
+            bus.on('freeCamToggle', setFree),
         ];
         return () => off.forEach((f) => f());
     }, []);
@@ -122,6 +131,13 @@ export default function InterfaceUI() {
                     <div className="room-caption">
                         <p>Open the Mac to explore my work and résumé.</p>
                     </div>
+                )}
+                {hint && (
+                    <p className="look-hint" role="status">
+                        {window.matchMedia('(pointer: coarse)').matches
+                            ? 'Drag to look · two fingers to move and zoom · double-tap to go there'
+                            : 'Drag to look · right-drag or arrow keys to move · scroll to zoom · double-click to go there'}
+                    </p>
                 )}
                 <div className="room-controls">
                     <button

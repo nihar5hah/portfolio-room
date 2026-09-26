@@ -62,6 +62,17 @@ test('static media serves exact byte ranges for native audio playback and seekin
         assert.equal(head.status, 200);
         assert.equal(head.headers.get('content-length'), String(file.length));
         assert.equal((await head.arrayBuffer()).byteLength, 0);
+        // Files that keep their names when edited (models, textures, the
+        // résumé) revalidate: a stale copy is never reused, an unchanged one
+        // costs a 304.
+        const full = await fetch(url);
+        await full.arrayBuffer();
+        assert.equal(full.headers.get('cache-control'), 'no-cache');
+        const etag = full.headers.get('etag');
+        assert.ok(etag, 'unhashed files carry an ETag');
+        const again = await fetch(url, { headers: { 'If-None-Match': etag } });
+        assert.equal(again.status, 304);
+        assert.equal((await again.arrayBuffer()).byteLength, 0);
     } finally {
         server.closeAllConnections();
         await new Promise((resolve) => server.close(resolve));

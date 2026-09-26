@@ -51,13 +51,17 @@ On the Dune's front row: a third pillow, tossed.
   linear light to the colour measured from the IF7087 product photo, keeping
   the scan's brightness variation (nap, creases, stitching, serrations). The
   scan is a right shoe; the left is it mirrored, lying on its outer side so the
-  mirrored lettering faces the floor. `static/models/Spezial/spezial-night-indigo.glb`
+  mirrored lettering faces the floor. The scan's outsole was captured as a
+  blotchy, half-lit patch, so the downward-facing texels below 12 mm are
+  repainted as dark rubber with a herringbone tread and pivot circle, with a
+  flat normal and even occlusion there. `static/models/Spezial/spezial-night-indigo.glb`
   (690 KB): welded, simplified to ~11k triangles, 1024 px WebP textures.
 
 ## Assets
 
-`static/models/Lounge/lounge-props.glb` merges five CC0 Poly Haven scans
-(credits in the Credits app and `static/licenses/models.txt`), 1.65 MB:
+`static/models/Lounge/lounge-props.glb` merges six CC0 Poly Haven scans (the
+five lounge props plus the pit's Modern Coffee Table 01; credits in the Credits
+app and `static/licenses/models.txt`), 1.84 MB:
 `gltf-transform merge` of the 1k glTF downloads, then `dedup`, `prune`,
 `resize --width 512 --height 512` and `webp --quality 82`. Geometry is unchanged.
 three r137 reads the WebP textures through `EXT_texture_webp`.

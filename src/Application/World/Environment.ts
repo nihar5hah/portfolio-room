@@ -1614,48 +1614,43 @@ export default class Environment {
             lounge.add(splitDune(baked, duneFabric, DUNE_POSES));
         }
         room.add(lounge);
-        // Duneside-style round table standing on the tatami, clear of the
-        // cushions, in front of the TV-facing seats; its top sits just below
-        // the room floor, in easy reach from the front row.
-        const tableX = DUNE_AT.x + 1700;
+        // Poly Haven's Modern Coffee Table 01 (CC0, concrete and oak) on the
+        // tatami in front of the TV-facing seats: turned so its 0.6 m depth
+        // sits inside the 0.7 m tatami, a touch off square.
+        const tableX = DUNE_AT.x + 1500;
         const tableZ = tatamiZ0 + TATAMI.depth / 2;
-        const tableTop = PIT.drop - TATAMI.height - 40;
-        const tableRadius = 0.24;
         const oasis = new THREE.Group();
         oasis.name = 'Match night controller table';
         oasis.position.set(tableX, tatamiTop, tableZ);
-        const lacquer = material('#d5d0c5', 0.62);
-        const stem = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.005 * S, 0.005 * S, tableTop - 30, 16),
-            lacquer,
-        );
-        stem.position.y = (tableTop - 30) / 2;
-        stem.castShadow = true;
-        oasis.add(stem);
-        // Rounded disc edge from a lathed section rather than a thick slab.
-        const discProfile = [
-            new THREE.Vector2(0, -0.007),
-            new THREE.Vector2(tableRadius - 0.004, -0.007),
-            new THREE.Vector2(tableRadius, -0.003),
-            new THREE.Vector2(tableRadius, 0.003),
-            new THREE.Vector2(tableRadius - 0.004, 0.007),
-            new THREE.Vector2(0, 0.007),
-        ].map((p) => p.multiplyScalar(S));
-        const disc = new THREE.Mesh(
-            new THREE.LatheGeometry(discProfile, 64),
-            lacquer,
-        );
-        disc.position.y = tableTop - 0.007 * S;
-        disc.castShadow = true;
-        disc.receiveShadow = true;
-        disc.name = 'Dune round tabletop';
-        oasis.add(disc);
+        oasis.rotation.y = Math.PI / 2 + 0.035;
+        const coffeeScan =
+            app.resources.items.gltfModel.loungeProps?.scene.getObjectByName(
+                'modern_coffee_table_01',
+            ) as THREE.Mesh | undefined;
+        if (coffeeScan) {
+            const coffee = new THREE.Mesh(
+                coffeeScan.geometry,
+                coffeeScan.material,
+            );
+            coffee.name = 'Concrete and oak coffee table';
+            coffee.scale.setScalar(S);
+            coffee.castShadow = coffee.receiveShadow = true;
+            oasis.add(coffee);
+        }
         room.add(oasis);
+        oasis.updateMatrixWorld(true);
+        const tableTop = coffeeScan
+            ? new THREE.Box3().setFromObject(oasis, true).max.y - tatamiTop
+            : 0.39 * S;
         for (const x of [-240, 240]) {
             const pad = new THREE.Group();
             pad.name = 'Match night gamepad';
             // Grips reach 50 below the pad's centre: rest them on the disc.
-            pad.position.set(tableX + x, tatamiTop + tableTop + 52, tableZ);
+            pad.position.set(
+                tableX + x * 1.6,
+                tatamiTop + tableTop + 52,
+                tableZ,
+            );
             pad.rotation.y = x < 0 ? -0.22 : 0.22;
             pad.add(box(390, 80, 210, cream, 0, 0, 0, 65));
             for (const side of [-1, 1]) {

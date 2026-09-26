@@ -25,6 +25,37 @@ export enum CameraKey {
     DESK = 'desk',
     ORBIT_CONTROLS_START = 'orbitControlsStart',
 }
+/**
+ * Look Around may roam anywhere inside the room: the orbit point slides over
+ * the floor (right-drag, two fingers, arrow keys) or flies to whatever is
+ * double-clicked, and the camera can come down close to the floor.
+ * Room walls: x ±18000, z -6500/18500; floor -3015; ceiling 10885.
+ */
+export const ROAM = {
+    target: {
+        x: [-15800, 15800],
+        y: [-3000, 6000],
+        z: [-5200, 17000],
+    },
+    camera: {
+        x: [-16900, 16900],
+        y: [-2100, 10300],
+        z: [-5300, 17500],
+    },
+    minDistance: 1200,
+    maxDistance: 29000,
+} as const;
+
+const clampTo = (
+    v: THREE.Vector3,
+    box: { x: readonly number[]; y: readonly number[]; z: readonly number[] },
+) =>
+    v.set(
+        THREE.MathUtils.clamp(v.x, box.x[0], box.x[1]),
+        THREE.MathUtils.clamp(v.y, box.y[0], box.y[1]),
+        THREE.MathUtils.clamp(v.z, box.z[0], box.z[1]),
+    );
+
 export default class Camera extends EventEmitter {
     application: Application;
     sizes: Sizes;
@@ -208,7 +239,11 @@ export default class Camera extends EventEmitter {
                 // A standing eye height reads better on a tall portrait screen
                 // than the high desktop orbit start.
                 if (this.instance.aspect < 1)
-                    this.keyframes.orbitControlsStart.position.set(-13000, 5200, 15500);
+                    this.keyframes.orbitControlsStart.position.set(
+                        -13000,
+                        5200,
+                        15500,
+                    );
                 UIEventBus.dispatch('freeCamToggle', true);
                 this.orbitControls.autoRotate = true;
                 this.orbitControls.autoRotateSpeed = -0.35;
@@ -236,17 +271,105 @@ export default class Camera extends EventEmitter {
         const { x, y, z } = this.keyframes.orbitControlsStart.focalPoint;
         this.orbitControls.target.set(x, y, z);
 
-        this.orbitControls.enablePan = false;
+        // Slide the orbit point across the floor plane, not the screen, so
+        // panning walks around the room rather than floating up and down.
+        this.orbitControls.enablePan = true;
+        this.orbitControls.screenSpacePanning = false;
+        this.orbitControls.panSpeed = 1.1;
+        this.orbitControls.keyPanSpeed = 40;
+        if (typeof window !== 'undefined' && window.addEventListener)
+            this.orbitControls.listenToKeyEvents(window as any);
+        const dom = this.renderer.instance.domElement;
+        dom.addEventListener('dblclick', (event: MouseEvent) =>
+            this.focusOn(event),
+        );
+        // Touch: two quick taps without a drag, since not every mobile
+        // browser turns a double-tap into dblclick.
+        let down = { x: 0, y: 0, t: 0 };
+        let lastTap = { x: 0, y: 0, t: -1e9 };
+        dom.addEventListener('pointerdown', (e: PointerEvent) => {
+            down = { x: e.clientX, y: e.clientY, t: performance.now() };
+        });
+        dom.addEventListener('pointerup', (e: PointerEvent) => {
+            if (e.pointerType !== 'touch') return;
+            const now = performance.now();
+            const still =
+                Math.hypot(e.clientX - down.x, e.clientY - down.y) < 12 &&
+                now - down.t < 300;
+            if (!still) return;
+            if (
+                now - lastTap.t < 350 &&
+                Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 40
+            ) {
+                lastTap.t = -1e9;
+                this.focusOn(e);
+                return;
+            }
+            lastTap = { x: e.clientX, y: e.clientY, t: now };
+        });
         this.orbitControls.enableDamping = true;
         this.orbitControls.object.position.copy(
             this.keyframes.orbitControlsStart.position,
         );
         this.orbitControls.dampingFactor = 0.05;
         this.orbitControls.maxPolarAngle = Math.PI / 2;
-        this.orbitControls.minDistance = 4000;
-        this.orbitControls.maxDistance = 29000;
+        this.orbitControls.minDistance = ROAM.minDistance;
+        this.orbitControls.maxDistance = ROAM.maxDistance;
 
         this.orbitControls.update();
+    }
+
+    /** The visible, opaque surface under a screen point, if any. */
+    pick(event: { clientX: number; clientY: number }) {
+        const dom = this.renderer.instance.domElement;
+        const rect = dom.getBoundingClientRect();
+        const ndc = new THREE.Vector2(
+            ((event.clientX - rect.left) / rect.width) * 2 - 1,
+            -((event.clientY - rect.top) / rect.height) * 2 + 1,
+        );
+        const ray = new THREE.Raycaster();
+        ray.setFromCamera(ndc, this.instance);
+        const shown = (o: THREE.Object3D | null): boolean =>
+            !o || (o.visible && shown(o.parent));
+        return ray.intersectObjects(this.scene.children, true).find((h) => {
+            const mesh = h.object as THREE.Mesh;
+            const material = Array.isArray(mesh.material)
+                ? mesh.material[0]
+                : mesh.material;
+            return (
+                mesh.isMesh &&
+                shown(mesh) &&
+                material?.visible !== false &&
+                !(material?.transparent && material.opacity < 0.5)
+            );
+        });
+    }
+
+    /**
+     * Fly the orbit point to the surface under a double-click, coming in to
+     * a comfortable viewing distance on the same bearing.
+     */
+    focusOn(event: { clientX: number; clientY: number }) {
+        const hit = this.pick(event);
+        if (!hit || !this.freeCam || !this.orbitControls) return;
+        const target = clampTo(hit.point.clone(), ROAM.target);
+        const offset = this.instance.position
+            .clone()
+            .sub(this.orbitControls.target);
+        offset.setLength(
+            THREE.MathUtils.clamp(offset.length(), ROAM.minDistance, 5200),
+        );
+        const position = clampTo(target.clone().add(offset), ROAM.camera);
+        const duration = this.application.reducedMotion?.matches ? 0 : 800;
+        const ease = TWEEN.Easing.Cubic.InOut;
+        new TWEEN.Tween(this.orbitControls.target)
+            .to({ x: target.x, y: target.y, z: target.z }, duration)
+            .easing(ease)
+            .start();
+        new TWEEN.Tween(this.instance.position)
+            .to({ x: position.x, y: position.y, z: position.z }, duration)
+            .easing(ease)
+            .start();
     }
 
     update() {
@@ -281,15 +404,11 @@ export default class Camera extends EventEmitter {
         }
         if (this.orbitControls) this.orbitControls.enabled = this.freeCam;
         if (this.freeCam && this.orbitControls) {
+            clampTo(this.orbitControls.target, ROAM.target);
             this.orbitControls.update();
-            // Room walls: x ±18000, z -6500/18500; ceiling 10885.
-            // Keep the camera and its near plane inside, above the furniture.
-            const p = this.instance.position;
-            p.set(
-                THREE.MathUtils.clamp(p.x, -16900, 16900),
-                THREE.MathUtils.clamp(p.y, 2600, 10300),
-                THREE.MathUtils.clamp(p.z, -5300, 17500),
-            );
+            // Keep the camera and its near plane inside the walls, above the
+            // floor and below the ceiling, wherever the orbit point roams.
+            const p = clampTo(this.instance.position, ROAM.camera);
             this.instance.lookAt(this.orbitControls.target);
             this.position.copy(p);
             this.focalPoint.copy(this.orbitControls.target);
