@@ -3,8 +3,8 @@ import bus from '../UI/EventBus';
 
 /**
  * The reward for finding every hidden record sleeve: a framed gold record
- * goes up on the wall beside the clock, and the Dropout Bear, in a
- * mortarboard, turns up on the window bench beside the Graduation rug.
+ * goes up on the wall beside the clock, and the Graduation-era Dropout
+ * Bear turns up on the window bench beside the Graduation rug.
  * Both appear only once the count is complete (and stay for returning
  * visitors, whose finds are saved). The gold record shuffles everything;
  * the bear plays Graduation.
@@ -126,89 +126,48 @@ export function goldRecord(found: number) {
     return shaded(plaque);
 }
 
+/** Seated height of the bear, room units (about 35 cm). */
+const BEAR_HEIGHT = 1150;
+
 /**
- * The Dropout Bear, sitting: a plush brown teddy with a lighter muzzle and
- * paw pads, button eyes, and a mortarboard with a gold tassel. Sits on its
- * origin, facing +Z. About 35 cm tall seated.
+ * The Dropout Bear in his Graduation-era form (Takashi Murakami's cartoon
+ * redesign: shutter shades, camo varsity jacket, blue pants, white
+ * sneakers), from the supplied Blender model, posed sitting and baked to
+ * static meshes (static/models/Bear/dropout-bear.glb). Stands on its origin,
+ * facing +Z, sized to a shelf plush.
  */
-export function dropoutBear() {
+export function graduationBear(model: THREE.Object3D) {
     const bear = new THREE.Group();
-    bear.name = 'Dropout Bear';
-    const fur = new THREE.MeshStandardMaterial({
-        color: '#7a4f33',
-        roughness: 1,
+    bear.name = 'Graduation Bear';
+    const copy = model.clone(true);
+    copy.traverse((part) => {
+        const mesh = part as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        mesh.castShadow = mesh.receiveShadow = true;
+        const materials = Array.isArray(mesh.material)
+            ? mesh.material
+            : [mesh.material];
+        for (const m of materials as THREE.MeshStandardMaterial[]) {
+            // glTF colours are already linear (World.ts converts the rest).
+            m.userData.linearColor = true;
+            m.envMapIntensity = 0.12;
+            // Cut-out eyes and patches: no sorting against the shades.
+            if (m.transparent) {
+                m.transparent = false;
+                m.alphaTest = 0.5;
+            }
+        }
     });
-    const light = standard('#c89f78', 1);
-    const button = standard('#0c0c0e', 0.25);
-    const black = standard('#141418', 0.7);
-    const tassel = standard('#e0b64f', 0.5, 0.4);
-    const blob = (
-        material: THREE.Material,
-        r: number,
-        [x, y, z]: number[],
-        [sx, sy, sz] = [1, 1, 1],
-        rotation: number[] = [0, 0, 0],
-    ) => {
-        const mesh = new THREE.Mesh(
-            new THREE.SphereGeometry(r, 32, 20),
-            material,
-        );
-        mesh.position.set(x, y, z);
-        mesh.scale.set(sx, sy, sz);
-        mesh.rotation.set(rotation[0], rotation[1], rotation[2]);
-        bear.add(mesh);
-        return mesh;
-    };
-    // Body and head.
-    blob(fur, 280, [0, 300, 0], [1, 1.1, 0.9]);
-    blob(light, 170, [0, 290, 150], [1, 1.2, 0.5]); // tummy
-    blob(fur, 215, [0, 760, 20]);
-    blob(light, 95, [0, 720, 200], [1.1, 0.85, 0.8]); // muzzle
-    blob(button, 32, [0, 752, 272], [1.3, 0.9, 0.8]); // nose
-    for (const side of [-1, 1]) {
-        blob(button, 24, [side * 80, 815, 196]); // eyes
-        blob(fur, 78, [side * 165, 930, 0], [1, 1, 0.6]); // ears
-        blob(light, 46, [side * 165, 930, 30], [1, 1, 0.4]);
-        // Arms resting forward on the tummy, legs stuck straight out.
-        blob(
-            fur,
-            95,
-            [side * 260, 360, 90],
-            [0.9, 1.6, 0.9],
-            [0.6, 0, side * 0.5],
-        );
-        blob(fur, 115, [side * 150, 110, 230], [1, 0.9, 1.8]);
-        blob(light, 80, [side * 150, 110, 430], [1, 1, 0.35]); // foot pads
-    }
-    // Mortarboard, a little askew.
-    const cap = new THREE.Group();
-    cap.position.set(0, 930, 10);
-    cap.rotation.set(-0.12, 0.25, 0.08);
-    const crown = new THREE.Mesh(
-        new THREE.CylinderGeometry(160, 175, 110, 32),
-        black,
+    const box = new THREE.Box3().setFromObject(copy);
+    const size = box.getSize(new THREE.Vector3());
+    copy.scale.setScalar(BEAR_HEIGHT / size.y);
+    const centre = box.getCenter(new THREE.Vector3());
+    copy.position.set(
+        -centre.x * copy.scale.x,
+        -box.min.y * copy.scale.y,
+        -centre.z * copy.scale.z,
     );
-    cap.add(crown);
-    const board = new THREE.Mesh(new THREE.BoxGeometry(470, 22, 470), black);
-    board.position.y = 64;
-    cap.add(board);
-    const button2 = new THREE.Mesh(new THREE.SphereGeometry(22, 12, 8), tassel);
-    button2.position.y = 80;
-    cap.add(button2);
-    const cord = new THREE.Mesh(
-        new THREE.CylinderGeometry(7, 7, 250, 8),
-        tassel,
-    );
-    cord.position.set(118, 80, 0);
-    cord.rotation.z = Math.PI / 2;
-    cap.add(cord);
-    const drop = new THREE.Mesh(
-        new THREE.CylinderGeometry(9, 20, 160, 10),
-        tassel,
-    );
-    drop.position.set(232, -5, 0);
-    cap.add(drop);
-    bear.add(cap);
+    bear.add(copy);
     return shaded(bear);
 }
 
@@ -223,7 +182,11 @@ export default class RecordsReward {
         public room: THREE.Object3D,
         found: number,
         total: number,
-        public onShow: (plaque: THREE.Object3D, bear: THREE.Object3D) => void,
+        public onShow: (
+            plaque: THREE.Object3D,
+            bear: THREE.Object3D | null,
+        ) => void,
+        public bearModel: THREE.Object3D | null = null,
     ) {
         // Returning visitors who already found them all: just there.
         if (total > 0 && found >= total) this.show(total, false);
@@ -239,14 +202,14 @@ export default class RecordsReward {
         this.complete = true;
         this.plaque = goldRecord(total);
         this.plaque.position.set(7700, 2250, BACK + 4);
-        this.bear = dropoutBear();
         // On the window bench's cushion, turned to the room.
-        this.bear.position.set(-16850, FLOOR + 950, 5700);
-        this.bear.rotation.y = Math.PI / 2 - 0.3;
+        this.bear = this.bearModel ? graduationBear(this.bearModel) : null;
+        this.bear?.position.set(-16900, FLOOR + 965, 5700);
+        if (this.bear) this.bear.rotation.y = Math.PI / 2 - 0.3;
         // The room converts every material's colour to linear once, at load
         // (World.ts); these arrive later, so they convert themselves.
         const converted = new Set<THREE.Material>();
-        for (const part of [this.plaque, this.bear])
+        for (const part of [this.plaque])
             part.traverse((o) => {
                 const m = (o as THREE.Mesh).material;
                 for (const material of Array.isArray(m) ? m : m ? [m] : [])
@@ -258,7 +221,8 @@ export default class RecordsReward {
                         converted.add(material);
                     }
             });
-        this.room.add(this.plaque, this.bear);
+        this.room.add(this.plaque);
+        if (this.bear) this.room.add(this.bear);
         this.age = animate ? 0 : Infinity;
         this.pose(animate ? 0 : 1);
         this.onShow(this.plaque, this.bear);
@@ -266,13 +230,13 @@ export default class RecordsReward {
 
     /** 0 → 1: the plaque swings up onto its hook, the bear pops in. */
     pose(t: number) {
-        if (!this.plaque || !this.bear) return;
+        if (!this.plaque) return;
         const ease = 1 - (1 - Math.min(1, t)) ** 3;
         const pop = Math.min(1, t * 1.4);
         const overshoot = 1 + Math.sin(pop * Math.PI) * 0.12;
         this.plaque.scale.setScalar(Math.max(0.001, ease));
         this.plaque.rotation.z = (1 - ease) * 0.25;
-        this.bear.scale.setScalar(Math.max(0.001, pop * overshoot));
+        this.bear?.scale.setScalar(Math.max(0.001, pop * overshoot));
     }
 
     update(seconds: number, reducedMotion: boolean) {

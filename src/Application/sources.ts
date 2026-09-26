@@ -54,6 +54,16 @@ const sources: Resource[] = [
     { name: 'ps5Model', type: 'gltfModel', path: 'models/PS5/ps5.glb' },
     { name: 'chairModel', type: 'gltfModel', path: 'models/Chair/embody.glb' },
     {
+        name: 'footballModel',
+        type: 'gltfModel',
+        path: 'models/Football/brazuca.glb',
+    },
+    {
+        name: 'dropoutBearModel',
+        type: 'gltfModel',
+        path: 'models/Bear/dropout-bear.glb',
+    },
+    {
         name: 'dualSenseModel',
         type: 'gltfModel',
         path: 'models/PS5/dualsense.glb',

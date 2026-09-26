@@ -26,8 +26,31 @@ export default class Football {
         public nav: NavGrid,
         at: Point,
         materials?: { leather: THREE.Material; patch: THREE.Material },
+        /** The Brazuca scan (static/models/Football/brazuca.glb), if loaded. */
+        model?: THREE.Object3D,
     ) {
         this.group.name = 'Football';
+        if (model) {
+            // Adidas Brazuca (CadNav 37220): a unit-radius textured sphere.
+            const ball = model.clone(true);
+            const box = new THREE.Box3().setFromObject(ball);
+            const size = box.getSize(new THREE.Vector3());
+            ball.scale.setScalar(
+                (2 * BALL_RADIUS) / Math.max(size.x, size.y, size.z),
+            );
+            ball.traverse((part) => {
+                const mesh = part as THREE.Mesh;
+                if (!mesh.isMesh) return;
+                mesh.castShadow = mesh.receiveShadow = true;
+                const m = mesh.material as THREE.MeshStandardMaterial;
+                m.userData.linearColor = true; // glTF colours are linear
+                m.roughness = 0.42;
+            });
+            this.group.add(ball);
+            this.group.rotation.set(0.4, 1.1, 0.2);
+            this.place(at);
+            return;
+        }
         const leather =
             materials?.leather ??
             new THREE.MeshStandardMaterial({

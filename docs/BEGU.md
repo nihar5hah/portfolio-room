@@ -27,7 +27,7 @@ Rare Easter eggs, at most one every ~45 s, each at most every 4 minutes:
 
 ## Fetch
 
-The football lies on the desk rug beside the chair (`Football.ts`). Click it
+The football, an adidas Brazuca (`static/models/Football/brazuca.glb`), lies on the desk rug beside the chair (`Football.ts`). Click it
 and it is kicked out into open floor, with a clear run, roughly the way you are
 looking. It rolls with friction, bounces off furniture and walls on its own
 floor plan (padded by its 11 cm radius, his bed counted as an obstacle) and

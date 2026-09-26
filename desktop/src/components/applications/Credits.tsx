@@ -138,6 +138,26 @@ export default function Credits(props: WindowAppProps) {
                             Product models ↗
                         </a>
                     </dd>
+                    <dt>Graduation Bear</dt>
+                    <dd>
+                        The Dropout Bear in his Graduation-era design (Takashi
+                        Murakami / Kanye West), from a fan-made Blender model,
+                        posed sitting on the window bench. It appears once every
+                        hidden record is found.
+                    </dd>
+                    <dt>CadNav</dt>
+                    <dd>
+                        The adidas Brazuca football Begu fetches (model 37220,
+                        non-commercial licence); adidas marks belong to adidas
+                        AG.{' '}
+                        <a
+                            href="https://www.cadnav.com/3d-models/model-37220.html"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Model page ↗
+                        </a>
+                    </dd>
                     <dt>Tigertigertiger</dt>
                     <dd>
                         The scanned Handball Spezial kicked off by the bean bag

@@ -158,6 +158,8 @@ export default class Decor {
         this.football = new Football(
             ballNav,
             ballNav.nearestFree({ x: 3500, z: -2100 }) ?? { x: 3500, z: -2100 },
+            undefined,
+            this.app.resources.items.gltfModel.footballModel?.scene,
         );
         this.app.scene.add(this.football.group);
         this.app.scene.add(this.dog);

@@ -186,18 +186,71 @@ test('the wall clock shows Bangalore time and the lamps switch on and off by han
     assert.equal(toggle('deskLamp'), true, 'switched on in daylight');
 });
 
-test('finding every record puts up a gold record and the Dropout Bear', () => {
+test('finding every record puts up a gold record and the Graduation Bear', async () => {
     const { default: RecordsReward } = load('Reward.ts');
+    const { GLTFLoader } = await import(
+        'three/examples/jsm/loaders/GLTFLoader.js'
+    );
+    const { MeshoptDecoder } = await import(
+        'three/examples/jsm/libs/meshopt_decoder.module.js'
+    );
+    // Geometry only: node has no image decoder for the WebP textures.
+    const bytes = fs.readFileSync(
+        new URL('../static/models/Bear/dropout-bear.glb', import.meta.url),
+    );
+    const json = JSON.parse(
+        new TextDecoder().decode(
+            bytes.subarray(20, 20 + bytes.readUInt32LE(12)),
+        ),
+    );
+    delete json.textures;
+    delete json.images;
+    for (const m of json.materials ?? []) {
+        delete m.pbrMetallicRoughness?.baseColorTexture;
+    }
+    const text = new TextEncoder().encode(JSON.stringify(json));
+    const padded = new Uint8Array(Math.ceil(text.length / 4) * 4).fill(32);
+    padded.set(text);
+    const bin = bytes.subarray(20 + bytes.readUInt32LE(12));
+    const glb = new Uint8Array(20 + padded.length + bin.length);
+    const view = new DataView(glb.buffer);
+    view.setUint32(0, 0x46546c67, true);
+    view.setUint32(4, 2, true);
+    view.setUint32(8, glb.length, true);
+    view.setUint32(12, padded.length, true);
+    view.setUint32(16, 0x4e4f534a, true);
+    glb.set(padded, 20);
+    glb.set(bin, 20 + padded.length);
+    await MeshoptDecoder.ready;
+    const gltf = await new Promise((resolve, reject) =>
+        new GLTFLoader()
+            .setMeshoptDecoder(MeshoptDecoder)
+            .parse(glb.buffer, '', resolve, reject),
+    );
+    const names = [];
+    gltf.scene.traverse((o) => names.push(o.name));
+    for (const part of ['Head', 'glasses', 'Jacket', 'shoes'])
+        assert.ok(
+            names.some((n) => n.startsWith(part)),
+            `the model has its ${part}`,
+        );
+
     const room = new THREE.Group();
     const shown = [];
-    const reward = new RecordsReward(room, 3, 11, (p, b) => shown.push(p, b));
+    const reward = new RecordsReward(
+        room,
+        3,
+        11,
+        (p, b) => shown.push(p, b),
+        gltf.scene,
+    );
     assert.equal(room.children.length, 0, 'nothing until they are all found');
     bus.dispatch('recordsFound', { found: 10, total: 11 });
     assert.equal(room.children.length, 0);
     bus.dispatch('recordsFound', { found: 11, total: 11 });
     assert.deepEqual(
         room.children.map((c) => c.name),
-        ['Gold record', 'Dropout Bear'],
+        ['Gold record', 'Graduation Bear'],
     );
     assert.ok(
         events.some(([e]) => e === 'recordsComplete'),
@@ -208,11 +261,15 @@ test('finding every record puts up a gold record and the Dropout Bear', () => {
     for (let i = 0; i < 60; i++) reward.update(1 / 60, false);
     assert.equal(reward.plaque.scale.x, 1);
     assert.equal(reward.bear.scale.x, 1);
+    reward.bear.updateMatrixWorld(true);
     const bear = new THREE.Box3().setFromObject(reward.bear);
-    assert.ok(Math.abs(bear.min.y - (-3015 + 950)) < 30, 'sits on the bench');
+    assert.ok(Math.abs(bear.min.y - (-3015 + 965)) < 5, 'sits on the bench');
+    const size = bear.getSize(new THREE.Vector3());
+    assert.ok(Math.abs(size.y - 1150) < 5, 'plush sized (about 35 cm)');
     // A returning visitor with all eleven already found: there straight away.
     const again = new RecordsReward(new THREE.Group(), 11, 11, () => {});
     assert.equal(again.plaque.scale.x, 1);
+    assert.equal(again.bear, null, 'no model, no bear (never a stand-in)');
     bus.dispatch('recordsFound', { found: 11, total: 11 });
     assert.equal(
         events.filter(([e]) => e === 'recordsComplete').length,

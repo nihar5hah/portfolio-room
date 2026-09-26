@@ -50,7 +50,7 @@ export default class World {
                     run: () => this.decor.pet(),
                     instant: true,
                 }));
-            // Every hidden record found: a gold record and the Dropout Bear.
+            // Every hidden record found: a gold record and the Graduation Bear.
             if (room && this.interactables) {
                 const interact = this.interactables;
                 this.reward = new RecordsReward(
@@ -66,11 +66,15 @@ export default class World {
                                 bus.dispatch('muteToggle', false);
                             },
                         }));
-                        interact.add(bear, () => ({
-                            label: 'The Dropout Bear · play Graduation',
-                            run: () => album().playAlbum('graduation'),
-                        }));
+                        // The Graduation-era bear plays Graduation.
+                        if (bear)
+                            interact.add(bear, () => ({
+                                label: 'The Graduation Bear · play Graduation',
+                                run: () => album().playAlbum('graduation'),
+                            }));
                     },
+                    this.resources.items.gltfModel.dropoutBearModel?.scene ??
+                        null,
                 );
                 bus.on('recordsComplete', () =>
                     this.decor?.husky.hop(

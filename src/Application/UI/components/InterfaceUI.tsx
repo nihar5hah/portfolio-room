@@ -88,8 +88,8 @@ export default function InterfaceUI() {
                 <p className="records-reward" role="status">
                     All {reward} records found.
                     <span>
-                        A gold record just went up by the clock, and someone in
-                        a mortarboard is on the window bench.
+                        A gold record just went up by the clock, and the
+                        Graduation Bear is waiting on the window bench.
                     </span>
                 </p>
             )}
