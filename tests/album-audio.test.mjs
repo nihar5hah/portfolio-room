@@ -3,6 +3,32 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
+const audioLibrary = JSON.parse(
+    fs.readFileSync(
+        new URL('../config/audio-library.json', import.meta.url),
+        'utf8',
+    ),
+);
+const compiled = require('typescript').transpileModule(
+    fs.readFileSync(
+        new URL('../src/Application/Audio/AlbumAudio.ts', import.meta.url),
+        'utf8',
+    ),
+    { compilerOptions: { module: require('typescript').ModuleKind.CommonJS } },
+).outputText;
+function loadAlbumModule(bus, math = Math, origin = audioLibrary.origin) {
+    const exports = {};
+    new Function('require', 'exports', 'Math', compiled)(
+        (name) => {
+            if (name === '../UI/EventBus') return { default: bus };
+            assert.equal(name, '../../../config/audio-library.json');
+            return { default: { origin } };
+        },
+        exports,
+        math,
+    );
+    return exports;
+}
 
 test('licensed album playback is quiet, shuffled, gesture-started, muteable and recoverable', async () => {
     const listeners = new Map();
@@ -52,33 +78,17 @@ test('licensed album playback is quiet, shuffled, gesture-started, muteable and 
     globalThis.location = { origin: 'http://localhost:5181' };
     const tracks = ['First', 'Second', 'Third'].map((title, index) => ({
         title,
-        src: `/audio/${['mbdtf', 'jackboys', 'rodeo'][index]}/${index + 1}.mp3`,
+        src: `${audioLibrary.origin}/audio/${['mbdtf', 'jackboys', 'rodeo'][index]}/${index + 1}.m4a`,
         album: ['mbdtf', 'jackboys', 'rodeo'][index],
     }));
     globalThis.fetch = async () => ({
         ok: true,
         json: async () => ({ tracks }),
     });
-    const compiled = require('typescript').transpileModule(
-        fs.readFileSync(
-            new URL('../src/Application/Audio/AlbumAudio.ts', import.meta.url),
-            'utf8',
-        ),
-        {
-            compilerOptions: {
-                module: require('typescript').ModuleKind.CommonJS,
-            },
-        },
-    ).outputText;
-    const exports = {};
     let random = 0;
     const math = Object.create(Math);
     math.random = () => random;
-    new Function('require', 'exports', 'Math', compiled)(
-        () => ({ default: bus }),
-        exports,
-        math,
-    );
+    const exports = loadAlbumModule(bus, math);
     const album = new exports.default();
     await new Promise(setImmediate);
     assert.equal(
@@ -286,13 +296,26 @@ test('licensed album playback is quiet, shuffled, gesture-started, muteable and 
     );
 });
 
-test('the shuffled library includes every supplied album file exactly once', () => {
+test('the canonical full-song manifest has valid schema, albums and counts without local music', () => {
     const root = new URL('../static/', import.meta.url);
     const manifest = JSON.parse(
         fs.readFileSync(new URL('audio/playlist.json', root), 'utf8'),
     );
+    const albumExports = loadAlbumModule({ on() {} });
+    assert.ok(Array.isArray(manifest.tracks));
     assert.equal(manifest.tracks.length, 114);
     assert.equal(new Set(manifest.tracks.map((t) => t.src)).size, 114);
+    assert.ok(manifest.tracks.length <= albumExports.MAX_TRACKS);
+    for (const track of manifest.tracks) {
+        assert.equal(typeof track.title, 'string');
+        assert.ok(track.title.trim());
+        assert.ok(Object.hasOwn(albumExports.ALBUMS, track.album));
+        assert.match(
+            track.src,
+            new RegExp(`^/audio/${track.album}/[a-z0-9][a-z0-9._-]*\\.m4a$`),
+            'source manifest keeps canonical local full-track paths',
+        );
+    }
     for (const [album, count] of [
         ['mbdtf', 8],
         ['jackboys', 5],
@@ -316,34 +339,23 @@ test('the shuffled library includes every supplied album file exactly once', () 
     ]) {
         const tracks = manifest.tracks.filter((t) => t.album === album);
         assert.equal(tracks.length, count);
-        const files = fs
-            .readdirSync(new URL(`audio/${album}/`, root))
-            .filter((f) => /\.(mp3|m4a)$/.test(f));
-        assert.deepEqual(
-            new Set(tracks.map((t) => t.src.split('/').pop())),
-            new Set(files),
-        );
-        for (const track of tracks)
-            assert.ok(
-                fs.statSync(new URL(track.src.slice(1), root)).size > 1000,
+        // Full-song binaries are deliberately absent from a clean checkout.
+        // If a developer supplies an album, still verify that it is complete.
+        const directory = new URL(`audio/${album}/`, root);
+        if (fs.existsSync(directory)) {
+            const files = fs
+                .readdirSync(directory)
+                .filter((f) => /\.(mp3|m4a)$/.test(f));
+            assert.deepEqual(
+                new Set(tracks.map((t) => t.src.split('/').pop())),
+                new Set(files),
             );
+            for (const track of tracks)
+                assert.ok(
+                    fs.statSync(new URL(track.src.slice(1), root)).size > 1000,
+                );
+        }
     }
-    const compiledAlbums = require('typescript').transpileModule(
-        fs.readFileSync(
-            new URL('../src/Application/Audio/AlbumAudio.ts', import.meta.url),
-            'utf8',
-        ),
-        {
-            compilerOptions: {
-                module: require('typescript').ModuleKind.CommonJS,
-            },
-        },
-    ).outputText;
-    const albumExports = {};
-    new Function('require', 'exports', compiledAlbums)(
-        () => ({ default: { on() {} } }),
-        albumExports,
-    );
     const music = fs.readFileSync(
         new URL(
             '../desktop/src/components/applications/Music.tsx',
@@ -364,42 +376,145 @@ test('the shuffled library includes every supplied album file exactly once', () 
     );
 });
 
-test('every track has a 30-second preview for the live site', async () => {
-    const { execFileSync } = await import('node:child_process');
-    const root = new URL('../static/', import.meta.url);
+test('only canonical full-song files on the site or configured HTTPS host are accepted', async (t) => {
+    const events = [];
+    const bus = { on() {}, dispatch: (...event) => events.push(event) };
+    const saved = Object.fromEntries(
+        ['document', 'location', 'fetch'].map((key) => [key, globalThis[key]]),
+    );
+    t.after(() => {
+        for (const [key, value] of Object.entries(saved)) {
+            if (value === undefined) delete globalThis[key];
+            else globalThis[key] = value;
+        }
+    });
+    globalThis.document = {
+        createElement: () => ({ paused: true, pause() {} }),
+        body: { append() {} },
+    };
     const manifest = JSON.parse(
-        fs.readFileSync(new URL('audio/playlist.json', root), 'utf8'),
+        fs.readFileSync(
+            new URL('../static/audio/playlist.json', import.meta.url),
+            'utf8',
+        ),
     );
-    for (const track of manifest.tracks) {
-        const preview = new URL(
-            track.src.replace(/^\/audio\//, 'audio/previews/'),
-            root,
-        );
-        assert.ok(
-            fs.existsSync(preview),
-            `${track.src} has a preview (python3 scripts/make-previews.py)`,
-        );
-        assert.ok(fs.statSync(preview).size < 500_000, 'a short clip');
+    const origin = audioLibrary.origin;
+    const configured = new URL(origin);
+    assert.equal(configured.protocol, 'https:');
+    assert.equal(
+        configured.origin,
+        origin,
+        'configuration is an exact HTTPS origin',
+    );
+    const AlbumAudio = loadAlbumModule(bus).default;
+    const path = '/audio/mbdtf/01-dark-fantasy.m4a';
+    const load = async (tracks, Player = AlbumAudio) => {
+        globalThis.fetch = async () => ({
+            ok: true,
+            json: async () => ({ tracks }),
+        });
+        const player = new Player();
+        await new Promise(setImmediate);
+        return player;
+    };
+    for (const siteOrigin of [
+        'http://localhost:5181',
+        'https://portfolio.test',
+    ]) {
+        globalThis.location = { origin: siteOrigin };
+        for (const prefix of ['', siteOrigin, origin]) {
+            const tracks = manifest.tracks.map((track) => ({
+                ...track,
+                src: prefix + track.src,
+            }));
+            const player = await load(tracks);
+            assert.equal(
+                player.error,
+                false,
+                `accept full library from ${prefix || 'local paths'}`,
+            );
+            assert.equal(player.tracks.length, 114);
+            assert.deepEqual(
+                new Set(player.tracks.map((track) => track.src)),
+                new Set(
+                    tracks.map((track) => new URL(track.src, siteOrigin).href),
+                ),
+            );
+            assert.equal(
+                player.audio.paused,
+                true,
+                'loading never bypasses the entry gesture',
+            );
+        }
+        for (const src of [
+            '/audio/previews/mbdtf/01-dark-fantasy.m4a',
+            `${siteOrigin}/audio/previews/mbdtf/01-dark-fantasy.m4a`,
+            `${origin}/audio/previews/mbdtf/01-dark-fantasy.m4a`,
+            '/audio/mbdtf/previews/01-dark-fantasy.m4a',
+            '/audio/jackboys/01-dark-fantasy.m4a',
+            `${origin}/audio/jackboys/01-dark-fantasy.m4a`,
+            `https://elsewhere.test${path}`,
+            `https://${configured.hostname}.elsewhere.test${path}`,
+            `https://subdomain.${configured.host}${path}`,
+            `${origin}:444${path}`,
+            `${origin.replace('https:', 'http:')}${path}`,
+            `http://portfolio.test${path}`,
+            `//${configured.host}${path}`,
+            `https://user:password@${configured.host}${path}`,
+            `${siteOrigin.replace('://', '://user:password@')}${path}`,
+            '/audio/mbdtf/../../private.m4a',
+            '/audio/mbdtf/../mbdtf/01-dark-fantasy.m4a',
+            `${origin}/audio/mbdtf/../mbdtf/01-dark-fantasy.m4a`,
+            '/audio/mbdtf/%2e%2e/mbdtf/01-dark-fantasy.m4a',
+            '/audio/mbdtf/%252e%252e/01-dark-fantasy.m4a',
+            '/audio/mbdtf/nested%2f01-dark-fantasy.m4a',
+            '/audio/mbdtf/nested%5c01-dark-fantasy.m4a',
+            '/audio/mbdtf/nested\\01-dark-fantasy.m4a',
+            '/audio/mbdtf/track.js',
+            '/audio/mbdtf/track.m4a.js',
+            `${path}?preview=true`,
+            `${origin}${path}?redirect=https://elsewhere.test`,
+            `${path}#t=0,30`,
+            ` ${origin}${path}`,
+            `data:audio/mp4;base64,AAAA`,
+            `blob:${siteOrigin}${path}`,
+        ]) {
+            const player = await load([
+                { title: 'Invalid', album: 'mbdtf', src },
+            ]);
+            assert.equal(player.error, true, `reject ${src} on ${siteOrigin}`);
+            assert.deepEqual(player.tracks, []);
+            assert.deepEqual(events.at(-1), ['albumChange', null]);
+        }
+        for (const album of [
+            'unknown',
+            '__proto__',
+            'constructor',
+            ['mbdtf'],
+            null,
+        ]) {
+            const player = await load([
+                { title: 'Invalid', album, src: `/audio/${album}/track.m4a` },
+            ]);
+            assert.equal(player.error, true, `reject invalid album ${album}`);
+        }
     }
-    // Spot-check the length of one clip with ffprobe when it is installed.
-    const first = new URL(
-        manifest.tracks[0].src.replace(/^\/audio\//, 'audio/previews/'),
-        root,
-    );
-    try {
-        const seconds = Number(
-            execFileSync('ffprobe', [
-                '-v',
-                'error',
-                '-show_entries',
-                'format=duration',
-                '-of',
-                'default=nw=1:nk=1',
-                first.pathname,
-            ]).toString(),
+    // A malformed/non-HTTPS configuration must not expand remote trust.
+    for (const badOrigin of [
+        origin + '/',
+        origin + '/audio',
+        origin.replace('https:', 'http:'),
+    ]) {
+        const Player = loadAlbumModule(bus, Math, badOrigin).default;
+        const player = await load(
+            [{ title: 'Invalid', album: 'mbdtf', src: origin + path }],
+            Player,
         );
-        assert.ok(Math.abs(seconds - 30) < 0.5, `30 s, not ${seconds}`);
-    } catch (error) {
-        if (error.code !== 'ENOENT') throw error;
+        assert.equal(player.error, true, `fail closed for ${badOrigin}`);
+        const local = await load(
+            [{ title: 'Local', album: 'mbdtf', src: path }],
+            Player,
+        );
+        assert.equal(local.error, false, 'local full files remain usable');
     }
 });

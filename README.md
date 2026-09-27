@@ -59,7 +59,7 @@ GEMINI_API_KEY=your-key
 
 Without a key, everything else works and Begu says he's offline. A static host alone can serve the site but not Begu, the weather or the match board: run this Node server, or provide the same `/api` routes on the same origin.
 
-**Music:** the album tracks are my personal library and are not in this repository. `static/audio/playlist.json` lists the files the room expects under `static/audio/<album>/`. Add your own, or the room stays quiet and simply shows the albums.
+**Music:** all 114 tracks play in full from the independent `portfolio-room-audio` host. The audio binaries are not in this repository. Every build turns `static/audio/playlist.json` into URLs at the origin in `config/audio-library.json`, so a fresh clone and ordinary GitHub deployment work without local music files. There is no snippet fallback. See [docs/ALBUM-AUDIO.md](docs/ALBUM-AUDIO.md) for library updates and deployment instructions.
 
 ```bash
 npm test           # all test suites

@@ -5,10 +5,9 @@ dist/
 .env*
 .agent-artifacts/
 .playwright-cli/
-# Personal music library: ~434 MB of user-supplied albums, local only.
-# The room's own sound effects stay tracked.
+# Personal full-song library: deployed separately, never committed.
+# The room's own sound effects stay tracked; obsolete clips stay ignored.
 static/audio/*/
-!static/audio/previews/
 !static/audio/atmosphere/
 !static/audio/cc/
 !static/audio/computer/

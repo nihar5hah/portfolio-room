@@ -125,6 +125,9 @@ function room() {
     });
     const albumModule = load('../src/Application/Audio/AlbumAudio.ts', {
         '../UI/EventBus': { default: bus },
+        '../../../config/audio-library.json': {
+            default: JSON.parse(source('../config/audio-library.json')),
+        },
     });
     const Manager = load('../src/Application/Audio/AudioManager.ts', {
         './AlbumAudio': albumModule,

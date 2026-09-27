@@ -1,4 +1,5 @@
 import bus from '../UI/EventBus';
+import audioLibrary from '../../../config/audio-library.json';
 
 /** Background level for the album player. */
 const VOLUME = 0.06;
@@ -36,7 +37,7 @@ export type AlbumState = {
     queue: { title: string; album: keyof typeof ALBUMS }[];
 };
 
-// Licensed, locally hosted tracks; each page load starts a fresh shuffled queue.
+// Full tracks from the site or its configured audio host; shuffled on each load.
 export default class AlbumAudio {
     audio = document.createElement('audio');
     tracks: Track[] = [];
@@ -117,21 +118,31 @@ export default class AlbumAudio {
                     typeof track.title !== 'string' ||
                     !track.title.trim() ||
                     typeof track.src !== 'string' ||
+                    typeof track.album !== 'string' ||
                     !Object.prototype.hasOwnProperty.call(ALBUMS, track.album)
                 )
                     throw new Error('Invalid track');
                 const url = new URL(track.src, location.origin);
+                const trustedHost =
+                    url.protocol === 'https:' &&
+                    url.origin === audioLibrary.origin;
+                // Require canonical full-track paths, before URL normalization
+                // can hide traversal. No previews, redirects via query strings,
+                // nested paths, encoded separators, or embedded credentials.
                 if (
-                    url.origin !== location.origin ||
-                    !(
-                        url.pathname.startsWith(`/audio/${track.album}/`) ||
-                        url.pathname.startsWith(
-                            `/audio/previews/${track.album}/`,
-                        )
-                    ) ||
-                    !/\.(mp3|m4a|ogg|wav|flac)$/i.test(url.pathname)
+                    (url.origin !== location.origin && !trustedHost) ||
+                    !['http:', 'https:'].includes(url.protocol) ||
+                    url.username ||
+                    url.password ||
+                    url.search ||
+                    url.hash ||
+                    (track.src !== url.pathname && track.src !== url.href) ||
+                    !url.pathname.startsWith(`/audio/${track.album}/`) ||
+                    !/^\/audio\/[^/]+\/[a-z0-9][a-z0-9._-]*\.(mp3|m4a|ogg|wav|flac)$/i.test(
+                        url.pathname,
+                    )
                 )
-                    throw new Error('Track must be a local audio file');
+                    throw new Error('Track must be a trusted full-song file');
                 return {
                     title: track.title.trim().slice(0, 120),
                     src: url.href,

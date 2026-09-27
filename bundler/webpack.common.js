@@ -3,6 +3,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const webpack = require('webpack');
 const CopyPlugin = require('copy-webpack-plugin');
+const { hostedPlaylist, audioCopyIgnores } = require('./audio-library');
 
 /**
  * A short content hash for each model and room texture, so the room can
@@ -77,10 +78,8 @@ module.exports = {
             patterns: [
                 {
                     from: 'static',
-                    // The album library is local-only (git-ignored): list
-                    // only tracks whose files exist, so a deploy without the
-                    // music ships an empty playlist and the room hides the
-                    // player instead of showing an error.
+                    // Every environment uses the independent full-song host.
+                    // A clean GitHub checkout needs no private music files.
                     transform(content, absoluteFrom) {
                         if (
                             !absoluteFrom.endsWith(
@@ -88,29 +87,11 @@ module.exports = {
                             )
                         )
                             return content;
-                        const list = JSON.parse(content.toString());
-                        // Full tracks where they exist (local); otherwise
-                        // the 30-second previews (scripts/make-previews.py).
-                        const has = (src) =>
-                            fs.existsSync(
-                                path.join(__dirname, '../static', src),
-                            );
-                        list.tracks = list.tracks
-                            .map((track) => {
-                                if (has(track.src)) return track;
-                                const preview = track.src.replace(
-                                    /^\/audio\//,
-                                    '/audio/previews/',
-                                );
-                                return has(preview)
-                                    ? { ...track, src: preview, preview: true }
-                                    : null;
-                            })
-                            .filter(Boolean);
-                        return JSON.stringify(list);
+                        return hostedPlaylist(content);
                     },
                     globOptions: {
                         ignore: [
+                            ...audioCopyIgnores,
                             '**/draco/**',
                             '**/images/**',
                             '**/layers/png/**',
