@@ -6,8 +6,7 @@
 // 2. Paste this into the browser console and wait for the download.
 // 3. Convert: cwebp -q 82 -alpha_q 90 blueprint.png -o static/room/blueprint.webp
 //    (or sharp/Pillow with WebP quality 82).
-// 4. If the camera or furniture moved, update ANCHORS in LoadingScreen.tsx
-//    from the "anchors" object this logs.
+// Regenerate the image if the camera or furniture moves.
 //
 // Hidden lines are removed with a depth-only pass; floors, walls and the
 // ceiling are drawn as faint construction lines, furniture in full. Begu

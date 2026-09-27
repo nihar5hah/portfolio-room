@@ -36,25 +36,14 @@ body {
 }
 
 /* ── Loading: a blueprint of the room (LoadingScreen.tsx) ─────────── */
-@font-face {
-    font-family: Mono;
-    src: url('/fonts/ibm-plex-mono-latin-600-normal.woff2');
-    font-weight: 600;
-}
 .boot-screen {
     --ink: rgba(236, 244, 255, 0.92);
-    --ink-dim: rgba(236, 244, 255, 0.6);
-    --paper: #0f3460;
+    --paper: #102c49;
     position: absolute;
     inset: 0;
     overflow: hidden;
     color: var(--ink);
-    font:
-        12px/1.45 Mono,
-        ui-monospace,
-        Menlo,
-        monospace;
-    letter-spacing: 0.4px;
+    font: 400 14px/1.5 var(--sys);
     transition:
         opacity 0.42s ease,
         visibility 0s linear 0.42s;
@@ -64,27 +53,19 @@ body {
     visibility: hidden;
     pointer-events: none;
 }
-.boot-screen p,
-.boot-screen h1,
-.boot-screen dl,
-.boot-screen dd {
+.boot-screen p {
     margin: 0;
 }
-/* Drafting paper: blueprint blue with a fine and a coarse grid. When the
-   drawing is done it fades, and the live room shows through the lines. */
+/* Fine drafting grid fades to reveal the live room beneath the linework. */
 .bp-paper {
     position: absolute;
     inset: 0;
     background:
-        linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px) 0 0 /
-            120px 120px,
-        linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px) 0
-            0 / 120px 120px,
-        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px) 0 0 /
+        linear-gradient(rgba(236, 244, 255, 0.025) 1px, transparent 1px) 0 0 /
             24px 24px,
-        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px)
+        linear-gradient(90deg, rgba(236, 244, 255, 0.025) 1px, transparent 1px)
             0 0 / 24px 24px,
-        radial-gradient(ellipse at 50% 40%, #174a82, var(--paper) 70%);
+        var(--paper);
     transition: opacity 1.4s ease 0.2s;
 }
 .boot-screen[data-drawn='true'] .bp-paper {
@@ -134,247 +115,114 @@ body {
     top: 0;
     bottom: 0;
     left: var(--scan);
-    width: 1.5px;
-    background: #eaf4ff;
-    box-shadow:
-        0 0 12px 2px rgba(150, 205, 255, 0.7),
-        0 0 40px 8px rgba(120, 180, 255, 0.25);
-}
-.bp-callout {
-    position: absolute;
-    width: 0;
-    height: 0;
-    opacity: 0;
-    transform: translateY(4px);
-    transition:
-        opacity 0.4s ease,
-        transform 0.4s ease;
-}
-.bp-callout[data-shown='true'] {
-    opacity: 1;
-    transform: none;
-}
-.boot-screen[data-drawn='true'] .bp-callout {
-    opacity: 0;
-    transition-delay: 0.6s;
-}
-.bp-callout-dot {
-    position: absolute;
-    left: -4px;
-    top: -4px;
-    width: 8px;
-    height: 8px;
-    border: 1.5px solid var(--ink);
-    border-radius: 50%;
-}
-.bp-callout-leader {
-    position: absolute;
-    left: 0;
     width: 1px;
-    height: 54px;
-    background: var(--ink-dim);
+    background: rgba(234, 244, 255, 0.65);
 }
-.bp-callout[data-dir='up'] .bp-callout-leader {
-    bottom: 4px;
-}
-.bp-callout[data-dir='down'] .bp-callout-leader {
-    top: 4px;
-}
-.bp-callout-tag {
+/* A full-width fade keeps the controls readable without enclosing them. */
+.bp-shade {
     position: absolute;
-    left: -1px;
-    padding: 5px 9px 6px;
-    border: 1px solid var(--ink-dim);
-    background: rgba(15, 52, 96, 0.82);
-    white-space: nowrap;
-    text-transform: uppercase;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+        to top,
+        rgba(4, 12, 22, 0.85),
+        rgba(4, 12, 22, 0.55) 130px,
+        transparent 340px
+    );
 }
-.bp-callout[data-dir='up'] .bp-callout-tag {
-    bottom: 58px;
-}
-.bp-callout[data-dir='down'] .bp-callout-tag {
-    top: 58px;
-}
-.bp-callout-tag b {
-    font-weight: 600;
-    margin-right: 4px;
-}
-.bp-callout-tag small {
-    display: block;
-    font-size: 10px;
-    color: var(--ink-dim);
-    text-transform: none;
-}
-.bp-sheet-head {
+.bp-controls {
     position: absolute;
-    top: 20px;
-    left: 24px;
+    left: max(24px, env(safe-area-inset-left));
+    right: max(24px, env(safe-area-inset-right));
+    bottom: calc(48px + env(safe-area-inset-bottom));
     display: flex;
-    border: 1px solid var(--ink-dim);
-    background: rgba(15, 52, 96, 0.85);
-    font-size: 10.5px;
-    letter-spacing: 1px;
-}
-.bp-sheet-head span {
-    padding: 5px 10px;
-}
-.bp-sheet-head span + span {
-    border-left: 1px solid var(--ink-dim);
-}
-/* The title block: who drew this, and Note 1: laptop or desktop. */
-.bp-title {
-    position: absolute;
-    right: 24px;
-    bottom: 24px;
-    width: 400px;
-    border: 1.5px solid var(--ink);
-    background: var(--paper);
-    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
-}
-.bp-title > * + * {
-    border-top: 1px solid var(--ink-dim);
-}
-.bp-title-name {
-    padding: 12px 14px 11px;
-}
-.bp-title h1 {
-    font: 700 22px/1.1 var(--sys);
-    letter-spacing: -0.2px;
-    color: #fff;
-}
-.bp-title-name p {
-    margin-top: 3px;
-    color: var(--ink-dim);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-size: 10.5px;
-}
-.bp-title dl {
-    display: grid;
-    grid-template-columns: 92px 1fr;
-}
-.bp-title dt,
-.bp-title dd {
-    padding: 6px 14px;
-}
-.bp-title dt {
-    color: var(--ink-dim);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-size: 10.5px;
-    border-right: 1px solid var(--ink-dim);
-}
-.bp-title dt:not(:first-of-type),
-.bp-title dd:not(:first-of-type) {
-    border-top: 1px solid rgba(236, 244, 255, 0.22);
-}
-.bp-status {
-    font-variant-numeric: tabular-nums;
-    color: #fff;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    text-align: center;
 }
 .bp-note {
-    display: flex;
-    gap: 12px;
-    padding: 10px 14px;
-    font-size: 12px;
-}
-.bp-note > b {
-    flex: none;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-size: 10.5px;
-    padding-top: 1px;
-}
-.bp-note span b {
-    color: #fff;
-    font-weight: 600;
-}
-.bp-note[data-warn='true'] {
-    background: #ffd166;
-    color: #16233a;
-}
-.bp-note[data-warn='true'] span b {
-    color: #16233a;
+    color: #e4eaf0;
+    font: 400 14px/1.5 var(--sys);
+    text-wrap: balance;
 }
 .bp-actions {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px 24px;
 }
 .bp-enter {
-    flex: 1;
-    height: 42px;
-    border: 1.5px solid #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    box-sizing: border-box;
+    width: 160px;
+    height: 46px;
+    padding: 0 24px;
+    border: 1px solid transparent;
+    border-radius: 999px;
     background: #fff;
-    color: var(--paper);
-    font:
-        600 13px Mono,
-        ui-monospace,
-        monospace;
-    letter-spacing: 1.2px;
-    text-transform: uppercase;
-    transition:
-        background 0.2s,
-        color 0.2s,
-        opacity 0.3s;
+    color: #102c49;
+    font: 500 14px/1 var(--sys);
+    white-space: nowrap;
+    transition: background 0.2s ease;
+}
+.bp-enter span {
+    font-size: 18px;
+    line-height: 1;
 }
 .bp-enter:not(:disabled):hover {
-    background: transparent;
-    color: #fff;
+    background: #e4edf5;
 }
 .bp-enter:disabled {
-    opacity: 0.45;
-    background: transparent;
-    color: #fff;
+    opacity: 1;
+    background: #dce3e9;
+    color: #405366;
     cursor: progress;
 }
 .bp-plain {
-    color: var(--ink-dim);
-    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    color: #d4dce5;
+    font: 400 14px/1.5 var(--sys);
     text-decoration: none;
+    text-underline-offset: 4px;
     white-space: nowrap;
+    transition: color 0.2s ease;
 }
 .bp-plain:hover {
     color: #fff;
     text-decoration: underline;
 }
+.bp-enter:focus-visible,
+.bp-plain:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 5px;
+}
 @media (max-width: 767px), (pointer: coarse) and (hover: none) {
-    .bp-sheet-head {
-        left: 12px;
-        top: max(12px, env(safe-area-inset-top));
-        font-size: 9px;
-    }
-    .bp-sheet-head span:last-child {
-        display: none;
-    }
-    .bp-title {
-        left: 12px;
-        right: 12px;
-        bottom: max(12px, env(safe-area-inset-bottom));
-        width: auto;
-    }
-    .bp-callout-tag small {
-        display: none;
-    }
-    .bp-actions {
-        flex-direction: column;
-        align-items: stretch;
-        text-align: center;
-    }
-    .bp-enter {
-        flex: none;
-        height: 46px;
+    .bp-controls {
+        bottom: calc(24px + env(safe-area-inset-bottom));
     }
 }
 @media (prefers-reduced-motion: reduce) {
     .boot-screen,
     .bp-paper,
     .bp-lines,
-    .bp-callout {
+    .bp-enter,
+    .bp-plain {
         transition: none;
+    }
+    .bp-lines {
+        -webkit-mask-image: none;
+        mask-image: none;
+    }
+    .bp-plotter {
+        display: none;
     }
 }
 /* ── Room overlay ─────────────────────────────────────────────── */

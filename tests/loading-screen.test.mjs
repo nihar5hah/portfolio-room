@@ -53,13 +53,23 @@ test('the plate lines up with the camera on wide, laptop and portrait screens', 
     assert.ok(Math.abs(d - c - 1 / PLATE_ASPECT) < 1e-9);
 });
 
-test('every callout points at something inside the plate', () => {
-    const { CALLOUTS } = load();
-    assert.equal(CALLOUTS.length, 4);
-    for (const c of CALLOUTS) {
-        assert.ok(c.u > 0 && c.u < 1 && c.v > 0 && c.v < 1, c.title);
-        assert.ok(['up', 'down'].includes(c.dir));
-    }
+test('progress stays within the display range', () => {
+    const { drafted } = load();
+    assert.equal(drafted(0, 58, 38), 0);
+    assert.equal(drafted(59, 58, 38), 1);
+});
+
+test('the loader keeps the device advice without cards or object labels', () => {
+    const source = fs.readFileSync(
+        new URL(
+            '../src/Application/UI/components/LoadingScreen.tsx',
+            import.meta.url,
+        ),
+        'utf8',
+    );
+    assert.match(source, /Best experienced on a laptop or desktop\./);
+    assert.doesNotMatch(source, /bp-callout|bp-title|bp-sheet-head|CALLOUTS/);
+    assert.match(source, /if \(leaving \|\| gone\) return/);
 });
 
 test('the blueprint the screen draws is shipped and small', () => {

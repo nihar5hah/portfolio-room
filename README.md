@@ -6,7 +6,7 @@ A portfolio you walk into. It's a 3D model of my room in the browser, with a Mac
 
 ## What's in the room
 
-- **A blueprint first.** While the room loads, a plotter draws it as a technical drawing: linework rendered from the real scene, from the exact camera the room opens at (`scripts/render-blueprint.js`). Numbered callouts point at the Mac, Begu, the bookshelf and match night. When everything has arrived, the live room fades in precisely under the lines. The title block's Note 1 says the room is designed for a laptop or desktop; on a phone it's highlighted, with the 2D portfolio as the alternative.
+- **A blueprint first.** While the room loads, a plotter draws it as a technical drawing: linework rendered from the real scene, from the exact camera the room opens at (`scripts/render-blueprint.js`). When everything has arrived, the live room fades in precisely under the lines. No cards or object labels: just a loading indicator, an entry button, a 2D portfolio link, and a quiet reminder that the room is best experienced on a laptop or desktop.
 
 - **The Mac.** Sit down at the desk and the lid opens into a macOS-style desktop: portfolio, projects, notes, résumé, a music app and a word game.
 - **Begu.** My Siberian husky walks the room, naps, eats, and fetches the football when you kick it. Click him to pet him, or open his chat to ask about my work (Gemini, grounded in my profile).
