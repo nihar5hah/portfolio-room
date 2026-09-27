@@ -6,6 +6,7 @@ import UIEventBus from '../UI/EventBus';
 import EventEmitter from './EventEmitter';
 import Loading from './Loading';
 import { dequantize } from './Dequantize';
+import assetUrl from './assetUrl';
 
 export default class Resources extends EventEmitter {
     sources: Resource[];
@@ -67,7 +68,7 @@ export default class Resources extends EventEmitter {
                 this.sourceLoaded(source, placeholder);
             } else if (source.type === 'gltfModel') {
                 this.loaders.gltfLoader.load(
-                    source.path,
+                    assetUrl(source.path),
                     (file) => {
                         // Models ship Meshopt-quantized (scripts/
                         // optimize-models.mjs); raycasts, bounds and the
@@ -80,7 +81,7 @@ export default class Resources extends EventEmitter {
                 );
             } else if (source.type === 'texture') {
                 this.loaders.textureLoader.load(
-                    source.path,
+                    assetUrl(source.path),
                     (file) => {
                         file.encoding = THREE.sRGBEncoding;
                         this.sourceLoaded(source, file);
@@ -120,7 +121,7 @@ export default class Resources extends EventEmitter {
     fetchLazy(name: string) {
         const source = this.lazySources.get(name);
         if (!source) return;
-        new THREE.ImageLoader().load(source.path, (image) => {
+        new THREE.ImageLoader().load(assetUrl(source.path), (image) => {
             // Decode off the main thread before the upload where supported.
             const ready = image.decode ? image.decode() : Promise.resolve();
             void ready

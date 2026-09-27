@@ -284,11 +284,15 @@ export function createPortfolioServer({
                 res.writeHead(404);
                 return res.end('Not found');
             }
-            // Hashed build files and album tracks never change under the same
-            // name, so returning visitors reuse them. Everything else (HTML,
-            // the playlist, models and textures that keep their names when
-            // edited) revalidates, answered with a cheap 304 when unchanged.
-            const immutable = /\.[0-9a-f]{16,}\.|[\\/]audio[\\/]/.test(path);
+            // Hashed build files, album tracks, and models and textures asked
+            // for by content hash (`?v=`, Utils/assetUrl.ts) never change
+            // under the same URL, so returning visitors reuse them.
+            // Everything else (HTML, the playlist, unversioned files)
+            // revalidates, answered with a cheap 304 when unchanged.
+            const immutable =
+                /\.[0-9a-f]{16,}\.|[\\/]audio[\\/]/.test(path) ||
+                (url.searchParams.has('v') &&
+                    /^\/(models|room)\//.test(url.pathname));
             // A Brotli or gzip copy from the build, when the browser takes
             // it (whole-file requests only; ranges stay on the original).
             const type = types[extname(path)] || 'application/octet-stream';

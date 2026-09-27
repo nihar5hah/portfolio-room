@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Application from '../../Application';
 import eventBus from '../EventBus';
+import assetUrl from '../../Utils/assetUrl';
 
 /** Linework rendered from the room's opening camera; see render-blueprint.js. */
 export const PLATE_ASPECT = 2.4;
@@ -136,7 +137,7 @@ export default function LoadingScreen() {
             >
                 <img
                     className="bp-lines"
-                    src="/room/blueprint.webp"
+                    src={assetUrl('/room/blueprint.webp')}
                     alt=""
                     decoding="async"
                 />

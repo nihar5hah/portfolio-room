@@ -115,6 +115,51 @@ export default class Renderer {
         this.shadowFrames = 2;
     }
 
+    /**
+     * Do the first-sight work while the loading screen is up, not when the
+     * visitor first turns towards something. three.js only prepares what is
+     * in view, so turning to the lounge compiled shaders, uploaded textures
+     * and (on Macs and iPhones, where WebGL runs on Metal) built GPU
+     * pipelines mid-visit: a 456 ms freeze on an M4, far longer on a phone.
+     * Compiling alone does not cover Metal's pipelines, which are built at
+     * the first real draw, so draw everything once, off-screen parts and
+     * the shadow pass included (220 ms on an M4, behind the loading
+     * screen; the picture is the same, off-screen parts are just clipped).
+     * Textures of hidden things are uploaded a few per frame after.
+     */
+    warmUp() {
+        const renderer = this.instance;
+        const scene = this.scene;
+        const camera = this.camera.instance;
+        try {
+            renderer.compile(scene, camera);
+        } catch {
+            // A material the driver rejects shows its error when drawn.
+        }
+        const culled: THREE.Object3D[] = [];
+        scene.traverse((object) => {
+            if (!object.frustumCulled) return;
+            object.frustumCulled = false;
+            culled.push(object);
+        });
+        try {
+            renderer.shadowMap.needsUpdate = !!renderer.shadowMap.enabled;
+            renderer.render(scene, camera);
+        } finally {
+            culled.forEach((object) => (object.frustumCulled = true));
+        }
+        const queue = texturesIn(scene);
+        const step = () => {
+            if (this.lost) return;
+            const start = performance.now();
+            while (queue.length && performance.now() - start < 6)
+                renderer.initTexture(queue.shift()!);
+            if (queue.length) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+        return queue.length;
+    }
+
     monitor = false;
     lost = false;
     roomExposure = 0.85;
@@ -177,4 +222,25 @@ export default class Renderer {
         }
     }
     cssPrimed = false;
+}
+
+/**
+ * Every texture a material in the scene uses that has image data ready to
+ * upload (lazy album art is still a placeholder until it arrives).
+ */
+export function texturesIn(scene: THREE.Object3D) {
+    const found = new Set<THREE.Texture>();
+    scene.traverse((object) => {
+        const material = (object as THREE.Mesh).material;
+        if (!material) return;
+        for (const m of Array.isArray(material) ? material : [material])
+            for (const value of Object.values(m))
+                if (
+                    value instanceof THREE.Texture &&
+                    value.version > 0 &&
+                    (value.image as { width?: number } | undefined)?.width
+                )
+                    found.add(value);
+    });
+    return [...found];
 }

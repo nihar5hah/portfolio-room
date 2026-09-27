@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import Application from '../Application';
 import { occluded } from '../Utils/Occlusion';
 import { DESK_Z } from './Layout';
+import { mergeModel } from '../Utils/StaticBatch';
 
 export const LAPTOP_SCREEN = { width: 1512, height: 982 };
 const MODEL_SCALE = 2540 / 35.482;
@@ -29,6 +30,8 @@ export default class Computer {
     root!: THREE.Object3D;
     labelBlocked = false;
     labelCheck = 0;
+    /** Draw calls before and after merging the parts (for ?debug). */
+    merged = { before: 0, after: 0 };
 
     constructor() {
         const model = this.app.resources.items.gltfModel.macbookModel.scene;
@@ -78,6 +81,25 @@ export default class Computer {
         glass.envMapIntensity = 0;
         glass.roughness = 0.65;
         glass.metalness = 0;
+        // 60 parts, one draw call each (twice with shadows): merge them by
+        // material, the base into the root and the lid into its hinge, so
+        // the lid still opens. Nothing looks the parts up after this.
+        const base = mergeModel(
+            root,
+            root,
+            (part) => part === this.hinge,
+            true,
+        );
+        const lidParts = mergeModel(
+            this.hinge,
+            this.hinge,
+            (part) => part === this.screenAnchor,
+            true,
+        );
+        this.merged = {
+            before: base.before + lidParts.before,
+            after: base.after + lidParts.after,
+        };
         this.hinge.rotation.x = CLOSED_ANGLE;
         this.app.scene.add(root);
         this.screenGlow.name = 'MacBook screen glow';

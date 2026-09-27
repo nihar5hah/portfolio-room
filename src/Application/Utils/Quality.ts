@@ -87,11 +87,16 @@ export function settingsFor(tier: Tier, d: DeviceInfo): QualitySettings {
     // arm's length; the governor goes lower if the GPU needs it.
     const small = d.touch || d.screen < 900;
     const dpr = d.devicePixelRatio || 1;
+    // Laptops and monitors at 2× (Retina): rendering at the screen's own
+    // density without MSAA is sharper than 1.75× with it, and cheaper
+    // (6.8 vs 8.3 ms a frame on an M4; the multisample buffers alone are
+    // ~75 MB). Phones keep MSAA: their tiled GPUs resolve it on-chip.
+    const dense = !small && dpr >= 2;
     if (tier === 'high')
         return {
             tier,
-            antialias: true,
-            maxPixelRatio: Math.min(dpr, small ? 1.5 : 1.75),
+            antialias: !dense,
+            maxPixelRatio: Math.min(dpr, small ? 1.5 : dense ? 2 : 1.75),
             minPixelRatio: Math.min(dpr, 0.85),
             shadowMapSize: 2048,
             shadowInterval: 2,
@@ -103,8 +108,8 @@ export function settingsFor(tier: Tier, d: DeviceInfo): QualitySettings {
     if (tier === 'medium')
         return {
             tier,
-            antialias: !small,
-            maxPixelRatio: Math.min(dpr, small ? 1.25 : 1.35),
+            antialias: !small && !dense,
+            maxPixelRatio: Math.min(dpr, small ? 1.25 : dense ? 1.5 : 1.35),
             minPixelRatio: Math.min(dpr, 0.75),
             shadowMapSize: 1024,
             shadowInterval: 4,

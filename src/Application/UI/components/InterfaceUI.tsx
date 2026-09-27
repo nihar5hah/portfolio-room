@@ -5,8 +5,12 @@ import { ALBUMS, AlbumState } from '../../Audio/AlbumAudio';
 import TvView from './TvView';
 import Goat from './Goat';
 import Ps5View from './Ps5View';
+import assetUrl from '../../Utils/assetUrl';
 const ART = Object.fromEntries(
-    Object.keys(ALBUMS).map((slug) => [slug, `/room/albums/${slug}.jpg`]),
+    Object.keys(ALBUMS).map((slug) => [
+        slug,
+        assetUrl(`/room/albums/${slug}.webp`),
+    ]),
 ) as Record<keyof typeof ALBUMS, string>;
 export default function InterfaceUI() {
     const [visible, setVisible] = useState(false);

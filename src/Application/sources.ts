@@ -5,19 +5,19 @@ const sources: Resource[] = [
         {
             name: `poster_${slug}`,
             type: 'texture',
-            path: `room/albums/${slug}.jpg`,
+            path: `room/albums/${slug}.webp`,
             optional: true,
             lazy: true,
         },
         {
             name: `${slug}Vinyl`,
             type: 'texture',
-            path: `room/${slug}-vinyl.jpg`,
+            path: `room/${slug}-vinyl.webp`,
             optional: true,
             lazy: true,
         },
     ]),
-    { name: 'messiJersey', type: 'texture', path: 'room/messi-10.jpg' },
+    { name: 'messiJersey', type: 'texture', path: 'room/messi-10.webp' },
     {
         name: 'argentinaJersey',
         type: 'texture',

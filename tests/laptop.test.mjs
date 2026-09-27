@@ -32,6 +32,117 @@ async function geometry() {
     );
 }
 
+/** Transpile one of the room's modules; `stubs` answers its imports. */
+function loadTs(path, stubs = {}) {
+    const compiled = require('typescript').transpileModule(
+        fs.readFileSync(new URL(path, import.meta.url), 'utf8'),
+        {
+            compilerOptions: {
+                module: require('typescript').ModuleKind.CommonJS,
+                target: require('typescript').ScriptTarget.ES2022,
+            },
+        },
+    ).outputText;
+    const exports = {};
+    new Function('require', 'exports', compiled)(
+        (name) => stubs[name] ?? (name === 'three' ? THREE : require(name)),
+        exports,
+    );
+    return exports;
+}
+
+test('the MacBook draws in a handful of calls, looks the same, and its lid still opens', async () => {
+    globalThis.document = { getElementById: () => null };
+    const build = async (merge) => {
+        const model = await geometry();
+        // As Resources does in the room: plain floats before anything else.
+        if (merge)
+            loadTs('../src/Application/Utils/Dequantize.ts').dequantize(
+                model.scene,
+            );
+        const app = {
+            resources: { items: { gltfModel: { macbookModel: model } } },
+            scene: new THREE.Scene(),
+            reducedMotion: { matches: true },
+            time: { delta: 16 },
+            camera: { currentKeyframe: 'idle' },
+        };
+        const Computer = loadTs('../src/Application/World/Computer.ts', {
+            '../Application': {
+                default: class {
+                    constructor() {
+                        return app;
+                    }
+                },
+            },
+            './Layout': layout,
+            '../Utils/Occlusion': { occluded: () => false },
+            '../Utils/StaticBatch': merge
+                ? loadTs('../src/Application/Utils/StaticBatch.ts')
+                : { mergeModel: () => ({ before: 0, after: 0 }) },
+        }).default;
+        return { app, computer: new Computer() };
+    };
+    const box = (object) => {
+        object.updateWorldMatrix(true, true);
+        const bounds = new THREE.Box3(),
+            point = new THREE.Vector3();
+        object.traverse((part) => {
+            if (!part.isMesh || !part.visible) return;
+            const position = part.geometry.getAttribute('position');
+            const divisor = position.normalized
+                ? position.array instanceof Int16Array
+                    ? 32767
+                    : 65535
+                : 1;
+            for (let i = 0; i < position.count; i++)
+                bounds.expandByPoint(
+                    point
+                        .fromBufferAttribute(position, i)
+                        .divideScalar(divisor)
+                        .applyMatrix4(part.matrixWorld),
+                );
+        });
+        return bounds;
+    };
+    const meshes = (object) => {
+        let count = 0;
+        object.traverse((part) => part.isMesh && part.visible && count++);
+        return count;
+    };
+    const plain = await build(false);
+    const merged = await build(true);
+    assert.ok(meshes(plain.computer.root) >= 50, 'the shipped model: 60 parts');
+    assert.ok(
+        meshes(merged.computer.root) <= meshes(plain.computer.root) / 5,
+        `merged into a few draw calls (${meshes(merged.computer.root)})`,
+    );
+    assert.ok(merged.computer.merged.after < merged.computer.merged.before);
+    const same = (a, b, what) => {
+        for (const edge of ['min', 'max'])
+            for (const axis of ['x', 'y', 'z'])
+                assert.ok(
+                    Math.abs(a[edge][axis] - b[edge][axis]) < 0.5,
+                    `${what}: ${edge}.${axis} ${a[edge][axis]} vs ${b[edge][axis]}`,
+                );
+    };
+    for (const { app, computer } of [plain, merged]) {
+        app.camera.currentKeyframe = 'idle';
+        computer.update();
+    }
+    same(box(merged.computer.root), box(plain.computer.root), 'closed');
+    const closedLid = box(merged.computer.hinge);
+    for (const { app, computer } of [plain, merged]) {
+        app.camera.currentKeyframe = 'monitor';
+        computer.update();
+    }
+    same(box(merged.computer.root), box(plain.computer.root), 'open');
+    assert.ok(
+        box(merged.computer.hinge).max.y - closedLid.max.y > 1000,
+        'the merged lid swings up with its hinge',
+    );
+});
+
 test('shipped MacBook closes above the base, opens with approach, and survives reversal/reduced motion', async () => {
     globalThis.document = { getElementById: () => null };
     const model = await geometry();
@@ -66,8 +177,12 @@ test('shipped MacBook closes above the base, opens with approach, and survives r
                 : name === './Layout'
                   ? layout
                   : name === '../Utils/Occlusion'
-                  ? { occluded: () => false }
-                  : require(name),
+                    ? { occluded: () => false }
+                    : // Calibration is checked on the named parts, unmerged
+                      // (the merge has its own test above).
+                      name === '../Utils/StaticBatch'
+                      ? { mergeModel: () => ({ before: 0, after: 0 }) }
+                      : require(name),
         exports,
     );
     const computer = new exports.default();

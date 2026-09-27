@@ -127,6 +127,8 @@ export default class World {
                 );
             if (quality.tier === 'low') shrinkTextures(this.scene, 512);
             this.applyQuality(quality.settings, true);
+            // Every shader and texture, before the visitor walks in.
+            this.application.renderer.warmUp();
             // const hb = new Hitboxes();
             // this.cursor = new Cursor();
         });

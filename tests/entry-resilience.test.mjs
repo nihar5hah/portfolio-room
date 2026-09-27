@@ -26,6 +26,7 @@ test('optional artwork failures finish loading; required models keep the room un
     const events = [];
     const Resources = load('../src/Application/Utils/Resources.ts', {
         three: THREE,
+        './assetUrl': { default: (path) => path },
         '../UI/EventBus': {
             default: { dispatch: (name) => events.push(name) },
         },
@@ -81,19 +82,32 @@ test('album art never blocks entry, loads only when wanted, and fills the same t
                 load(path, done) {
                     fetched.push(path);
                     loaded = new Promise((resolve) =>
-                        setTimeout(() => resolve(done({ path, width: 500, height: 500 }))),
+                        setTimeout(() =>
+                            resolve(done({ path, width: 500, height: 500 })),
+                        ),
                     );
                 }
             },
         },
+        './assetUrl': { default: (path) => path },
         '../UI/EventBus': { default: { dispatch() {} } },
     });
     const events = [];
     const resources = Object.create(Resources.prototype);
     Object.assign(resources, {
         sources: [
-            { name: 'sleeve', type: 'texture', path: 'room/albums/x.jpg', lazy: true },
-            { name: 'other', type: 'texture', path: 'room/albums/y.jpg', lazy: true },
+            {
+                name: 'sleeve',
+                type: 'texture',
+                path: 'room/albums/x.jpg',
+                lazy: true,
+            },
+            {
+                name: 'other',
+                type: 'texture',
+                path: 'room/albums/y.jpg',
+                lazy: true,
+            },
         ],
         items: { texture: {} },
         lazySources: new Map(),
@@ -105,18 +119,38 @@ test('album art never blocks entry, loads only when wanted, and fills the same t
         trigger: (name) => events.push(name),
         on() {},
         swatch: () => ({ width: 1, height: 1 }),
-        loaders: { textureLoader: { load: () => assert.fail('must not block on album art') } },
+        loaders: {
+            textureLoader: {
+                load: () => assert.fail('must not block on album art'),
+            },
+        },
     });
     resources.startLoading();
     resources.want('sleeve'); // a sleeve in the room asks for its art
     const placeholder = resources.items.texture.sleeve;
-    assert.deepEqual(events, ['ready'], 'room is enterable before any album art arrives');
+    assert.deepEqual(
+        events,
+        ['ready'],
+        'room is enterable before any album art arrives',
+    );
     await new Promise((r) => setTimeout(r)); // fill() is scheduled after ready
     await loaded;
     await new Promise((r) => setTimeout(r)); // decode, then upload
-    assert.deepEqual(fetched, ['room/albums/x.jpg'], 'art nothing shows is never fetched');
-    assert.equal(resources.items.texture.sleeve, placeholder, 'materials keep their texture object');
-    assert.equal(placeholder.image.path, 'room/albums/x.jpg', 'real artwork replaces the swatch');
+    assert.deepEqual(
+        fetched,
+        ['room/albums/x.jpg'],
+        'art nothing shows is never fetched',
+    );
+    assert.equal(
+        resources.items.texture.sleeve,
+        placeholder,
+        'materials keep their texture object',
+    );
+    assert.equal(
+        placeholder.image.path,
+        'room/albums/x.jpg',
+        'real artwork replaces the swatch',
+    );
 });
 
 test('every transition out of monitor restores room state, and mobile entries open readable content', () => {

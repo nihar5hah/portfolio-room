@@ -67,8 +67,81 @@ export function batchStatic(root: THREE.Object3D, minimum = 2) {
     return { merged, batches, saved: merged - batches };
 }
 
-function eligible(mesh: THREE.Mesh) {
-    if (!mesh.isMesh || mesh.name !== '' || mesh.children.length) return false;
+/**
+ * For a model whose parts nothing looks up after set-up (the MacBook: 60
+ * named glTF nodes, one draw call each): merge every eligible mesh under
+ * `source`, at any depth, into one mesh per material in `target`'s space.
+ * Subtrees `skip` returns true for are left alone (a lid that rotates is
+ * merged separately, into its hinge). `transparent` also merges see-through
+ * parts that share a material: one colour blends the same in any order.
+ */
+export function mergeModel(
+    source: THREE.Object3D,
+    target: THREE.Object3D,
+    skip: (object: THREE.Object3D) => boolean = () => false,
+    transparent = false,
+) {
+    source.updateWorldMatrix(true, true);
+    target.updateWorldMatrix(true, false);
+    const inverse = target.matrixWorld.clone().invert();
+    const groups = new Map<
+        string,
+        { mesh: THREE.Mesh; matrix: THREE.Matrix4 }[]
+    >();
+    const visit = (object: THREE.Object3D) => {
+        if (object !== source && skip(object)) return;
+        const mesh = object as THREE.Mesh;
+        if (mesh.isMesh && eligible(mesh, true, transparent)) {
+            const matrix = inverse.clone().multiply(mesh.matrixWorld);
+            if (matrix.determinant() > 0) {
+                const key = keyOf(mesh);
+                const list = groups.get(key) ?? [];
+                list.push({ mesh, matrix });
+                groups.set(key, list);
+            }
+        }
+        object.children.slice().forEach(visit);
+    };
+    visit(source);
+    let before = 0,
+        after = 0;
+    for (const parts of groups.values()) {
+        before += parts.length;
+        if (parts.length < 2) {
+            after++;
+            continue;
+        }
+        const geometries = parts.map(({ mesh, matrix }) => {
+            const geometry = mesh.geometry.clone();
+            geometry.clearGroups();
+            geometry.applyMatrix4(matrix);
+            return geometry;
+        });
+        const geometry = mergeBufferGeometries(geometries, false);
+        geometries.forEach((g) => g.dispose());
+        if (!geometry) {
+            after += parts.length;
+            continue;
+        }
+        geometry.computeBoundingBox();
+        geometry.computeBoundingSphere();
+        const first = parts[0].mesh;
+        const batch = new THREE.Mesh(geometry, first.material);
+        batch.castShadow = first.castShadow;
+        batch.receiveShadow = first.receiveShadow;
+        batch.renderOrder = first.renderOrder;
+        batch.userData.batched = parts.length;
+        batch.matrixAutoUpdate = false;
+        target.add(batch);
+        for (const { mesh } of parts) mesh.removeFromParent();
+        after++;
+    }
+    return { before, after };
+}
+
+function eligible(mesh: THREE.Mesh, named = false, transparent = false) {
+    if (!mesh.isMesh || (!named && mesh.name !== '') || mesh.children.length)
+        return false;
     if (
         (mesh as THREE.SkinnedMesh).isSkinnedMesh ||
         (mesh as THREE.InstancedMesh).isInstancedMesh ||
@@ -77,7 +150,11 @@ function eligible(mesh: THREE.Mesh) {
     )
         return false;
     const material = mesh.material;
-    if (!material || Array.isArray(material) || material.transparent)
+    if (
+        !material ||
+        Array.isArray(material) ||
+        (material.transparent && !transparent)
+    )
         return false;
     // Custom behaviour attached to this particular object.
     if (
@@ -88,9 +165,13 @@ function eligible(mesh: THREE.Mesh) {
     const geometry = mesh.geometry;
     if (!geometry?.attributes?.position) return false;
     if (Object.keys(geometry.morphAttributes).length) return false;
-    for (const name of Object.keys(geometry.attributes))
-        if ((geometry.attributes[name] as any).isInterleavedBufferAttribute)
-            return false;
+    for (const name of Object.keys(geometry.attributes)) {
+        const attribute = geometry.attributes[name] as THREE.BufferAttribute;
+        if ((attribute as any).isInterleavedBufferAttribute) return false;
+        // Still quantized (not run through Utils/Dequantize.ts): baking a
+        // transform into packed integers would wreck the geometry.
+        if (attribute.normalized) return false;
+    }
     // A mirrored piece would turn inside out once baked into the batch.
     mesh.updateMatrix();
     if (mesh.matrix.determinant() <= 0) return false;

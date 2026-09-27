@@ -28,7 +28,7 @@ const NAMES = {
     fouryou: 'Four You · Karan Aujla',
 } as const;
 type Album = keyof typeof NAMES;
-// Sleeves are 500-800px JPGs made for the room; the app shows them at 132px
+// Sleeves are 500-800px images made for the room; the app shows them at 132px
 // and 34px, so it uses small WebP copies (desktop/scripts/optimize-images.mjs)
 // and falls back to the original if a copy is missing.
 const art = (slug: Album, size: 96 | 264) =>
@@ -36,7 +36,7 @@ const art = (slug: Album, size: 96 | 264) =>
 const original = (event: React.SyntheticEvent<HTMLImageElement>) => {
     const image = event.currentTarget;
     const slug = /thumbs\/([\w-]+)-\d+\.webp$/.exec(image.src)?.[1];
-    if (slug) image.src = `/room/albums/${slug}.jpg`;
+    if (slug) image.src = `/room/albums/${slug}.webp`;
 };
 
 // Both entry points use AlbumAudio; keep standalone audio alive across window closes.

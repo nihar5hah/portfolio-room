@@ -40,7 +40,7 @@ test('Music shows small album art, with a copy for every album', () => {
     // Queue rows are lazy and sized; the originals stay as the fallback.
     assert.match(music, /loading="lazy"/);
     assert.match(music, /decoding="async"/);
-    assert.match(music, /\/room\/albums\/\$\{slug\}\.jpg/);
+    assert.match(music, /\/room\/albums\/\$\{slug\}\.webp/);
 });
 
 test('dock icons and the wallpaper ship at the size they are shown', () => {

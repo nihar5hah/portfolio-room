@@ -1,6 +1,43 @@
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
+const webpack = require('webpack');
 const CopyPlugin = require('copy-webpack-plugin');
+
+/**
+ * A short content hash for each model and room texture, so the room can
+ * ask for `models/…glb?v=<hash>`: that URL can be cached for good
+ * (vercel.json), and changes whenever the file does. See
+ * src/Application/Utils/assetUrl.ts.
+ */
+/** Kept in the repo as sources, never deployed (see the copy ignores). */
+const SOURCE_ONLY = /^room\/(albums\/[^/]+|[^/]+-vinyl|messi-10)\.jpg$/;
+
+function assetVersions() {
+    const root = path.resolve(__dirname, '../static');
+    const versions = {};
+    const walk = (dir) => {
+        for (const entry of fs.readdirSync(path.join(root, dir), {
+            withFileTypes: true,
+        })) {
+            const rel = path.posix.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                if (entry.name !== 'thumbs') walk(rel);
+            } else if (
+                /\.(glb|jpe?g|webp|png|svg)$/.test(entry.name) &&
+                !SOURCE_ONLY.test(rel)
+            )
+                versions[rel] = crypto
+                    .createHash('sha1')
+                    .update(fs.readFileSync(path.join(root, rel)))
+                    .digest('hex')
+                    .slice(0, 10);
+        }
+    };
+    walk('models');
+    walk('room');
+    return versions;
+}
 const HtmlPlugin = require('html-webpack-plugin');
 const CSSPlugin = require('mini-css-extract-plugin');
 module.exports = {
@@ -91,10 +128,19 @@ module.exports = {
                             '**/models/Begu/shiba.glb',
                             '**/models/Decor/baked_decor_modified.jpg',
                             '**/models/Decor/decor.glb',
+                            // Album art and the Messi shirt ship as WebP;
+                            // the JPEGs stay as sources (desktop/scripts/
+                            // optimize-images.mjs makes thumbnails from them).
+                            '**/room/albums/*.jpg',
+                            '**/room/*-vinyl.jpg',
+                            '**/room/messi-10.jpg',
                         ],
                     },
                 },
             ],
+        }),
+        new webpack.DefinePlugin({
+            __ASSET_VERSIONS__: JSON.stringify(assetVersions()),
         }),
         new CSSPlugin({ filename: '[name].[contenthash].css' }),
         new HtmlPlugin({ template: 'src/index.html', chunks: ['room'] }),

@@ -110,9 +110,20 @@ test('each tier trades resolution, shadows, lights and effects', () => {
     const medium = settingsFor('medium', phone);
     assert.ok(medium.maxPixelRatio <= 1.25);
     assert.equal(medium.lights, 'key');
-    const high = settingsFor('high', device({ devicePixelRatio: 2 }));
+    const high = settingsFor('high', device({ devicePixelRatio: 1.25 }));
     assert.equal(high.antialias, true);
     assert.equal(high.lights, 'all');
+    // Retina laptops: the screen's own density instead of MSAA.
+    const retina = settingsFor('high', device({ devicePixelRatio: 2 }));
+    assert.equal(retina.antialias, false);
+    assert.equal(retina.maxPixelRatio, 2);
+    const retinaMedium = settingsFor('medium', device({ devicePixelRatio: 2 }));
+    assert.equal(retinaMedium.antialias, false);
+    assert.equal(retinaMedium.maxPixelRatio, 1.5);
+    // Phones keep MSAA (resolved on-chip) at a capped density.
+    const highPhone = settingsFor('high', phone);
+    assert.equal(highPhone.antialias, true);
+    assert.equal(highPhone.maxPixelRatio, 1.5);
     assert.ok(high.shadowMapSize >= low.shadowMapSize);
     // Never above the screen's own density.
     assert.equal(

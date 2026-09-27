@@ -68,6 +68,9 @@ export const PLAN = {
     'Chair/embody.glb': { ratio: 0.5, error: 0.0008, floatPositions: true },
     'Begu/husky.glb': { resample: true, floatPositions: true },
     'Bear/dropout-bear.glb': { ratio: 0.7, error: 0.0006 },
+    // A palm-sized ball: 1024² colour and normal maps were 11 MB of GPU
+    // memory and half the file; 512² is sharp at any distance in the room.
+    'Football/brazuca.glb': { texture: 512 },
 };
 
 const [dir, ...only] = process.argv.slice(2);
