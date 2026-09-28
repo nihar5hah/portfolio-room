@@ -43,6 +43,62 @@ export type LampSwitch = 'floorLamp' | 'deskLamp';
 const mixColor = (a: string, b: string, t: number) =>
     new THREE.Color(a).lerp(new THREE.Color(b), THREE.MathUtils.clamp(t, 0, 1));
 
+/** The room's walls, floor and ceiling, for the mirror's box projection. */
+const ROOM_BOX = new THREE.Box3(
+    new THREE.Vector3(-18000, -3015, -6500),
+    new THREE.Vector3(18000, -3015 + 13900, 18500),
+);
+
+/**
+ * A mirror showing a cube-map snapshot of the room. Box projection:
+ * follow the reflected ray to where it leaves the room's box, then look
+ * that point up from where the snapshot was taken. A plain cube map would
+ * show the room as if it were infinitely far away, wrong for anything in
+ * it. Unlit, and a little darker than the room, like real mirror glass.
+ */
+export function mirrorMaterial(
+    envMap: THREE.Texture,
+    probe: THREE.Vector3,
+    box: THREE.Box3,
+) {
+    return new THREE.ShaderMaterial({
+        uniforms: {
+            envMap: { value: envMap },
+            probe: { value: probe.clone() },
+            boxMin: { value: box.min.clone() },
+            boxMax: { value: box.max.clone() },
+            tint: { value: new THREE.Color(0.84, 0.86, 0.88) },
+        },
+        vertexShader: /* glsl */ `
+            varying vec3 vWorld;
+            varying vec3 vNormal;
+            void main() {
+                vec4 world = modelMatrix * vec4(position, 1.0);
+                vWorld = world.xyz;
+                vNormal = normalize(mat3(modelMatrix) * normal);
+                gl_Position = projectionMatrix * viewMatrix * world;
+            }`,
+        fragmentShader: /* glsl */ `
+            uniform samplerCube envMap;
+            uniform vec3 probe;
+            uniform vec3 boxMin;
+            uniform vec3 boxMax;
+            uniform vec3 tint;
+            varying vec3 vWorld;
+            varying vec3 vNormal;
+            void main() {
+                vec3 ray = reflect(normalize(vWorld - cameraPosition), normalize(vNormal));
+                ray += vec3(equal(ray, vec3(0.0))) * 1e-5;
+                vec3 wall = mix(boxMin, boxMax, step(0.0, ray));
+                vec3 reach = (wall - vWorld) / ray;
+                vec3 hit = vWorld + ray * min(min(reach.x, reach.y), reach.z);
+                gl_FragColor = vec4(textureCube(envMap, hit - probe).rgb * tint, 1.0);
+                #include <tonemapping_fragment>
+                #include <encodings_fragment>
+            }`,
+    });
+}
+
 export default class Environment {
     /** Repaints the window view for a sky state. */
     paintSky: (sky: SkyState) => void = () => undefined;
@@ -66,6 +122,22 @@ export default class Environment {
     sleep = 0;
     sleepTarget = 0;
     mirror: THREE.MeshBasicMaterial | undefined;
+    mirrorGroup: THREE.Group | undefined;
+    mirrorGlass: THREE.Mesh | undefined;
+    /** Cube-map size for the mirror's snapshot of the room; 0 = none. */
+    mirrorSize = 0;
+    mirrorProbe:
+        | { camera: THREE.CubeCamera; target: THREE.WebGLCubeRenderTarget }
+        | undefined;
+    /** When the next snapshot is due (ms, performance.now), 0 = none. */
+    mirrorDue = 0;
+    mirrorPendingSince = 0;
+    /** The lighting the current snapshot shows. */
+    mirrorShows = '';
+    /** Walls and ceiling: lifted a little by daylight. */
+    walls: THREE.MeshStandardMaterial | undefined;
+    wallNight: THREE.Color | undefined;
+    wallDay: THREE.Color | undefined;
     reflections = new WeakMap<THREE.Material, number>();
     reflectionLevel = -1;
     lightingKey = '';
@@ -261,6 +333,7 @@ export default class Environment {
         const material = (color: string, roughness = 0.8) =>
             new THREE.MeshStandardMaterial({ color, roughness });
         const charcoal = material('#23262d');
+        this.walls = charcoal;
         const black = material('#14171e', 0.55);
         const wood = material('#513b2c');
         const brass = material('#ab8552', 0.38);
@@ -1594,13 +1667,13 @@ export default class Environment {
         mirror.position.set(17730, FLOOR + 2950, -1510);
         mirror.rotation.y = -Math.PI / 2;
         mirror.add(box(1830, 5900, 140, wood, 0, 0, 0, 70));
-        // ponytail: a live Reflector re-rendered the whole room every frame
-        // (+100 draw calls, ~40% of frame time). The scene already has a PMREM
-        // env map of the room, so a mirror-finish metal plane reflects the
-        // room's colours for free. Upgrade path: Reflector throttled to 1/4 fps.
-        // Reflection only, no lighting: a mirror-finish standard material
-        // turned the floor lamp into a hard white hotspot. Its brightness
-        // follows the room's light level (see `lighting`).
+        // A live Reflector re-rendered the whole room every frame (+100 draw
+        // calls, ~40% of frame time). Instead the mirror shows a snapshot of
+        // the room (`updateMirror`): a cube map taken in front of the glass
+        // and re-taken only when the lighting changes, drawn with box
+        // projection so walls and furniture land where they should. Until
+        // the first snapshot (and if the tier takes none), it reflects the
+        // generic studio env map, dimmed with the room's light level.
         this.mirror = new THREE.MeshBasicMaterial({
             color: 0x9aa3ab,
             envMap: app.scene?.environment ?? null,
@@ -1613,6 +1686,16 @@ export default class Environment {
         glass.position.z = 76;
         mirror.add(glass);
         room.add(mirror);
+        this.mirrorGroup = mirror;
+        this.mirrorGlass = glass;
+        // A lost context loses the snapshot too: take a new one.
+        app.renderer?.instance?.domElement.addEventListener(
+            'webglcontextrestored',
+            () => {
+                this.mirrorShows = '';
+                this.scheduleMirror('');
+            },
+        );
         // Wardrobe and a bedside ledge make this a lived-in bedroom, not an empty display set.
         box(4550, 6200, 1350, wood, 13500, FLOOR + 3100, -5700, 70).name =
             'Walnut wardrobe';
@@ -2227,6 +2310,8 @@ export default class Environment {
                       ? 0.2
                       : 0.4;
         this.ambientDetail = settings.ambientDetail;
+        // Fixed at start-up, like the lights: the snapshot keeps its size.
+        if (initial) this.mirrorSize = settings.mirrorSize ?? 0;
         const size = settings.shadowMapSize;
         if (this.key) {
             if (initial) this.key.castShadow = size > 0;
@@ -2348,6 +2433,8 @@ export default class Environment {
         const key = `${cloud.toFixed(3)}|${flash.toFixed(3)}|${this.sleep.toFixed(3)}|${this.flagLightScale.toFixed(3)}|${switches.floorLamp.level.toFixed(3)}|${switches.deskLamp.level.toFixed(3)}`;
         if (key === this.lightingKey || !this.practicals) return;
         this.lightingKey = key;
+        // Daylight changes slowly: a new mirror snapshot every 0.02 of it.
+        this.scheduleMirror(`${key}|${day.toFixed(2)}`);
         const level: Record<Practical, number> = {
             floorLamp: switches.floorLamp.level,
             deskLamp: switches.deskLamp.level,
@@ -2395,7 +2482,7 @@ export default class Environment {
             // Lights a lower quality tier leaves out of the shader still
             // count: their share of the evening fill goes to the sky light.
             this.hemisphere.intensity =
-                (0.38 + 1.05 * day + 0.1 * golden + 0.5 * flash) *
+                (0.38 + 1.45 * day + 0.1 * golden + 0.5 * flash) *
                 (1 - 0.8 * closed) *
                 (1 + (this.fillBoost ?? 0) * dark * awake);
             this.hemisphere.color
@@ -2405,6 +2492,16 @@ export default class Environment {
             this.hemisphere.groundColor.copy(
                 mixColor('#2d2622', '#8c7663', day),
             );
+        }
+        // The charcoal walls barely answer to light, so by day they lighten
+        // a little themselves: midday reads as day, not as the same dark
+        // room with a bright window. Drawn curtains keep them dark.
+        if (this.walls) {
+            this.wallNight ??= this.walls.color.clone();
+            this.wallDay ??= new THREE.Color('#353a45').convertSRGBToLinear();
+            this.walls.color
+                .copy(this.wallNight)
+                .lerp(this.wallDay, day * (1 - closed));
         }
         if (this.key) {
             this.key.intensity = (0.42 + 1.35 * day) * (1 - 0.7 * asleep);
@@ -2418,7 +2515,7 @@ export default class Environment {
               }
             | undefined;
         if (renderer) {
-            renderer.roomExposure = (0.84 + 0.1 * day) * (1 - 0.1 * asleep);
+            renderer.roomExposure = (0.84 + 0.14 * day) * (1 - 0.1 * asleep);
             if (!renderer.monitor)
                 renderer.targetExposure = renderer.roomExposure;
         }
@@ -2428,6 +2525,7 @@ export default class Environment {
             (0.35 + 0.65 * day + 0.25 * dark * awake) * (1 - 0.7 * closed);
         if (app.scene && Math.abs(reflections - this.reflectionLevel) > 0.01) {
             this.reflectionLevel = reflections;
+            // The fallback only: a snapshot already carries the room's light.
             this.mirror?.color
                 .setRGB(0.42, 0.45, 0.48)
                 .multiplyScalar(reflections);
@@ -2443,6 +2541,70 @@ export default class Environment {
                     m.envMapIntensity = this.reflections.get(m)! * reflections;
                 }
             });
+        }
+    }
+
+    /**
+     * Ask for a new mirror snapshot once the lighting `shows` settles: fades
+     * (Good Night, a lamp) change it every frame, so wait until it has held
+     * still for half a second, or at most three seconds.
+     */
+    scheduleMirror(shows: string) {
+        if (!this.mirrorSize || shows === this.mirrorShows) return;
+        const now = performance.now();
+        this.mirrorPendingSince ||= now;
+        this.mirrorDue = Math.min(now + 500, this.mirrorPendingSince + 3000);
+        this.mirrorNext = shows;
+    }
+    mirrorNext = '';
+
+    /**
+     * Photograph the room into the mirror: six renders into a small cube
+     * map from just in front of the glass, taken only when the lighting
+     * changes (a few times an evening), never per frame.
+     */
+    updateMirror() {
+        if (!this.mirrorDue || performance.now() < this.mirrorDue) return;
+        if (document.hidden) return;
+        const app = new Application();
+        const renderer = app.renderer?.instance;
+        if (!renderer || !app.scene || !this.mirrorGroup || !this.mirrorGlass)
+            return;
+        this.mirrorDue = 0;
+        this.mirrorPendingSince = 0;
+        if (!this.mirrorProbe) {
+            const target = new THREE.WebGLCubeRenderTarget(this.mirrorSize, {
+                // Half floats keep a dim room free of banding.
+                type: renderer.capabilities.isWebGL2
+                    ? THREE.HalfFloatType
+                    : THREE.UnsignedByteType,
+                generateMipmaps: false,
+                minFilter: THREE.LinearFilter,
+            });
+            const camera = new THREE.CubeCamera(40, 80000, target);
+            this.mirrorGroup.updateWorldMatrix(true, false);
+            camera.position.copy(
+                this.mirrorGroup.localToWorld(new THREE.Vector3(0, 0, 400)),
+            );
+            this.mirrorProbe = { camera, target };
+            this.mirrorGlass.material = mirrorMaterial(
+                target.texture,
+                camera.position,
+                ROOM_BOX,
+            );
+        }
+        const shadows = renderer.shadowMap;
+        const { autoUpdate, needsUpdate } = shadows;
+        shadows.autoUpdate = false;
+        shadows.needsUpdate = false;
+        this.mirrorGlass.visible = false;
+        try {
+            this.mirrorProbe.camera.update(renderer, app.scene);
+            this.mirrorShows = this.mirrorNext;
+        } finally {
+            this.mirrorGlass.visible = true;
+            shadows.autoUpdate = autoUpdate;
+            shadows.needsUpdate = needsUpdate;
         }
     }
 
@@ -2496,6 +2658,7 @@ export default class Environment {
         }
         this.rain();
         this.lighting();
+        this.updateMirror();
         const now = this.now();
         if (this.clock)
             this.clock.set(bangaloreHour(now) + now.getMilliseconds() / 3.6e6);

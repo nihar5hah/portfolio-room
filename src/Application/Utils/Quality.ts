@@ -56,6 +56,11 @@ export interface QualitySettings {
     ambientDetail: boolean;
     /** Load the laptop's desktop early (idle) rather than on demand. */
     preloadDesktop: boolean;
+    /**
+     * Cube-map size of the mirror's snapshot of the room, re-taken only
+     * when the lighting changes (six small renders); 0 = no snapshot.
+     */
+    mirrorSize: number;
 }
 
 const LOW_GPU =
@@ -104,6 +109,7 @@ export function settingsFor(tier: Tier, d: DeviceInfo): QualitySettings {
             lights: 'all',
             ambientDetail: true,
             preloadDesktop: true,
+            mirrorSize: 512,
         };
     if (tier === 'medium')
         return {
@@ -117,6 +123,7 @@ export function settingsFor(tier: Tier, d: DeviceInfo): QualitySettings {
             lights: 'key',
             ambientDetail: true,
             preloadDesktop: !small,
+            mirrorSize: 256,
         };
     return {
         tier,
@@ -129,6 +136,7 @@ export function settingsFor(tier: Tier, d: DeviceInfo): QualitySettings {
         lights: 'minimal',
         ambientDetail: false,
         preloadDesktop: false,
+        mirrorSize: 128,
     };
 }
 

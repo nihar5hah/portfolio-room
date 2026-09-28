@@ -135,3 +135,15 @@ test('the warm-up uploads real images, not placeholders still waiting for theirs
     assert.equal(found.length, 2, 'each texture once');
     assert.ok(found.includes(real) && found.includes(normal));
 });
+
+test('both pages send anonymous page views to Vercel Web Analytics', () => {
+    for (const page of ['src/index.html', 'desktop/public/index.html']) {
+        const html = read(page);
+        assert.match(html, /window\.va\s*=/, `${page}: queue before load`);
+        assert.match(
+            html,
+            /<script defer src="\/_vercel\/insights\/script\.js"><\/script>/,
+            `${page}: the script, deferred`,
+        );
+    }
+});

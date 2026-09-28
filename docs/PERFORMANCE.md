@@ -118,6 +118,12 @@ fast Mac. Later drops trade resolution, shadow updates, casters and effects.
   `StaticBatch.ts`): the base into the model's root, the lid into its
   hinge, so it still opens. Same-material see-through parts merge too: one
   colour blends the same in any order.
+- The mirror reflects a cube-map snapshot of the room (512² high, 256²
+  medium, 128² low, half-float where WebGL2 allows), re-taken only when the
+  lighting changes, instead of a per-frame Reflector (which cost ~40% of the
+  frame). A snapshot took a median 4.6 ms at 512² on an M4 (one of five runs
+  176 ms, unexplained), against 6.3 ms for a normal frame; not measured on
+  phones. See docs/LIGHTING.md.
 
 ### Fewer draw calls (`src/Application/Utils/StaticBatch.ts`)
 

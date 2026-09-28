@@ -52,7 +52,10 @@ function loadTs(path, stubs = {}) {
 }
 
 test('the MacBook draws in a handful of calls, looks the same, and its lid still opens', async () => {
-    globalThis.document = { getElementById: () => null };
+    globalThis.document = {
+        getElementById: () => null,
+        createElement: () => ({ getContext: () => null }),
+    };
     const build = async (merge) => {
         const model = await geometry();
         // As Resources does in the room: plain floats before anything else.
@@ -144,7 +147,10 @@ test('the MacBook draws in a handful of calls, looks the same, and its lid still
 });
 
 test('shipped MacBook closes above the base, opens with approach, and survives reversal/reduced motion', async () => {
-    globalThis.document = { getElementById: () => null };
+    globalThis.document = {
+        getElementById: () => null,
+        createElement: () => ({ getContext: () => null }),
+    };
     const model = await geometry();
     const app = {
         resources: { items: { gltfModel: { macbookModel: model } } },
@@ -292,7 +298,15 @@ test('shipped MacBook closes above the base, opens with approach, and survives r
         'open display lights the desk',
     );
 
-    const label = { style: {}, hidden: true };
+    const classes = new Set();
+    const label = {
+        style: {},
+        hidden: true,
+        classList: {
+            toggle: (name, on) =>
+                on ? classes.add(name) : classes.delete(name),
+        },
+    };
     document.getElementById = (id) => (id === 'laptop-label' ? label : null);
     globalThis.innerWidth = 1280;
     globalThis.innerHeight = 720;
@@ -339,4 +353,108 @@ test('shipped MacBook closes above the base, opens with approach, and survives r
         false,
         'invitation returns to the closed laptop in the room',
     );
+});
+
+test('until the Mac is first opened, the desk glows and its label pulses; after, never again', async () => {
+    const storage = {};
+    globalThis.localStorage = {
+        getItem: (k) => storage[k] ?? null,
+        setItem: (k, v) => (storage[k] = String(v)),
+    };
+    const classes = new Set();
+    const label = {
+        style: {},
+        hidden: true,
+        classList: {
+            toggle: (name, on) =>
+                on ? classes.add(name) : classes.delete(name),
+        },
+    };
+    globalThis.document = {
+        getElementById: (id) => (id === 'laptop-label' ? label : null),
+        createElement: () => ({ getContext: () => null }),
+    };
+    globalThis.innerWidth = 1280;
+    globalThis.innerHeight = 720;
+    const build = async () => {
+        const app = {
+            resources: {
+                items: { gltfModel: { macbookModel: await geometry() } },
+            },
+            scene: new THREE.Scene(),
+            reducedMotion: { matches: false },
+            time: { delta: 16, elapsed: 0 },
+            camera: { currentKeyframe: 'idle' },
+        };
+        app.camera.instance = new THREE.PerspectiveCamera(44, 16 / 9, 100, 9e5);
+        app.camera.instance.position.set(-350, 2400, 10000);
+        app.camera.instance.lookAt(-350, 300, 480);
+        app.camera.instance.updateMatrixWorld();
+        const Computer = loadTs('../src/Application/World/Computer.ts', {
+            '../Application': {
+                default: class {
+                    constructor() {
+                        return app;
+                    }
+                },
+            },
+            './Layout': layout,
+            '../Utils/Occlusion': { occluded: () => false },
+            '../Utils/StaticBatch': {
+                mergeModel: () => ({ before: 0, after: 0 }),
+            },
+        });
+        return {
+            app,
+            computer: new Computer.default(),
+            OPENED_KEY: Computer.OPENED_KEY,
+        };
+    };
+    const first = await build();
+    const glow = first.app.scene.getObjectByName('MacBook first-visit glow');
+    assert.ok(glow, 'a first visit gets the glow');
+    first.computer.update();
+    assert.ok(classes.has('beckon'), 'and the pulsing label');
+    const opacities = new Set();
+    for (const elapsed of [0, 700, 1500, 2200]) {
+        first.app.time.elapsed = elapsed;
+        first.computer.update();
+        opacities.add(glow.material.opacity.toFixed(2));
+    }
+    assert.ok(opacities.size > 2, 'it breathes');
+    assert.ok(
+        [...opacities].every((o) => o >= 0.3 && o <= 0.9),
+        'softly',
+    );
+    first.app.reducedMotion.matches = true;
+    first.computer.update();
+    const still = glow.material.opacity;
+    first.app.time.elapsed = 900;
+    first.computer.update();
+    assert.equal(glow.material.opacity, still, 'steady for reduced motion');
+    assert.equal(
+        glow.raycast(new THREE.Raycaster(), []),
+        undefined,
+        'never catches clicks meant for the desk',
+    );
+
+    first.app.camera.currentKeyframe = 'monitor';
+    first.computer.update();
+    assert.equal(
+        first.app.scene.getObjectByName('MacBook first-visit glow'),
+        undefined,
+        'opening the Mac ends it',
+    );
+    assert.equal(storage[first.OPENED_KEY], '1', 'and remembers');
+    assert.ok(!classes.has('beckon'));
+
+    const later = await build();
+    assert.equal(
+        later.app.scene.getObjectByName('MacBook first-visit glow'),
+        undefined,
+        'a returning visitor is not beckoned',
+    );
+    later.computer.update();
+    assert.ok(!classes.has('beckon'));
+    delete globalThis.localStorage;
 });

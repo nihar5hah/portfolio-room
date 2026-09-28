@@ -11,6 +11,10 @@ type Action = {
 };
 
 export const FOUND_KEY = 'nihar-found-records';
+/** How long a tapped label waits for the second tap (ms). */
+const ARMED_FOR = 5000;
+/** Camera travel (room units, ~1.5 m) that makes a tapped label stale. */
+const TRAVELLED = 1500;
 
 /**
  * Room objects that do something: hover shows a small label, click acts.
@@ -21,6 +25,8 @@ export default class Interactables {
     app = new Application();
     ray = new THREE.Raycaster();
     pointer = new THREE.Vector2();
+    /** Where the last successful hit test struck, in world space. */
+    point = new THREE.Vector3();
     targets: {
         object: THREE.Object3D;
         action: (o: THREE.Object3D) => Action;
@@ -136,7 +142,19 @@ export default class Interactables {
             }
         };
         document.addEventListener('pointermove', (event) => {
-            if (event.pointerType === 'touch') return; // labels come from taps
+            if (event.pointerType === 'touch') {
+                // Labels come from taps; dragging or pinching to look
+                // around retires one.
+                if (
+                    touchStart &&
+                    Math.hypot(
+                        event.clientX - touchStart.x,
+                        event.clientY - touchStart.y,
+                    ) > 10
+                )
+                    disarm();
+                return;
+            }
             hover = event;
             if (scheduled) return;
             scheduled = true;
@@ -147,11 +165,49 @@ export default class Interactables {
         // the first tap shows the label and a second tap on it opens it.
         let pressed: { x: number; y: number; hit: Action } | null = null;
         let armed: string | null = null;
+        // While armed, the label stays pinned to the tapped spot as the view
+        // settles, and goes away when it is no longer about that spot: a
+        // drag, a pinch, a tap elsewhere, the camera travelling, the spot
+        // leaving the screen, or a few seconds without the second tap.
+        const anchor = new THREE.Vector3();
+        const projected = new THREE.Vector3();
+        const armedFrom = new THREE.Vector3();
+        let armedAt = 0;
+        let touchStart: { x: number; y: number } | null = null;
+        const disarm = () => {
+            if (armed === null) return;
+            armed = null;
+            label.hidden = true;
+        };
+        const follow = () => {
+            if (armed === null) return;
+            const camera = this.app.camera;
+            const key = camera.targetKeyframe || camera.currentKeyframe;
+            projected.copy(anchor).project(camera.instance);
+            if (
+                key === 'monitor' ||
+                key === 'loading' ||
+                performance.now() - armedAt > ARMED_FOR ||
+                camera.instance.position.distanceTo(armedFrom) > TRAVELLED ||
+                projected.z > 1 ||
+                Math.abs(projected.x) > 1 ||
+                Math.abs(projected.y) > 1
+            )
+                return disarm();
+            label.style.left = `${((projected.x + 1) / 2) * innerWidth}px`;
+            label.style.top = `${((1 - projected.y) / 2) * innerHeight}px`;
+            requestAnimationFrame(follow);
+        };
         document.addEventListener('pointerdown', (event) => {
+            if (event.pointerType === 'touch') {
+                touchStart = { x: event.clientX, y: event.clientY };
+            }
             const hit = this.hit(event);
+            if (armed !== null && hit?.label !== armed) disarm();
             pressed = hit ? { x: event.clientX, y: event.clientY, hit } : null;
             if (hit) event.preventDefault(); // no compatibility mousedown camera move
         });
+        document.addEventListener('pointercancel', disarm);
         document.addEventListener('pointerup', (event) => {
             const press = pressed;
             pressed = null;
@@ -168,11 +224,16 @@ export default class Interactables {
                 !hit.instant &&
                 armed !== hit.label
             ) {
+                const first = armed === null;
                 armed = hit.label;
+                anchor.copy(this.point);
+                armedFrom.copy(this.app.camera.instance.position);
+                armedAt = performance.now();
                 label.textContent = `${hit.label} · tap again`;
                 label.style.left = `${event.clientX}px`;
                 label.style.top = `${event.clientY}px`;
                 label.hidden = false;
+                if (first) requestAnimationFrame(follow);
                 return;
             }
             armed = null;
@@ -204,6 +265,7 @@ export default class Interactables {
         const hits = this.ray.intersectObjects(this.app.scene.children, true);
         const first = hits.find((h) => h.object.visible);
         if (!first) return null;
+        this.point.copy(first.point);
         for (let o: THREE.Object3D | null = first.object; o; o = o.parent) {
             const target = this.targets.find((t) => t.object === o);
             if (target) return target.action(target.object);

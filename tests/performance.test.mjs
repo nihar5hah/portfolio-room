@@ -107,6 +107,15 @@ test('each tier trades resolution, shadows, lights and effects', () => {
     assert.equal(low.dynamicShadows, false);
     assert.equal(low.lights, 'minimal');
     assert.equal(low.preloadDesktop, false);
+    // The mirror's snapshot of the room: smaller on weaker tiers, never none.
+    const sizes = ['low', 'medium', 'high'].map(
+        (tier) => settingsFor(tier, phone).mirrorSize,
+    );
+    assert.deepEqual(
+        sizes,
+        [...sizes].sort((a, b) => a - b),
+    );
+    assert.ok(sizes[0] >= 128 && sizes[2] <= 512);
     const medium = settingsFor('medium', phone);
     assert.ok(medium.maxPixelRatio <= 1.25);
     assert.equal(medium.lights, 'key');

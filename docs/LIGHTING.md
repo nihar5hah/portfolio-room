@@ -26,6 +26,18 @@ only touches lights and materials when something changed:
 | Cove and LED strips                         | faint                               | on                               |
 | TV glow                                     | softer                              | full                             |
 | Environment reflections                     | full                                | lower, so dark rooms don't gleam |
+| Walls and ceiling                           | lifted to `#353a45`                 | charcoal `#23262d`               |
+
+The charcoal walls barely answer to light, so daylight lightens them a little
+itself (drawn curtains keep them dark): midday reads as day, not the night room
+with a bright window.
+
+The full-length mirror shows a snapshot of the room (`updateMirror`): a cube
+map taken just in front of the glass and drawn with box projection, so the
+flag, clock and walls appear where they should. It is re-taken only when the
+lighting changes (half a second after a fade settles, and once per 0.02 of
+daylight), never per frame: six small renders a few times an evening. Begu and
+the clock hands are as they were at the last snapshot.
 
 The lamps come on as the daylight fades (`day` between 0.8 and 0.25), not at a
 fixed hour, so they switch on around sunset whatever the season.

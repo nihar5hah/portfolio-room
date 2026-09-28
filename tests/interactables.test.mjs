@@ -20,8 +20,10 @@ test('room objects open their apps; hidden records count once and persist', () =
         querySelector: () => null,
         addEventListener: (type, fn) => (listeners[type] = fn),
     };
-    // Hover is coalesced to animation frames; run them at once here.
-    globalThis.requestAnimationFrame = (run) => run();
+    // Hover and the tapped label run on animation frames; `frame()` runs one.
+    const frames = [];
+    globalThis.requestAnimationFrame = (run) => frames.push(run);
+    const frame = () => frames.splice(0).forEach((run) => run());
     globalThis.innerWidth = 1000;
     globalThis.innerHeight = 1000;
 
@@ -91,6 +93,7 @@ test('room objects open their apps; hidden records count once and persist', () =
         preventDefault() {},
     };
     listeners.pointermove(centre);
+    frame();
     assert.equal(label.hidden, false);
     assert.equal(label.textContent, 'Music');
     listeners.pointerdown(centre);
@@ -120,6 +123,65 @@ test('room objects open their apps; hidden records count once and persist', () =
         ['enterMonitor', 'music', undefined],
         'second tap opens it',
     );
+    assert.equal(label.hidden, true, 'opening hides the label');
+
+    // A tapped label never lingers once it is no longer about that spot.
+    const arm = () => {
+        listeners.pointerdown(tap);
+        listeners.pointerup(tap);
+        assert.equal(label.hidden, false);
+        assert.equal(label.textContent, 'Music · tap again');
+    };
+    arm();
+    frame();
+    assert.equal(label.hidden, false, 'it waits for the second tap');
+    assert.equal(
+        Math.round(parseFloat(label.style.left)),
+        500,
+        'pinned to the tapped spot',
+    );
+    const drag = { ...tap, clientX: 560 };
+    listeners.pointerdown(tap);
+    listeners.pointermove(drag);
+    assert.equal(label.hidden, true, 'dragging to look around clears it');
+    listeners.pointerup(drag);
+    assert.equal(label.hidden, true, 'and the drag does not re-arm it');
+    const count = events.length;
+    listeners.pointerdown(tap);
+    listeners.pointerup(tap);
+    assert.equal(events.length, count, 'after clearing, a tap arms again');
+
+    listeners.pointerdown({ ...tap, clientX: 5, clientY: 5 });
+    assert.equal(label.hidden, true, 'a tap elsewhere clears it');
+    listeners.pointerup({ ...tap, clientX: 5, clientY: 5 });
+
+    arm();
+    camera.position.z = 3000;
+    camera.updateMatrixWorld(true);
+    frame();
+    assert.equal(label.hidden, true, 'the camera travelling clears it');
+    camera.position.z = 1000;
+    camera.updateMatrixWorld(true);
+
+    arm();
+    camera.lookAt(0, 0, 5000);
+    camera.updateMatrixWorld(true);
+    frame();
+    assert.equal(label.hidden, true, 'the spot leaving the view clears it');
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld(true);
+
+    arm();
+    const now = performance.now.bind(performance);
+    performance.now = () => now() + 6000;
+    frame();
+    performance.now = now;
+    assert.equal(label.hidden, true, 'it gives up after a few seconds');
+
+    arm();
+    listeners.pointercancel();
+    assert.equal(label.hidden, true, 'a cancelled gesture clears it');
+    frame();
 
     // Petting Begu acts on the first tap too: there is nothing to preview.
     let pets = 0;
@@ -139,6 +201,7 @@ test('room objects open their apps; hidden records count once and persist', () =
 
     app.camera.currentKeyframe = 'monitor';
     listeners.pointermove(centre);
+    frame();
     assert.equal(label.hidden, true, 'no room hover while using the Mac');
     app.camera.currentKeyframe = 'idle';
 
