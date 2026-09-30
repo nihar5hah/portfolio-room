@@ -337,7 +337,6 @@ body {
 }
 /* Until the Mac is first opened (World/Computer.ts): a slow ring. */
 #laptop-label.beckon {
-    border-color: rgba(184, 214, 255, 0.5);
     animation: beckon 2.6s ease-out infinite;
 }
 @keyframes beckon {
@@ -362,16 +361,6 @@ body {
     color: rgba(245, 245, 247, 0.6);
     margin-left: 8px;
     font-weight: 400;
-}
-#begu-label::after,
-#laptop-label::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 100%;
-    width: 1px;
-    height: 14px;
-    background: rgba(255, 255, 255, 0.5);
 }
 
 @media (max-width: 650px) {
@@ -493,14 +482,16 @@ body {
     z-index: 8;
     pointer-events: none;
     transform: translate(14px, 14px);
-    padding: 5px 10px;
+    /* The same frosted pill as the room's buttons and labels. */
+    padding: 8px 14px;
     border-radius: 999px;
-    font: 500 12px var(--sys);
+    font: 500 13px var(--sys);
     color: #f5f5f7;
-    background: rgba(28, 28, 32, 0.72);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: rgba(28, 28, 32, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(24px) saturate(1.6);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
     white-space: nowrap;
 }
 #object-label[hidden] {
@@ -650,16 +641,22 @@ body {
     text-shadow: 0 10px 80px rgba(0, 0, 0, 0.5);
     animation: goat-word 3.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
+/* The glow (a filter) on the wrapper and the fade (a mask) on the photo:
+   a mask clips everything on its own element, glow included, to the
+   photo's rectangle, which drew a box around Messi. */
 .goat-messi {
-    height: min(72vh, 620px);
-    width: auto;
     margin-top: 12vh;
-    /* Legs dissolve into the dark, like a spotlight from above. */
-    -webkit-mask-image: linear-gradient(to bottom, #000 58%, transparent 96%);
-    mask-image: linear-gradient(to bottom, #000 58%, transparent 96%);
     filter: drop-shadow(0 0 40px rgba(130, 180, 230, 0.35))
         drop-shadow(0 18px 30px rgba(0, 0, 0, 0.5));
     animation: goat-messi 3.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.goat-messi img {
+    display: block;
+    height: min(72vh, 620px);
+    width: auto;
+    /* Legs dissolve into the dark, like a spotlight from above. */
+    -webkit-mask-image: linear-gradient(to bottom, #000 58%, transparent 96%);
+    mask-image: linear-gradient(to bottom, #000 58%, transparent 96%);
 }
 @keyframes goat-fade {
     0% {

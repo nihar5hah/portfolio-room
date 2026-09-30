@@ -7,6 +7,13 @@ import bus from '../UI/EventBus';
 import { LAPTOP_SCREEN } from './Computer';
 
 const SCREEN_SIZE = { w: LAPTOP_SCREEN.width, h: LAPTOP_SCREEN.height };
+/**
+ * How long the pointer may be off the screen before the camera steps back
+ * (ms). Long enough to cross the room to a button at the edge ("Open full
+ * size", the music controls, Step back); reaching one keeps the Mac in
+ * focus. Short enough that moving away still feels immediate.
+ */
+export const LEAVE_GRACE = 650;
 
 export default class MonitorScreen extends EventEmitter {
     application: Application;
@@ -20,6 +27,8 @@ export default class MonitorScreen extends EventEmitter {
     inComputer: boolean;
     mouseClickInProgress = false;
     shouldLeaveMonitor = false;
+    /** Pending step back after the pointer left the screen. */
+    leaveTimer: ReturnType<typeof setTimeout> | undefined;
     iframe: HTMLIFrameElement;
     /** The desktop has been asked for (its src set). */
     loaded = false;
@@ -71,6 +80,22 @@ export default class MonitorScreen extends EventEmitter {
         return true;
     }
 
+    /** The pointer left the screen: step back unless it returns in time. */
+    leaveSoon() {
+        if (this.leaveTimer !== undefined) return;
+        this.leaveTimer = setTimeout(() => {
+            this.leaveTimer = undefined;
+            if (this.inComputer) return;
+            if (this.mouseClickInProgress) this.shouldLeaveMonitor = true;
+            else this.camera.trigger('leftMonitor');
+        }, LEAVE_GRACE);
+    }
+
+    stayFocused() {
+        clearTimeout(this.leaveTimer);
+        this.leaveTimer = undefined;
+    }
+
     initializeScreenEvents() {
         document.addEventListener('keydown', (event) => {
             if (
@@ -78,6 +103,7 @@ export default class MonitorScreen extends EventEmitter {
                 (this.camera.currentKeyframe === 'monitor' ||
                     this.camera.targetKeyframe === 'monitor')
             ) {
+                this.stayFocused();
                 this.camera.trigger('leftMonitor');
                 document
                     .querySelector<HTMLButtonElement>('.enter-computer')
@@ -87,8 +113,16 @@ export default class MonitorScreen extends EventEmitter {
         document.addEventListener(
             'mousemove',
             (event) => {
-                if ((event.target as Element)?.closest?.('.room-interface'))
+                if ((event.target as Element)?.closest?.('.room-interface')) {
+                    // Over one of the room's buttons: it belongs with the
+                    // screen, so crossing the room to reach it keeps focus,
+                    // and leaving it for the room starts the step back.
+                    if (this.leaveTimer !== undefined) {
+                        this.stayFocused();
+                        this.prevInComputer = true;
+                    }
                     return;
+                }
                 // @ts-ignore
                 const id = event.target.id;
                 if (
@@ -107,11 +141,15 @@ export default class MonitorScreen extends EventEmitter {
                 }
 
                 if (!this.inComputer && this.prevInComputer) {
+                    // A drag decides on release; a plain move after a moment.
                     if (this.mouseClickInProgress)
                         this.shouldLeaveMonitor = true;
-                    else this.camera.trigger('leftMonitor');
+                    else this.leaveSoon();
                 }
-                if (this.inComputer) this.shouldLeaveMonitor = false;
+                if (this.inComputer) {
+                    this.shouldLeaveMonitor = false;
+                    this.stayFocused();
+                }
 
                 this.application.mouse.trigger('mousemove', [event]);
 

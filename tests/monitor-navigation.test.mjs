@@ -1,10 +1,11 @@
-import { test } from 'node:test';
+import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 
-test('screen hover focuses and unfocuses the camera, deferring exit until a drag finishes', () => {
+test('screen hover focuses and unfocuses the camera, deferring exit until a drag finishes', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
     const listeners = new Map();
     let focused = false;
     globalThis.document = {
@@ -51,8 +52,14 @@ test('screen hover focuses and unfocuses the camera, deferring exit until a drag
     move(false);
     assert.equal(
         transitions.at(-1),
+        'enterMonitor',
+        'not the instant it leaves',
+    );
+    t.mock.timers.tick(exports.LEAVE_GRACE);
+    assert.equal(
+        transitions.at(-1),
         'leftMonitor',
-        'leaving the screen zooms back to the desk',
+        'leaving the screen zooms back to the desk after a moment',
     );
     transitions.length = 0;
     move(true);
@@ -80,6 +87,53 @@ test('screen hover focuses and unfocuses the camera, deferring exit until a drag
         'returning inside cancels the pending exit',
     );
     assert.ok(forwarded.includes('mousedown') && forwarded.includes('mouseup'));
+
+    // Crossing the room to "Open full size" (or any room button) keeps
+    // the Mac in focus; leaving the button for the room steps back.
+    transitions.length = 0;
+    const button = {
+        target: {
+            id: '',
+            closest: (selector) => (selector === '.room-interface' ? {} : null),
+        },
+    };
+    move(true);
+    move(false);
+    t.mock.timers.tick(exports.LEAVE_GRACE / 2);
+    listeners.get('mousemove')(button);
+    t.mock.timers.tick(exports.LEAVE_GRACE * 3);
+    assert.ok(
+        !transitions.includes('leftMonitor'),
+        'reaching a room button in time keeps focus',
+    );
+    move(false);
+    t.mock.timers.tick(exports.LEAVE_GRACE);
+    assert.equal(
+        transitions.at(-1),
+        'leftMonitor',
+        'leaving the button steps back',
+    );
+    transitions.length = 0;
+    move(true);
+    move(false);
+    t.mock.timers.tick(exports.LEAVE_GRACE / 2);
+    move(true);
+    t.mock.timers.tick(exports.LEAVE_GRACE * 3);
+    assert.ok(
+        !transitions.includes('leftMonitor'),
+        'coming back to the screen in time keeps focus',
+    );
+    move(false);
+    t.mock.timers.tick(exports.LEAVE_GRACE * 2);
+    move(false);
+    t.mock.timers.tick(exports.LEAVE_GRACE * 2);
+    listeners.get('mousemove')(button);
+    t.mock.timers.tick(exports.LEAVE_GRACE * 2);
+    assert.equal(
+        transitions.filter((name) => name === 'leftMonitor').length,
+        1,
+        'a button reached after stepping back does not refocus or repeat',
+    );
     listeners.get('keydown')({ key: 'Escape' });
     assert.equal(transitions.at(-1), 'leftMonitor');
     assert.equal(focused, true);

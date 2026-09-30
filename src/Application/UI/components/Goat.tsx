@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import bus from '../EventBus';
+import assetUrl from '../../Utils/assetUrl';
 
 /** Messi pointing to the sky, Quito 2017 (ANDES, CC BY-SA 2.0; see Credits). */
-const PHOTO = '/room/messi-goat.webp';
+const PHOTO = assetUrl('/room/messi-goat.webp');
 
 /**
  * Clicking either framed No. 10 shirt: Messi from behind, pointing up for
@@ -38,7 +39,11 @@ export default function Goat() {
             aria-label="GOAT: Lionel Messi pointing to the sky"
         >
             <p className="goat-word">GOAT</p>
-            <img className="goat-messi" src={PHOTO} alt="" decoding="async" />
+            {/* The glow sits on this wrapper, the fade on the photo: on one
+                element the fade's box would clip the glow into a rectangle. */}
+            <div className="goat-messi">
+                <img src={PHOTO} alt="" decoding="async" />
+            </div>
         </div>
     );
 }
