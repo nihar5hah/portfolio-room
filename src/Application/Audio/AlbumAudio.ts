@@ -1,5 +1,6 @@
 import bus from '../UI/EventBus';
 import audioLibrary from '../../../config/audio-library.json';
+import { setVolume } from './Volume';
 
 /** Background level for the album player. */
 const VOLUME = 0.06;
@@ -54,7 +55,10 @@ export default class AlbumAudio {
         this.audio.id = 'album-audio';
         this.audio.hidden = true;
         this.audio.preload = 'none';
-        this.audio.volume = VOLUME;
+        // The music host serves CORS headers; with them, iOS can set the
+        // level through Volume.ts (before any src, which fixes the mode).
+        this.audio.crossOrigin = 'anonymous';
+        setVolume(this.audio, VOLUME);
         document.body.append(this.audio);
         this.audio.onplaying = () => {
             this.failures = 0;
@@ -84,7 +88,7 @@ export default class AlbumAudio {
             } else {
                 // Waking mid-fade: stop the fade before it pauses anything.
                 clearInterval(this.fade);
-                this.audio.volume = VOLUME;
+                setVolume(this.audio, VOLUME);
                 if (this.sleepPaused && !this.userPaused) this.play();
                 this.sleepPaused = false;
             }
@@ -183,18 +187,18 @@ export default class AlbumAudio {
         let step = 0;
         this.fade = setInterval(() => {
             step++;
-            this.audio.volume = volume * Math.max(0, 1 - step / 12);
+            setVolume(this.audio, volume * Math.max(0, 1 - step / 12));
             if (step < 12) return;
             clearInterval(this.fade);
             this.audio.pause();
-            this.audio.volume = volume;
+            setVolume(this.audio, volume);
         }, 100);
     }
 
     play() {
         if (!this.entered || this.muted || !this.tracks.length) return;
         clearInterval(this.fade);
-        this.audio.volume = VOLUME;
+        setVolume(this.audio, VOLUME);
         this.userPaused = false;
         if (this.error) this.audio.src = this.tracks[this.index].src;
         this.error = false;

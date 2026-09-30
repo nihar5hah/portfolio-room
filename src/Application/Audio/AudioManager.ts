@@ -1,9 +1,12 @@
 import AlbumAudio from './AlbumAudio';
 import bus from '../UI/EventBus';
+import { releaseVolume, setVolume } from './Volume';
 
 /**
  * Room ambience and computer feedback on plain <audio> elements: the same
- * playback path as the music, and no Web Audio (AudioContext) anywhere.
+ * playback path as the music. No Web Audio processing anywhere; only on
+ * iOS, which ignores element volume, does each element get a plain gain
+ * node (Volume.ts) so its level applies at all.
  *
  * Why: the room first used a Three/Web Audio graph whose lowpass filter was
  * retuned from the camera every frame. It ran away into a full-scale screech
@@ -60,7 +63,7 @@ export default class AudioManager {
 
     constructor() {
         this.rain.preload = 'none';
-        this.rain.volume = 0;
+        setVolume(this.rain, 0);
         bus.on('weather', (state: { rain: number }) => {
             this.rainTarget = state.rain;
             this.startAmbience();
@@ -138,11 +141,7 @@ export default class AudioManager {
                 ? this.rainTarget
                 : rainLevel;
         const muffled = 1 - clamp((distance - 1500) / 9500, 0, 1);
-        this.rain.volume = clamp(
-            this.rainLevel * 0.16 * (1 - 0.6 * muffled),
-            0,
-            1,
-        );
+        setVolume(this.rain, this.rainLevel * 0.16 * (1 - 0.6 * muffled));
         if (this.rainLevel === 0 && this.rainTarget === 0 && !this.rain.paused)
             this.rain.pause();
         const muffle = muffled;
@@ -158,8 +157,8 @@ export default class AudioManager {
     }
 
     applyMix() {
-        this.dry.volume = clamp(this.level * (1 - this.muffle), 0, 1);
-        this.wet.volume = clamp(this.level * this.muffle, 0, 1);
+        setVolume(this.dry, this.level * (1 - this.muffle));
+        setVolume(this.wet, this.level * this.muffle);
     }
 
     /** One-shot effect; excess overlapping input is dropped, not queued. */
@@ -170,7 +169,7 @@ export default class AudioManager {
         const template = variants[Math.floor(Math.random() * variants.length)];
         // Clones share the template's already-fetched media resource.
         const el = template.cloneNode() as HTMLAudioElement;
-        el.volume = clamp(volume, 0, 1);
+        setVolume(el, volume);
         if (cents) {
             const rate = 2 ** (cents / 1200);
             el.defaultPlaybackRate = el.playbackRate = rate;
@@ -188,6 +187,7 @@ export default class AudioManager {
         if (!this.playing.delete(el)) return;
         el.onended = el.onerror = null;
         el.pause();
+        releaseVolume(el);
         el.removeAttribute('src');
         el.load(); // frees the player
     }

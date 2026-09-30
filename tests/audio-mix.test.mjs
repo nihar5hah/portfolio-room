@@ -123,8 +123,10 @@ function room() {
             ],
         }),
     });
+    const volume = load('../src/Application/Audio/Volume.ts', {});
     const albumModule = load('../src/Application/Audio/AlbumAudio.ts', {
         '../UI/EventBus': { default: bus },
+        './Volume': volume,
         '../../../config/audio-library.json': {
             default: JSON.parse(source('../config/audio-library.json')),
         },
@@ -132,6 +134,7 @@ function room() {
     const Manager = load('../src/Application/Audio/AudioManager.ts', {
         './AlbumAudio': albumModule,
         '../UI/EventBus': { default: bus },
+        './Volume': volume,
     }).default;
     const fire = (type, event = {}) =>
         (docEvents[type] || []).forEach((cb) => cb(event));
@@ -374,4 +377,123 @@ test('rain plays on its own loop only while it rains, eased by volume, and thund
         globalThis.setTimeout = setTimeoutSaved;
         r.restore();
     }
+});
+
+test('iOS ignores element volume: there the same levels apply through a plain gain node', () => {
+    const saved = { window: globalThis.window, document: globalThis.document };
+    try {
+        const docEvents = {};
+        const contexts = [];
+        class Context {
+            state = 'suspended';
+            destination = { name: 'speakers' };
+            nodes = [];
+            constructor() {
+                contexts.push(this);
+            }
+            resume() {
+                this.state = 'running';
+                return Promise.resolve();
+            }
+            createMediaElementSource(el) {
+                const node = {
+                    kind: 'source',
+                    el,
+                    to: [],
+                    connect: (n) => node.to.push(n),
+                    disconnect: () => (node.to = []),
+                };
+                this.nodes.push(node);
+                return node;
+            }
+            createGain() {
+                const node = {
+                    kind: 'gain',
+                    gain: { value: 1 },
+                    to: [],
+                    connect: (n) => node.to.push(n),
+                    disconnect: () => (node.to = []),
+                };
+                this.nodes.push(node);
+                return node;
+            }
+        }
+        // Safari on iOS: `volume` always reads back 1, whatever is set.
+        class FixedMedia {
+            get volume() {
+                return 1;
+            }
+            set volume(_) {}
+        }
+        globalThis.window = { AudioContext: Context };
+        globalThis.document = {
+            hidden: false,
+            createElement: () => new FixedMedia(),
+            addEventListener: (type, cb) =>
+                (docEvents[type] = [...(docEvents[type] || []), cb]),
+        };
+        const { setVolume, releaseVolume, volumeIsFixed } = load(
+            '../src/Application/Audio/Volume.ts',
+            {},
+        );
+        assert.equal(volumeIsFixed(), true);
+        const music = new FixedMedia();
+        setVolume(music, 0.06);
+        assert.equal(contexts.length, 1, 'one context for the whole room');
+        const [ctx] = contexts;
+        const gain = ctx.nodes.find((n) => n.kind === 'gain');
+        assert.equal(gain.gain.value, 0.06, 'the music at 6%, not 100%');
+        const source = ctx.nodes.find((n) => n.kind === 'source');
+        assert.deepEqual(source.to, [gain]);
+        assert.deepEqual(
+            gain.to,
+            [ctx.destination],
+            'gain straight to the speakers',
+        );
+        setVolume(music, 0.03);
+        assert.equal(gain.gain.value, 0.03, 'later changes (fades) reuse it');
+        assert.equal(ctx.nodes.length, 2);
+        setVolume(music, 7);
+        assert.equal(gain.gain.value, 1, 'clamped');
+        assert.equal(
+            ctx.state,
+            'suspended',
+            'silent, never loud, before a tap',
+        );
+        docEvents.pointerdown.forEach((cb) => cb());
+        assert.equal(ctx.state, 'running', 'the first tap (Enter) starts it');
+        ctx.state = 'interrupted'; // a call, or the phone locked
+        document.hidden = false;
+        docEvents.visibilitychange.forEach((cb) => cb());
+        assert.equal(ctx.state, 'running', 'back when the page returns');
+        const click = new FixedMedia();
+        setVolume(click, 0.16);
+        const clickGain = ctx.nodes.at(-1);
+        releaseVolume(click);
+        assert.deepEqual(clickGain.to, [], 'a finished click lets go');
+    } finally {
+        globalThis.window = saved.window;
+        globalThis.document = saved.document;
+    }
+});
+
+test('the volume helper is a gain and nothing else: no filters, no decoding', () => {
+    const volume = source('../src/Application/Audio/Volume.ts');
+    assert.doesNotMatch(
+        volume,
+        /createBiquadFilter|createConvolver|createDynamicsCompressor|decodeAudioData|OfflineAudioContext|requestAnimationFrame/,
+    );
+    assert.match(
+        source('../src/Application/Audio/AlbumAudio.ts'),
+        /crossOrigin = 'anonymous'/,
+    );
+    for (const file of [
+        '../src/Application/Audio/AudioManager.ts',
+        '../src/Application/Audio/AlbumAudio.ts',
+    ])
+        assert.doesNotMatch(
+            source(file).replace(/\/\/.*|\/\*[\s\S]*?\*\//g, ''),
+            /\.volume\s*=/,
+            `${file} sets levels through Volume.ts`,
+        );
 });

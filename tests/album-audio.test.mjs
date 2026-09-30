@@ -16,11 +16,21 @@ const compiled = require('typescript').transpileModule(
     ),
     { compilerOptions: { module: require('typescript').ModuleKind.CommonJS } },
 ).outputText;
+const volumeCompiled = require('typescript').transpileModule(
+    fs.readFileSync(
+        new URL('../src/Application/Audio/Volume.ts', import.meta.url),
+        'utf8',
+    ),
+    { compilerOptions: { module: require('typescript').ModuleKind.CommonJS } },
+).outputText;
 function loadAlbumModule(bus, math = Math, origin = audioLibrary.origin) {
     const exports = {};
+    const volume = {};
+    new Function('exports', volumeCompiled)(volume);
     new Function('require', 'exports', 'Math', compiled)(
         (name) => {
             if (name === '../UI/EventBus') return { default: bus };
+            if (name === './Volume') return volume;
             assert.equal(name, '../../../config/audio-library.json');
             return { default: { origin } };
         },
