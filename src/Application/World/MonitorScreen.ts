@@ -8,12 +8,17 @@ import { LAPTOP_SCREEN } from './Computer';
 
 const SCREEN_SIZE = { w: LAPTOP_SCREEN.width, h: LAPTOP_SCREEN.height };
 /**
- * How long the pointer may be off the screen before the camera steps back
- * (ms). Long enough to cross the room to a button at the edge ("Open full
- * size", the music controls, Step back); reaching one keeps the Mac in
- * focus. Short enough that moving away still feels immediate.
+ * Leaving the screen steps back at once, so visitors learn that moving
+ * away leaves the Mac. The one exception is heading up to the top bar
+ * ("Open full size"): there the pointer may be off the screen this long
+ * (ms) to cross the room to the button, and reaching it keeps the Mac in
+ * focus. Turning away from the top bar steps back straight away.
  */
 export const LEAVE_GRACE = 650;
+/** The top bar's band reaches this far below its buttons (CSS px). */
+const TOP_BAR_REACH = 40;
+/** ...and covers at least the top of the screen, for a diagonal exit. */
+const TOP_OF_SCREEN = 0.12;
 
 export default class MonitorScreen extends EventEmitter {
     application: Application;
@@ -96,6 +101,20 @@ export default class MonitorScreen extends EventEmitter {
         this.leaveTimer = undefined;
     }
 
+    /** The pointer is up in the top bar's band, on its way to its buttons. */
+    towardsTopBar(event: MouseEvent) {
+        if (typeof event.clientY !== 'number') return false;
+        const bar = document
+            .querySelector?.('.room-interface header')
+            ?.getBoundingClientRect?.();
+        const screen = this.rect ?? this.iframe?.getBoundingClientRect?.();
+        const reach = Math.max(
+            bar ? bar.bottom + TOP_BAR_REACH : 0,
+            screen ? screen.top + screen.height * TOP_OF_SCREEN : 0,
+        );
+        return event.clientY <= reach;
+    }
+
     initializeScreenEvents() {
         document.addEventListener('keydown', (event) => {
             if (
@@ -141,10 +160,20 @@ export default class MonitorScreen extends EventEmitter {
                 }
 
                 if (!this.inComputer && this.prevInComputer) {
-                    // A drag decides on release; a plain move after a moment.
+                    // A drag decides on release; heading for the top bar
+                    // gets a moment; anywhere else steps back now.
                     if (this.mouseClickInProgress)
                         this.shouldLeaveMonitor = true;
-                    else this.leaveSoon();
+                    else if (this.towardsTopBar(event)) this.leaveSoon();
+                    else this.camera.trigger('leftMonitor');
+                } else if (
+                    !this.inComputer &&
+                    this.leaveTimer !== undefined &&
+                    !this.towardsTopBar(event)
+                ) {
+                    // Went up towards the top bar, then turned away from it.
+                    this.stayFocused();
+                    this.camera.trigger('leftMonitor');
                 }
                 if (this.inComputer) {
                     this.shouldLeaveMonitor = false;

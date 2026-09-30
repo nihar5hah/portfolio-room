@@ -43,23 +43,28 @@ test('screen hover focuses and unfocuses the camera, deferring exit until a drag
     };
     screen.application = { mouse: { trigger: (name) => forwarded.push(name) } };
     screen.initializeScreenEvents();
-    const move = (inside) =>
+    // The top bar (with "Open full size") ends at y 50; the screen below it.
+    const BAR = 50;
+    screen.rect = { top: 80, height: 500 };
+    const header = { getBoundingClientRect: () => ({ bottom: BAR }) };
+    document.querySelector = (selector) =>
+        selector === '.room-interface header'
+            ? header
+            : { focus: () => (focused = true) };
+    // Off the screen: below/beside it by default, or up by the top bar.
+    const move = (inside, clientY = 400) =>
         listeners.get('mousemove')({
             target: { id: inside ? 'computer-screen' : 'webgl' },
+            clientY,
         });
+    const up = BAR + 10;
     move(true);
     assert.equal(transitions.at(-1), 'enterMonitor');
     move(false);
     assert.equal(
         transitions.at(-1),
-        'enterMonitor',
-        'not the instant it leaves',
-    );
-    t.mock.timers.tick(exports.LEAVE_GRACE);
-    assert.equal(
-        transitions.at(-1),
         'leftMonitor',
-        'leaving the screen zooms back to the desk after a moment',
+        'leaving the screen downwards or sideways steps back at once',
     );
     transitions.length = 0;
     move(true);
@@ -88,34 +93,47 @@ test('screen hover focuses and unfocuses the camera, deferring exit until a drag
     );
     assert.ok(forwarded.includes('mousedown') && forwarded.includes('mouseup'));
 
-    // Crossing the room to "Open full size" (or any room button) keeps
-    // the Mac in focus; leaving the button for the room steps back.
+    // Heading up to the top bar gets a moment, enough to reach "Open full
+    // size"; reaching it keeps the Mac in focus.
     transitions.length = 0;
     const button = {
         target: {
             id: '',
             closest: (selector) => (selector === '.room-interface' ? {} : null),
         },
+        clientY: 25,
     };
     move(true);
-    move(false);
+    move(false, up);
+    assert.ok(!transitions.includes('leftMonitor'), 'not at once, going up');
     t.mock.timers.tick(exports.LEAVE_GRACE / 2);
+    move(false, up - 20);
     listeners.get('mousemove')(button);
     t.mock.timers.tick(exports.LEAVE_GRACE * 3);
     assert.ok(
         !transitions.includes('leftMonitor'),
-        'reaching a room button in time keeps focus',
+        'reaching Open full size in time keeps focus',
     );
-    move(false);
+    move(false, up);
     t.mock.timers.tick(exports.LEAVE_GRACE);
     assert.equal(
         transitions.at(-1),
         'leftMonitor',
-        'leaving the button steps back',
+        'lingering by the top bar off the button steps back after a moment',
     );
     transitions.length = 0;
     move(true);
-    move(false);
+    move(false, 120); // right edge, near the top of the screen: diagonal exit
+    assert.ok(!transitions.includes('leftMonitor'), 'a diagonal exit counts');
+    move(false, 400);
+    assert.equal(
+        transitions.at(-1),
+        'leftMonitor',
+        'turning away from the top bar steps back at once',
+    );
+    transitions.length = 0;
+    move(true);
+    move(false, up);
     t.mock.timers.tick(exports.LEAVE_GRACE / 2);
     move(true);
     t.mock.timers.tick(exports.LEAVE_GRACE * 3);
@@ -123,9 +141,9 @@ test('screen hover focuses and unfocuses the camera, deferring exit until a drag
         !transitions.includes('leftMonitor'),
         'coming back to the screen in time keeps focus',
     );
-    move(false);
+    move(false, up);
     t.mock.timers.tick(exports.LEAVE_GRACE * 2);
-    move(false);
+    move(false, up);
     t.mock.timers.tick(exports.LEAVE_GRACE * 2);
     listeners.get('mousemove')(button);
     t.mock.timers.tick(exports.LEAVE_GRACE * 2);
