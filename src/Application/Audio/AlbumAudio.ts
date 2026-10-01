@@ -1,6 +1,6 @@
 import bus from '../UI/EventBus';
 import audioLibrary from '../../../config/audio-library.json';
-import { setVolume } from './Volume';
+import { setVolume, showVolumeDebug } from './Volume';
 
 /** Background level for the album player. */
 const VOLUME = 0.06;
@@ -60,6 +60,7 @@ export default class AlbumAudio {
         this.audio.crossOrigin = 'anonymous';
         setVolume(this.audio, VOLUME);
         document.body.append(this.audio);
+        showVolumeDebug(); // `?audiodebug`: what is in effect, on a phone
         this.audio.onplaying = () => {
             this.failures = 0;
             this.publish();

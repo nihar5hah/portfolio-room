@@ -381,6 +381,16 @@ test('rain plays on its own loop only while it rains, eased by volume, and thund
 
 test('iOS ignores element volume: there the same levels apply through a plain gain node', () => {
     const saved = { window: globalThis.window, document: globalThis.document };
+    const savedNavigator = Object.getOwnPropertyDescriptor(
+        globalThis,
+        'navigator',
+    );
+    const device = (userAgent, platform = '', maxTouchPoints = 0) =>
+        Object.defineProperty(globalThis, 'navigator', {
+            value: { userAgent, platform, maxTouchPoints },
+            configurable: true,
+            writable: true,
+        });
     try {
         const docEvents = {};
         const contexts = [];
@@ -418,12 +428,10 @@ test('iOS ignores element volume: there the same levels apply through a plain ga
                 return node;
             }
         }
-        // Safari on iOS: `volume` always reads back 1, whatever is set.
+        // Current iOS reads back whatever is set, yet plays at full level:
+        // so the iPhone must be recognised, not probed.
         class FixedMedia {
-            get volume() {
-                return 1;
-            }
-            set volume(_) {}
+            volume = 1;
         }
         globalThis.window = { AudioContext: Context };
         globalThis.document = {
@@ -432,11 +440,45 @@ test('iOS ignores element volume: there the same levels apply through a plain ga
             addEventListener: (type, cb) =>
                 (docEvents[type] = [...(docEvents[type] || []), cb]),
         };
-        const { setVolume, releaseVolume, volumeIsFixed } = load(
-            '../src/Application/Audio/Volume.ts',
-            {},
+        const loadVolume = () => load('../src/Application/Audio/Volume.ts', {});
+        device(
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15',
+            'MacIntel',
+            0,
         );
-        assert.equal(volumeIsFixed(), true);
+        assert.equal(loadVolume().volumeIsFixed(), false, 'a Mac sets volume');
+        device(
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15',
+            'MacIntel',
+            5,
+        );
+        assert.equal(
+            loadVolume().volumeIsFixed(),
+            true,
+            'an iPad that says Mac',
+        );
+        device(
+            'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/128 Mobile Safari/537.36',
+            'Linux armv8l',
+            5,
+        );
+        assert.equal(
+            loadVolume().volumeIsFixed(),
+            false,
+            'Android sets volume',
+        );
+        device(
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 Version/18.6 Mobile/15E148 Safari/604.1',
+            'iPhone',
+            5,
+        );
+        const { setVolume, releaseVolume, volumeIsFixed, describeVolume } =
+            loadVolume();
+        assert.equal(
+            volumeIsFixed(),
+            true,
+            'an iPhone, though volume reads back',
+        );
         const music = new FixedMedia();
         setVolume(music, 0.06);
         assert.equal(contexts.length, 1, 'one context for the whole room');
@@ -471,9 +513,13 @@ test('iOS ignores element volume: there the same levels apply through a plain ga
         const clickGain = ctx.nodes.at(-1);
         releaseVolume(click);
         assert.deepEqual(clickGain.to, [], 'a finished click lets go');
+        assert.match(describeVolume(), /levels by: gain node/);
+        assert.match(describeVolume(), /audio context: running/);
     } finally {
         globalThis.window = saved.window;
         globalThis.document = saved.document;
+        if (savedNavigator)
+            Object.defineProperty(globalThis, 'navigator', savedNavigator);
     }
 });
 
