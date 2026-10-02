@@ -19,6 +19,9 @@ import Quality from './Utils/Quality';
 import UI from './UI';
 import UIEventBus from './UI/EventBus';
 
+/** Debug tools: dev builds and `DEBUG_TOOLS=1 npm run build` only (webpack). */
+declare const __DEBUG_TOOLS__: boolean | undefined;
+
 let instance: Application | null = null;
 
 export default class Application {
@@ -68,7 +71,13 @@ export default class Application {
         this.ui = new UI();
 
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('debug')) {
+        // Compiled out of production (bundler/webpack.prod.js): no __app,
+        // no FPS meter, no skipped entry screen for visitors.
+        if (
+            typeof __DEBUG_TOOLS__ !== 'undefined' &&
+            __DEBUG_TOOLS__ &&
+            urlParams.has('debug')
+        ) {
             (window as any).__app = this;
             // Debug-only: loaded on demand, never in a visitor's bundle.
             void import(/* webpackChunkName: "debug" */ 'stats.js').then(

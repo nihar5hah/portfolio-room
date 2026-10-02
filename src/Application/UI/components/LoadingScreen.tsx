@@ -3,6 +3,9 @@ import Application from '../../Application';
 import eventBus from '../EventBus';
 import assetUrl from '../../Utils/assetUrl';
 
+/** Debug tools: dev builds and `DEBUG_TOOLS=1 npm run build` only (webpack). */
+declare const __DEBUG_TOOLS__: boolean | undefined;
+
 /** Linework rendered from the room's opening camera; see render-blueprint.js. */
 export const PLATE_ASPECT = 2.4;
 
@@ -102,7 +105,13 @@ export default function LoadingScreen() {
 
     useEffect(() => {
         if (leaving || gone) return;
-        if (drawn && new URLSearchParams(location.search).has('debug')) start();
+        if (
+            typeof __DEBUG_TOOLS__ !== 'undefined' &&
+            __DEBUG_TOOLS__ &&
+            drawn &&
+            new URLSearchParams(location.search).has('debug')
+        )
+            start();
         const onKey = (event: KeyboardEvent) => {
             // Preserve native keyboard activation of the alternative link.
             if (

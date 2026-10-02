@@ -175,5 +175,33 @@ test('no phone number anywhere the site ships, and no authoring metadata in the 
     assert.doesNotMatch(text, digits, 'résumé PDF text');
     assert.match(text, /niharshah0405@gmail\.com/, 'email stays');
     const raw = fs.readFileSync(pdf, 'latin1');
-    assert.doesNotMatch(raw, /pdfTeX|PTEX\.Fullbanner|TeX Live|LaTeX with hyperref/);
+    assert.doesNotMatch(
+        raw,
+        /pdfTeX|PTEX\.Fullbanner|TeX Live|LaTeX with hyperref/,
+    );
+});
+
+test('debug tools (?debug, #debug, ?audiodebug) are compiled out of production builds', () => {
+    const gate = "typeof __DEBUG_TOOLS__ !== 'undefined' && __DEBUG_TOOLS__";
+    for (const [file, marker] of [
+        ['src/Application/Application.ts', "urlParams.has('debug')"],
+        ['src/Application/Utils/Debug.ts', "'#debug'"],
+        ['src/Application/UI/components/LoadingScreen.tsx', ".has('debug')"],
+        ['src/Application/Audio/Volume.ts', 'audiodebug\\b'],
+    ]) {
+        const source = read(file).replace(/\s+/g, ' ').replace(/\( /g, '(');
+        assert.ok(source.includes(marker), `${file}: ${marker}`);
+        assert.ok(source.includes(gate), `${file} is gated`);
+        // The switch sits after the gate (same statement or block).
+        assert.ok(
+            source.lastIndexOf(gate, source.indexOf(marker)) > -1,
+            `${file}: gate before ${marker}`,
+        );
+    }
+    const prod = read('bundler/webpack.prod.js');
+    assert.match(
+        prod,
+        /__DEBUG_TOOLS__: JSON\.stringify\(process\.env\.DEBUG_TOOLS === '1'\)/,
+    );
+    assert.doesNotMatch(read('vercel.json'), /DEBUG_TOOLS/);
 });

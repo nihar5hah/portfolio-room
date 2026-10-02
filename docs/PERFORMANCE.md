@@ -195,7 +195,7 @@ never merged.
 - `tests/media-serving.test.mjs`: compressed serving.
 - `tests/audio-mix.test.mjs`, `tests/entry-resilience.test.mjs`: deferred
   sound and album art.
-- In the browser, `?debug` shows an FPS meter and exposes `__app`
+- In a dev or `npm run build:debug` build (never production), `?debug` shows an FPS meter and exposes `__app`
   (`__app.quality`, `__app.renderer.instance.info`, `__app.world.batching`).
 
 ## Next steps, if needed

@@ -14,8 +14,10 @@
  * nothing to run away. Everywhere else this is exactly `el.volume = v`.
  *
  * `?audiodebug` in the address shows what is in effect, for checking on a
- * phone.
+ * phone (development builds and `DEBUG_TOOLS=1` builds only).
  */
+/** Debug tools: dev builds and `DEBUG_TOOLS=1 npm run build` only (webpack). */
+declare const __DEBUG_TOOLS__: boolean | undefined;
 
 let fixed: boolean | undefined;
 let context: AudioContext | null | undefined;
@@ -150,7 +152,11 @@ export function describeVolume() {
 
 /** `?audiodebug`: a small readout of the above, refreshed every second. */
 export function showVolumeDebug() {
-    if (!/[?&]audiodebug\b/.test(location.search)) return;
+    if (
+        !(typeof __DEBUG_TOOLS__ !== 'undefined' && __DEBUG_TOOLS__) ||
+        !/[?&]audiodebug\b/.test(location.search)
+    )
+        return;
     const panel = document.createElement('pre');
     panel.style.cssText =
         'position:fixed;left:8px;top:8px;z-index:2147483647;margin:0;' +

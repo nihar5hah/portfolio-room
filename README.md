@@ -31,7 +31,7 @@ The room picks a quality tier (high, medium or low) from what the device reports
 - The desktop app loads on demand and splits each app into its own chunk.
 - The build ships Brotli and gzip copies.
 
-Details and before/after numbers are in [docs/PERFORMANCE.md](docs/PERFORMANCE.md). Force a tier with `?quality=low|medium|high`, and add `?debug` for an FPS meter.
+Details and before/after numbers are in [docs/PERFORMANCE.md](docs/PERFORMANCE.md). Force a tier with `?quality=low|medium|high`. Debug tools (`?debug` for an FPS meter, `#debug`, `?audiodebug`) exist only in `npm run dev` and `npm run build:debug`; production builds compile them out.
 
 ## Tech
 

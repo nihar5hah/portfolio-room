@@ -1,6 +1,7 @@
 const { merge } = require('webpack-merge');
 const CleanCSS = require('clean-css');
-const { sources } = require('webpack');
+const webpack = require('webpack');
+const { sources } = webpack;
 
 /** Minify the extracted CSS (webpack only minifies JS by itself). */
 class MinifyCss {
@@ -33,5 +34,12 @@ class MinifyCss {
 module.exports = merge(require('./webpack.common'), {
     mode: 'production',
     devtool: false,
-    plugins: [new MinifyCss()],
+    plugins: [
+        new MinifyCss(),
+        // ?debug, #debug and ?audiodebug are compiled out of production;
+        // DEBUG_TOOLS=1 npm run build keeps them for local checks.
+        new webpack.DefinePlugin({
+            __DEBUG_TOOLS__: JSON.stringify(process.env.DEBUG_TOOLS === '1'),
+        }),
+    ],
 });
