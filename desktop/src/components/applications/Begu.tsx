@@ -3,7 +3,37 @@ import ReactMarkdown from 'react-markdown';
 import Window from '../os/Window';
 import GEOMETRY from './geometry';
 import avatar from '../../assets/begu-avatar.jpg';
+import { safeBeguLink } from './beguLinks';
 type Message = { role: 'user' | 'assistant'; content: string };
+
+/**
+ * Replies are model output a visitor can try to steer: links only to
+ * Nihar's own pages (beguLinks.ts), everything else as plain text showing
+ * where it points; images as their description, never loaded.
+ */
+const MARKDOWN = {
+    a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
+        const safe = safeBeguLink(href);
+        if (!safe)
+            return (
+                <span>
+                    {children}
+                    {href && String(children) !== href ? ` (${href})` : ''}
+                </span>
+            );
+        const external = /^(https:|mailto:)/.test(safe);
+        return (
+            <a
+                href={safe}
+                target={safe.startsWith('https:') ? '_blank' : undefined}
+                rel={external ? 'noopener noreferrer' : undefined}
+            >
+                {children}
+            </a>
+        );
+    },
+    img: ({ alt }: { alt?: string }) => (alt ? <span>{alt}</span> : null),
+};
 const GREETING =
     'Hey, I’m Begu. I keep Nihar company while he builds. Ask me about his projects, his experience, or how to reach him.';
 const SUGGESTIONS = [
@@ -107,7 +137,10 @@ function Begu(props: WindowAppProps) {
                                             : 'You:'}
                                     </span>
                                     {m.role === 'assistant' ? (
-                                        <ReactMarkdown>
+                                        <ReactMarkdown
+                                            skipHtml
+                                            components={MARKDOWN}
+                                        >
                                             {m.content}
                                         </ReactMarkdown>
                                     ) : (

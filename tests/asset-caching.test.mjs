@@ -205,3 +205,25 @@ test('debug tools (?debug, #debug, ?audiodebug) are compiled out of production b
     );
     assert.doesNotMatch(read('vercel.json'), /DEBUG_TOOLS/);
 });
+
+test('robots, sitemap, security.txt and the 404 page ship; dead upstream files are gone', () => {
+    const security = read('static/.well-known/security.txt');
+    assert.match(security, /^Contact: mailto:niharshah0405@gmail\.com$/m);
+    const expires = Date.parse(security.match(/^Expires: (.+)$/m)[1]);
+    assert.ok(expires > Date.now(), 'security.txt has not expired');
+    assert.ok(expires - Date.now() < 366 * 864e5, 'and is due within a year');
+    assert.match(read('static/robots.txt'), /^Disallow: \/api\/$/m);
+    assert.match(read('static/sitemap.xml'), /https:\/\/www\.niharshah\.me\/</);
+    const notFound = read('static/404.html');
+    assert.match(notFound, /href="\/"/);
+    assert.doesNotMatch(notFound, /<script/, 'CSP: no scripts');
+    for (const gone of [
+        'server/index.ts',
+        'buildspec.yaml',
+        'desktop/public/manifest.json',
+        'desktop/public/js-dos',
+        'desktop/public/doom.jsdos',
+        'desktop/src/assets/resume',
+    ])
+        assert.ok(!fs.existsSync(new URL(gone, root)), `${gone} removed`);
+});

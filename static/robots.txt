@@ -1,0 +1,6 @@
+# The room and its desktop are open to everyone, crawlers included.
+# The API is not a page.
+User-agent: *
+Disallow: /api/
+
+Sitemap: https://www.niharshah.me/sitemap.xml

@@ -14,7 +14,6 @@ import computerBig from './computerBig.png';
 import computerSmall from './computerSmall.png';
 import myComputer from './myComputer.png';
 import showcaseIcon from './mac-finder.webp';
-import doomIcon from './doomIcon.png';
 import henordleIcon from './mac-textedit.webp';
 import trash from './mac-trash.webp';
 import credits from './mac-settings.webp';
@@ -40,7 +39,6 @@ const icons = {
     computerSmall: computerSmall,
     myComputer: myComputer,
     showcaseIcon: showcaseIcon,
-    doomIcon: doomIcon,
     volumeOn: volumeOn,
     volumeOff: volumeOff,
     credits: credits,

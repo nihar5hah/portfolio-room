@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex" />
+        <title>Not here · Nihar Shah</title>
+        <link rel="icon" href="/favicon.svg" />
+        <style>
+            @font-face {
+                font-family: Manrope;
+                src: url('/fonts/manrope-latin-400-normal.woff2');
+            }
+            @font-face {
+                font-family: Manrope;
+                font-weight: 700;
+                src: url('/fonts/manrope-latin-700-normal.woff2');
+            }
+            html {
+                height: 100%;
+                background: radial-gradient(
+                    ellipse at 50% 35%,
+                    #1a1d26,
+                    #07080c 70%
+                );
+                color: #f5f5f7;
+                font-family:
+                    Manrope,
+                    -apple-system,
+                    system-ui,
+                    sans-serif;
+            }
+            body {
+                min-height: 100%;
+                margin: 0;
+                display: grid;
+                place-items: center;
+                text-align: center;
+                padding: 24px;
+                box-sizing: border-box;
+            }
+            h1 {
+                margin: 0 0 10px;
+                font-size: clamp(28px, 6vw, 44px);
+                letter-spacing: -0.5px;
+            }
+            p {
+                margin: 0 0 28px;
+                color: rgba(245, 245, 247, 0.65);
+                font-size: 16px;
+            }
+            a {
+                display: inline-block;
+                padding: 10px 18px;
+                border-radius: 999px;
+                border: 1px solid rgba(255, 255, 255, 0.22);
+                background: rgba(28, 28, 32, 0.55);
+                color: #f5f5f7;
+                text-decoration: none;
+                font-weight: 700;
+                font-size: 14px;
+                margin: 4px;
+            }
+            a:hover,
+            a:focus-visible {
+                background: rgba(60, 60, 66, 0.7);
+            }
+            a.primary {
+                background: #0a84ff;
+                border-color: #0a84ff;
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <h1>This room doesn’t exist.</h1>
+            <p>Begu checked everywhere. The page you wanted isn’t here.</p>
+            <a class="primary" href="/">Back to my room</a>
+            <a href="/desktop/">Open the desktop</a>
+        </main>
+    </body>
+</html>
