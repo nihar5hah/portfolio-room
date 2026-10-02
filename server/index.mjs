@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
 import { createBarcelonaFeed } from './football.mjs';
 import { createWeatherFeed } from './weather.mjs';
 import { readFile, stat } from 'node:fs/promises';
@@ -52,13 +53,53 @@ const ENCODINGS = [
     ['gzip', '.gz'],
 ];
 
+/** Header Vercel adds to every /api request it forwards (vercel.json). */
+export const PROXY_HEADER = 'x-room-proxy';
+/** Chat replies per visitor, and for the whole site, per hour. */
+export const CHAT_LIMITS = { visitor: 60, total: 1000 };
+
+/** Constant-time comparison of the forwarded proxy secret. */
+export function fromProxy(header, secret) {
+    if (!secret || typeof header !== 'string') return false;
+    const a = Buffer.from(header),
+        b = Buffer.from(secret);
+    return a.length === b.length && timingSafeEqual(a, b);
+}
+
+/**
+ * Who is asking, for the chat limit. Never the first X-Forwarded-For entry:
+ * Vercel forwards whatever the visitor put there. Behind the proxy secret
+ * the request came through Vercel, which overwrites X-Vercel-Proxied-For
+ * with the visitor's real address. Otherwise, behind Render's proxy, the
+ * last X-Forwarded-For entry is the address that actually connected (Render
+ * appends it), never a value the client chose.
+ */
+export function visitorKey(headers, socketAddress, { viaProxy, trustProxy }) {
+    const first = (value) =>
+        String(value || '')
+            .split(',')[0]
+            .trim();
+    const last = (value) =>
+        String(value || '')
+            .split(',')
+            .at(-1)
+            .trim();
+    return (
+        (viaProxy && first(headers['x-vercel-proxied-for'])) ||
+        (trustProxy && last(headers['x-forwarded-for'])) ||
+        socketAddress ||
+        'unknown'
+    );
+}
+
 /**
  * Origins allowed to call /api/chat besides the server's own host: the site
  * on its own domain when Vercel forwards /api to this server on Render
  * (ALLOWED_ORIGINS=https://niharshah.me,https://www.niharshah.me).
  */
 export function allowedOrigin(origin, host, allowed = []) {
-    if (!origin) return true;
+    // Browsers always send Origin on a POST from a page; only scripts omit it.
+    if (!origin) return false;
     let url;
     try {
         url = new URL(origin);
@@ -75,10 +116,15 @@ export function createPortfolioServer({
         .split(',')
         .map((o) => o.trim().replace(/\/$/, ''))
         .filter(Boolean),
-    // Behind Vercel and Render the socket is the proxy; the visitor is the
-    // first X-Forwarded-For entry (Vercel sets it, clients cannot spoof it).
+    // Behind Render the socket is Render's proxy; see visitorKey.
     trustProxy = process.env.TRUST_PROXY === '1',
+    // Shared with Vercel (ROOM_PROXY_SECRET there). When set, /api answers
+    // only requests Vercel forwarded: calling Render directly is refused.
+    proxySecret = process.env.PROXY_SECRET || '',
+    limits = CHAT_LIMITS,
 } = {}) {
+    // Every Gemini call this hour, whoever asked: a ceiling on spend.
+    const total = { count: 0, start: 0 };
     // ponytail: per-process limits suit one server; use a shared rate limiter when deploying multiple instances.
     const visitors = new Map();
     const barcelona = createBarcelonaFeed({ fetchImpl });
@@ -95,6 +141,16 @@ export function createPortfolioServer({
         res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
         try {
             const url = new URL(req.url, 'http://localhost');
+            const viaProxy = fromProxy(req.headers[PROXY_HEADER], proxySecret);
+            if (
+                proxySecret &&
+                url.pathname.startsWith('/api/') &&
+                url.pathname !== '/api/health' && // Render's health check
+                !viaProxy
+            )
+                return json(res, 403, {
+                    error: 'This request must come from the portfolio.',
+                });
             if (url.pathname === '/api/barcelona') {
                 if (req.method !== 'GET')
                     return json(res, 405, { error: 'Use GET for match data.' });
@@ -177,12 +233,18 @@ export function createPortfolioServer({
                         error: 'Begu is offline right now. You can still explore Nihar’s projects or get in touch.',
                     });
                 const now = Date.now(),
-                    ip =
-                        (trustProxy &&
-                            String(req.headers['x-forwarded-for'] || '')
-                                .split(',')[0]
-                                .trim()) ||
-                        req.socket.remoteAddress;
+                    ip = visitorKey(req.headers, req.socket.remoteAddress, {
+                        viaProxy,
+                        trustProxy,
+                    });
+                if (now - total.start > 3600000) {
+                    total.start = now;
+                    total.count = 0;
+                }
+                if (total.count >= limits.total)
+                    return json(res, 429, {
+                        error: 'Begu is busy. Please try again later.',
+                    });
                 for (const [key, entry] of visitors)
                     if (now - entry.start > 3600000) visitors.delete(key);
                 if (visitors.size >= 1000 && !visitors.has(ip))
@@ -190,12 +252,17 @@ export function createPortfolioServer({
                         error: 'Begu is busy. Please try again later.',
                     });
                 const entry = visitors.get(ip) || { count: 0, start: now };
-                if (entry.count >= 60)
+                if (entry.count >= limits.visitor)
                     return json(res, 429, {
                         error: 'Begu needs a short break. Please come back in an hour.',
                     });
                 entry.count++;
+                total.count++;
                 visitors.set(ip, entry);
+                res.setHeader(
+                    'RateLimit-Remaining',
+                    String(limits.visitor - entry.count),
+                );
                 // The original model first; when Google reports it overloaded or
                 // rate limited, one stable fallback answers instead of failing.
                 const request = {

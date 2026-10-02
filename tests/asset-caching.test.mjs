@@ -139,11 +139,41 @@ test('the warm-up uploads real images, not placeholders still waiting for theirs
 test('both pages send anonymous page views to Vercel Web Analytics', () => {
     for (const page of ['src/index.html', 'desktop/public/index.html']) {
         const html = read(page);
-        assert.match(html, /window\.va\s*=/, `${page}: queue before load`);
+        assert.doesNotMatch(
+            html.replace(/<!--[\s\S]*?-->/g, ''),
+            /<script(?![^>]*\bsrc=)[^>]*>/,
+            `${page}: no inline scripts (CSP)`,
+        );
         assert.match(
             html,
             /<script defer src="\/_vercel\/insights\/script\.js"><\/script>/,
             `${page}: the script, deferred`,
         );
     }
+});
+
+test('no phone number anywhere the site ships, and no authoring metadata in the résumé', async () => {
+    const { execFileSync } = await import('node:child_process');
+    const digits = /(\+?91[\s-]*)?9925[\s-]*016026|99250[\s-]*16026/;
+    for (const file of [
+        'static/resume-preview.html',
+        'desktop/src/data/content.json',
+        'server/profile-context.txt',
+    ])
+        assert.doesNotMatch(read(file), digits, file);
+    assert.doesNotMatch(read('desktop/src/data/content.json'), /"tel:/);
+    const pdf = new URL('../static/resume.pdf', import.meta.url).pathname;
+    let text;
+    try {
+        text = execFileSync('pdftotext', [pdf, '-'], {
+            stdio: ['ignore', 'pipe', 'ignore'],
+        }).toString();
+    } catch (error) {
+        if (error.code === 'ENOENT') return; // Poppler not installed
+        throw error;
+    }
+    assert.doesNotMatch(text, digits, 'résumé PDF text');
+    assert.match(text, /niharshah0405@gmail\.com/, 'email stays');
+    const raw = fs.readFileSync(pdf, 'latin1');
+    assert.doesNotMatch(raw, /pdfTeX|PTEX\.Fullbanner|TeX Live|LaTeX with hyperref/);
 });

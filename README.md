@@ -38,6 +38,7 @@ Details and before/after numbers are in [docs/PERFORMANCE.md](docs/PERFORMANCE.m
 - **Room:** Three.js (r137), TypeScript, CSS3D for the Mac's screen, webpack.
 - **Desktop:** React 17 with lazy-loaded apps, running in an iframe on the laptop screen and full-screen at `/desktop/` on phones.
 - **Server:** a small Node server (`server/index.mjs`) for static files with precompressed and immutable caching, plus `/api/chat` (Gemini), `/api/weather` and `/api/barcelona`.
+- **Security:** Vercel adds a shared secret header (`ROOM_PROXY_SECRET`, from the project's environment) to every `/api` request it forwards; with `PROXY_SECRET` set on Render, `/api` refuses anything that didn't come through the site. Chat is limited per visitor (Vercel's `X-Vercel-Proxied-For`, never the forgeable first `X-Forwarded-For` entry) and site-wide per hour. `vercel.json` sends a strict Content-Security-Policy (no inline scripts), same-origin framing only (the laptop embeds `/desktop/`) and HSTS. The public résumé carries no phone number or authoring metadata.
 - **Tests:** `node:test`, covering room layout, Begu's pathing, audio, serving, the quality system and the desktop.
 
 ## Run it locally

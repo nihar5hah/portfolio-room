@@ -24,3 +24,8 @@ services:
           # Set in the Render dashboard; never committed.
           - key: GEMINI_API_KEY
             sync: false
+          # Shared with Vercel's ROOM_PROXY_SECRET (vercel.json adds it to
+          # every forwarded /api request); with it set, /api refuses anything
+          # that did not come through the website. Never committed.
+          - key: PROXY_SECRET
+            sync: false
