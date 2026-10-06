@@ -153,44 +153,51 @@ test('Begu contains provider failures and rejects oversized requests', async () 
     }
 });
 
-test('an overloaded model falls back once instead of failing the visitor', async () => {
-    const tried = [];
-    const server = createPortfolioServer({
-        apiKey: 'test-only-key',
-        fetchImpl: async (url) => {
-            tried.push(url.split('/models/')[1].split(':')[0]);
-            if (tried.length === 1) return new Response('{}', { status: 503 });
-            return Response.json({
-                candidates: [
-                    { content: { parts: [{ text: 'Hi from Begu.' }] } },
-                ],
-            });
+test('a failing model (error status or timeout) falls back once instead of failing the visitor', async () => {
+    for (const fail of [
+        () => new Response('{}', { status: 503 }),
+        () => {
+            throw new DOMException('timed out', 'TimeoutError');
         },
-    });
-    server.listen(0, '127.0.0.1');
-    await once(server, 'listening');
-    try {
-        const response = await fetch(
-            `http://127.0.0.1:${server.address().port}/api/chat`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...sameSite(server.address().port),
-                },
-                body: JSON.stringify({
-                    messages: [{ role: 'user', content: 'Hi' }],
-                }),
+    ]) {
+        const tried = [];
+        const server = createPortfolioServer({
+            apiKey: 'test-only-key',
+            fetchImpl: async (url) => {
+                tried.push(url.split('/models/')[1].split(':')[0]);
+                if (tried.length === 1) return fail();
+                return Response.json({
+                    candidates: [
+                        { content: { parts: [{ text: 'Hi from Begu.' }] } },
+                    ],
+                });
             },
-        );
-        assert.equal(response.status, 200);
-        assert.equal((await response.json()).reply, 'Hi from Begu.');
-        assert.deepEqual(tried, [
-            'gemini-3.1-flash-lite-preview',
-            'gemini-2.5-flash',
-        ]);
-    } finally {
-        server.close();
+        });
+        server.listen(0, '127.0.0.1');
+        await once(server, 'listening');
+        try {
+            const response = await fetch(
+                `http://127.0.0.1:${server.address().port}/api/chat`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...sameSite(server.address().port),
+                    },
+                    body: JSON.stringify({
+                        messages: [{ role: 'user', content: 'Hi' }],
+                    }),
+                },
+            );
+            assert.equal(response.status, 200);
+            assert.equal((await response.json()).reply, 'Hi from Begu.');
+            assert.deepEqual(tried, [
+                'gemini-3.5-flash-lite',
+                'gemini-2.5-flash',
+            ]);
+        } finally {
+            server.close();
+        }
     }
 });
 

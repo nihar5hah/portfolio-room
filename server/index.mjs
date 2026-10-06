@@ -7,7 +7,7 @@ import { createReadStream } from 'node:fs';
 import { resolve, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const MODELS = ['gemini-3.1-flash-lite-preview', 'gemini-2.5-flash'];
+export const MODELS = ['gemini-3.5-flash-lite', 'gemini-2.5-flash'];
 const root = resolve(fileURLToPath(new URL('../dist/', import.meta.url)));
 const knowledge = await readFile(
     new URL('./profile-context.txt', import.meta.url),
@@ -291,21 +291,23 @@ export function createPortfolioServer({
                         },
                     }),
                 };
+                // Any failure (error status, timeout, network) tries the next model.
                 let upstream;
-                try {
-                    for (const model of MODELS) {
+                for (const model of MODELS) {
+                    try {
                         upstream = await fetchImpl(
                             `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
                             { ...request, signal: AbortSignal.timeout(30000) },
                         );
-                        if (upstream.status !== 503 && upstream.status !== 429)
-                            break;
+                        if (upstream.ok) break;
+                    } catch {
+                        upstream = undefined;
                     }
-                } catch {
+                }
+                if (!upstream)
                     return json(res, 502, {
                         error: 'Begu couldn’t connect. Please try again in a moment.',
                     });
-                }
                 if (!upstream.ok)
                     return json(res, 502, {
                         error: 'Begu is having trouble replying. Please try again shortly.',
