@@ -1227,6 +1227,5 @@ export function confidoNeon(width = 8000) {
         }),
     );
     sign.name = 'Confido Health neon sign';
-    sign.raycast = () => undefined; // light on the wall, not a thing to click
     return sign;
 }

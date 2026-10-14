@@ -61,6 +61,11 @@ export default class Interactables {
                     label: 'Notes',
                     run: openApp('showcase', '/notes'),
                 }));
+            else if (name === 'Confido Health neon sign')
+                this.add(object, () => ({
+                    label: 'Currently at Confido Health',
+                    run: openApp('showcase', '/experience'),
+                }));
             else if (name.endsWith(' jersey frame'))
                 this.add(object, () => ({
                     label: 'GOAT',
