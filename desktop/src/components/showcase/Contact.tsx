@@ -66,7 +66,7 @@ export default function Contact() {
                     ))}
             </div>
             <p className="contact-location">
-                Based in Ahmedabad, India. Building wherever curiosity takes me.
+                Based in Bengaluru, India. Building wherever curiosity takes me.
             </p>
         </article>
     );

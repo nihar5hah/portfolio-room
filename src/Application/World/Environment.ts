@@ -26,6 +26,7 @@ import {
     deskLamp,
     softPillow,
     spinnerSuitcase,
+    confidoNeon,
     towerSpeaker,
     wallClock,
 } from './Fixtures';
@@ -1302,6 +1303,13 @@ export default class Environment {
         screen.position.z = 96;
         media.add(screen);
         room.add(media);
+        // Confido Health's new logo above the TV, lit like a neon sign: it shares
+        // the TV's switch, so it goes dark for Good night.
+        const neon = confidoNeon();
+        glowing(neon.material, 'tv');
+        neon.position.set(0, 5700, 18440);
+        neon.rotation.y = Math.PI;
+        room.add(neon);
         // A lit TV spills cool light onto the console and the floor in front of it.
         const tvGlow = new THREE.PointLight('#8fb7ff', 0.9, 9000, 2);
         tvGlow.name = 'TV glow';

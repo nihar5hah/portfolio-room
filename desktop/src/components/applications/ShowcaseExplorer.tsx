@@ -116,7 +116,7 @@ function describe(pathname: string): [string, string] {
             `${index + 1} of ${count(notes.length, 'note')}`,
         ];
     }
-    if (section === 'about') return ['About', 'Ahmedabad, India'];
+    if (section === 'about') return ['About', 'Bengaluru, India'];
     if (section === 'experience')
         return ['Experience', count(data.experiences.length, 'role')];
     if (section === 'contact') return ['Contact', data.siteConfig.email];

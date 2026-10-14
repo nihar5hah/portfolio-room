@@ -271,7 +271,10 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
         lineTo() {},
         stroke() {},
         closePath() {},
+        translate() {},
+        scale() {},
     };
+    globalThis.Path2D = class {};
     globalThis.document = { createElement: () => ({ getContext: () => ctx }) };
     const app = {
         reducedMotion: { matches: false },
@@ -405,6 +408,16 @@ test('room furnishings align, stand on the floor and leave clear routes', async 
     room.updateMatrixWorld(true);
     const bounds = (name) =>
         new THREE.Box3().setFromObject(room.getObjectByName(name), true);
+    const neon = bounds('Confido Health neon sign');
+    const tvFrame = bounds('Wall mounted TV frame');
+    assert.ok(
+        neon.min.y > tvFrame.max.y && neon.max.y < 6900 - 45,
+        'the Confido neon sign hangs between the TV and the picture rail',
+    );
+    assert.ok(
+        neon.min.z > tvFrame.max.z && neon.max.z < 18500,
+        'the neon sign sits flat on the wall behind the TV face',
+    );
     const flagBounds = bounds('FC Barcelona flag');
     const trim = room.children.filter((part) => part.name === 'Slat end trim');
     for (const part of trim) {

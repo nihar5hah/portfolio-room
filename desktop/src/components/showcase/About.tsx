@@ -6,8 +6,8 @@ export default function About() {
             <span className="page-eyebrow">About</span>
             <h1>A builder at heart.</h1>
             <p className="page-lead">
-                I’m Nihar Shah, an applied AI systems builder based in
-                Ahmedabad, India.
+                I’m Nihar Shah, an applied AI systems builder from Ahmedabad,
+                now in Bengaluru for my internship at Confido Health.
             </p>
             <div className="about-intro">
                 <div>
@@ -16,12 +16,12 @@ export default function About() {
                         I work at the intersection of AI, product, and
                         engineering. My projects span autonomous agents,
                         retrieval and evaluation systems, computer vision, and
-                        voice assistants.
+                        voice ordering for restaurants.
                     </p>
                     <p>
-                        At Confido Health, I help develop and improve
-                        conversational AI for healthcare clinics. Alongside that
-                        work, I’m studying Computer Science at CHARUSAT and
+                        At Confido Health, I’m a Product Engineer Intern
+                        building agentic AI for healthcare operations. Alongside
+                        that work, I’m studying Computer Science at CHARUSAT and
                         building tools of my own.
                     </p>
                 </div>

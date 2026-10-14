@@ -14,10 +14,11 @@ Education:
   - Duration: 2023 – 2027
   - Status: Student
 
-Current Location: Ahmedabad, Gujarat, India
+Current Location: Bengaluru, Karnataka, India (on-site for his Confido Health internship)
+Hometown: Ahmedabad, Gujarat, India
 
 Links:
-- Portfolio: https://www.niharshah.in
+- Portfolio: https://www.niharshah.me
 - LinkedIn: https://linkedin.com/in/niharshah0405/
 - GitHub: https://github.com/nihar5hah
 
@@ -28,7 +29,7 @@ Nihar Shah is a Computer Science undergraduate specializing in building applied 
 Core strengths:
 - Multi-agent orchestration & autonomous systems
 - AI evaluation & RAG-powered platforms
-- Production conversational AI & voice assistants
+- Production conversational AI agents
 - Structured prompt design & engineering
 - AI workflow automation and system architecture
 - Computer Vision applications
@@ -38,19 +39,37 @@ Philosophy: Prioritizes production-oriented systems over experimental demos. Foc
 
 ## INTERNSHIP EXPERIENCE
 
-### Confido Health — AI / Product Intern (Current)
+### Confido Health — Product Engineer Intern (Current)
 
 Status: Currently active internship
+Period: Jun 2026 – Present
+Location: Bengaluru, India · On-site
+
+About Confido Health: Confido Health builds and deploys AI agents for healthcare operations, transforming healthcare's system of record to a System of Action. In short: agentic AI for healthcare operations.
+
+What he worked on (he helped build the evals; he did not build them alone):
+- Worked on the Evals dashboard in CareOS, which shows how each practice's AI agents perform, with drill-downs into every task and conversation
+- Helped build the use-case Overview, which shows why each task was resolved, handed to staff, or failed, so teams can see where agents can take on more work
+- Contributed to the AI judge that grades agent conversations, including testing changes on past conversations with blind reviewers from several model families
+- Helped build a tool where practice staff describe each agent's workflow in plain steps, so grading follows how that practice works
+- Worked on an agent sync that flags new, renamed or retired agents for approval
+- Worked on fax analytics per location and on permission checks for agent performance data
+
+### Confido Health — Product Intern
+
+Period: May 2025 – Mar 2026
+Location: Remote
+
+Worked on AI agents for healthcare practices, focusing on prompt engineering, conversation reliability, and faster communication between patients and their practice.
 
 Focus:
-- Development and optimization of AI voice assistants for healthcare clinics
 - Prompt engineering and conversational flow design
 - Scenario testing and evaluation
 - Metrics pruning for real-world performance
 - Standardization of conversational workflows
 
 Key contributions:
-- Worked on real AI call assistants used by clinics
+- Worked on real AI agents used by healthcare practices
 - Designed structured prompt systems for multi-location deployment
 - Improved reliability and conversational accuracy
 - Collaborated with product and engineering teams
@@ -140,16 +159,16 @@ Features:
 
 GitHub: https://github.com/nihar5hah/HireAI
 
-### Healthcare AI Voice Assistant
+### Healthcare AI Agents
 
 Context: Built during Confido Health internship
 
 Description:
-Conversational AI systems built for automated clinic call handling across multiple healthcare locations.
+Conversational AI agents built for patient communication across multiple healthcare locations.
 
 Features:
 - Dynamic prompt generation system
-- Location-specific AI voice configurations
+- Location-specific AI agent configurations
 - Parameter injection (hours, procedures, routing)
 - Workflow optimization for task completion
 
@@ -176,7 +195,7 @@ GitHub: https://github.com/nihar5hah/FaceAttend
 ### AI & Automation
 - Multi-agent orchestration
 - RAG systems & evaluation platforms
-- Conversational AI & AI Voice Assistants
+- Conversational AI & AI Agents
 - Prompt Engineering & Structured Prompt Design
 - AI Workflow Automation
 - Model Evaluation
@@ -211,8 +230,7 @@ GitHub: https://github.com/nihar5hah/FaceAttend
 
 ### Tools & Platforms
 - Git & GitHub (version control)
-- Retell AI (voice AI platform)
-- Vocera (voice systems)
+- Retell AI (used in VoiceServe)
 - OpenClaw (multi-agent framework)
 
 ## CURRENTLY BUILDING (Active Projects)

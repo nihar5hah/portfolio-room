@@ -27,7 +27,7 @@ test('Nihar content is complete and public destinations are safe', () => {
         for (const url of Object.values(project.links))
             assert.equal(new URL(url).protocol, 'https:');
     }
-    assert.equal(data.experiences.length, 2);
+    assert.equal(data.experiences.length, 3);
     assert.equal(data.skillCategories.length, 6);
     assert.equal(notes.length, 2);
     for (const note of notes) assert.ok(note.body.length > 1000);

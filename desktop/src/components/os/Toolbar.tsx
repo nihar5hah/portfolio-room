@@ -208,7 +208,7 @@ function Toolbar({
                         />
                     </svg>
                 </span>
-                <time title="Ahmedabad, India · IST">{time}</time>
+                <time title="Bengaluru, India · IST">{time}</time>
                 {menu && (
                     <div className="start-menu" id="workspace-menu">
                         <strong>Nihar’s workspace</strong>

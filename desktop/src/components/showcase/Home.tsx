@@ -11,6 +11,10 @@ export default function Home() {
                     <br />
                     <span>I make AI useful.</span>
                 </h1>
+                <p className="page-lead">
+                    Product Engineer Intern at Confido Health, building agentic
+                    AI for healthcare operations.
+                </p>
             </div>
             <p className="home-intro">
                 From agents that work together to conversations that help
@@ -47,8 +51,8 @@ export default function Home() {
                 </div>
             </Link>
             <footer className="home-footer">
-                <span>Ahmedabad, India</span>
-                <span>Applied AI · Voice · Agents</span>
+                <span>Bengaluru, India</span>
+                <span>Applied AI · Evals · Agents</span>
             </footer>
         </article>
     );

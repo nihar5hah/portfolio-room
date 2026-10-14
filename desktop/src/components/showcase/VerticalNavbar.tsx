@@ -13,7 +13,7 @@ export default function VerticalNavbar() {
         <nav className="portfolio-nav" aria-label="Portfolio">
             <NavLink to="/" className="nav-identity">
                 <span>
-                    Nihar Shah<small>Ahmedabad, India</small>
+                    Nihar Shah<small>Bengaluru, India</small>
                 </span>
             </NavLink>
             <div className="nav-links">

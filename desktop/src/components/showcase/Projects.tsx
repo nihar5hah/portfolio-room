@@ -7,7 +7,7 @@ export const names: Record<string, string> = {
     'mission-control': 'Mission Control',
     voiceserve: 'VoiceServe',
     hireai: 'HireAI',
-    'healthcare-ai': 'Healthcare Voice AI',
+    'healthcare-ai': 'Healthcare AI Agents',
     faceattend: 'FaceAttend',
 };
 export default function Projects() {

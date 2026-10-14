@@ -136,11 +136,11 @@
         },
         {
             "id": "healthcare-ai",
-            "title": "Healthcare AI Voice Assistant @ Confido Health",
-            "description": "Built at Confido Health \u2014 conversational AI systems for automated clinic call handling across multiple healthcare locations.",
-            "longDescription": "Built during my internship at Confido Health, this project involves designing and optimizing conversational AI systems for automated clinic call handling across multiple healthcare locations. The core innovation is a dynamic prompt generation system that creates location-specific AI voice configurations at scale using structured JSON templates. Each configuration supports parameter injection for clinic-specific details including operating hours, available procedures, insurance information, and call routing rules. The system handles patient calls end-to-end \u2014 from initial greeting through appointment scheduling, information delivery, and call resolution. Workflow optimization ensures high task completion rates while maintaining natural, empathetic conversational flow. The architecture supports multi-location deployment from a single configuration framework.",
+            "title": "Healthcare AI Agents @ Confido Health",
+            "description": "Built at Confido Health \u2014 conversational AI agents for patient communication across multiple healthcare locations.",
+            "longDescription": "Built during my internship at Confido Health, this project involves designing and optimizing conversational AI agents for patient communication across multiple healthcare locations. The core innovation is a dynamic prompt generation system that creates location-specific AI agent configurations at scale using structured JSON templates. Each configuration supports parameter injection for clinic-specific details including operating hours, available procedures, insurance information, and routing rules. The agents handle patient conversations end-to-end \u2014 from initial greeting through appointment scheduling, information delivery, and resolution. Workflow optimization ensures high task completion rates while maintaining natural, empathetic conversational flow. The architecture supports multi-location deployment from a single configuration framework.",
             "technologies": [
-                "Voice AI",
+                "Conversational AI",
                 "Prompt Engineering",
                 "JSON Templates",
                 "Python",
@@ -148,11 +148,11 @@
             ],
             "featured": true,
             "image": "/projects/healthcare-ai.webp",
-            "imagePlaceholder": "Voice Assistant Flow Diagram",
+            "imagePlaceholder": "Prompt Template Generator Screenshot",
             "highlights": [
                 "Built at Confido Health (active internship)",
                 "Dynamic prompt generation system",
-                "Location-specific AI voice configurations",
+                "Location-specific AI agent configurations",
                 "Parameter injection (hours, procedures, routing)",
                 "Workflow optimization for task completion"
             ],
@@ -185,25 +185,48 @@
     ],
     "experiences": [
         {
+            "id": "confido-engineer",
+            "company": "Confido Health",
+            "role": "Product Engineer Intern",
+            "period": "Jun 2026 - Present",
+            "location": "Bengaluru, India \u00b7 On-site",
+            "description": "Confido Health builds and deploys AI agents for healthcare operations, transforming healthcare's system of record to a System of Action.",
+            "achievements": [
+                "Worked on the Evals dashboard in CareOS, which shows how each practice's AI agents perform, with drill-downs into every task and conversation",
+                "Helped build the use-case Overview, which shows why each task was resolved, handed to staff, or failed, so teams can see where agents can take on more work",
+                "Contributed to the AI judge that grades agent conversations, including testing changes on past conversations with blind reviewers from several model families",
+                "Helped build a tool where practice staff describe each agent's workflow in plain steps, so grading follows how that practice works",
+                "Worked on an agent sync that flags new, renamed or retired agents for approval",
+                "Worked on fax analytics per location and on permission checks for agent performance data"
+            ],
+            "technologies": [
+                "Agentic AI",
+                "AI Evaluation",
+                "Analytics",
+                "Access Control"
+            ],
+            "current": true
+        },
+        {
             "id": "confido",
             "company": "Confido Health",
-            "role": "Product Intern (AI Voice Assistants)",
-            "period": "May 2025 - Present",
+            "role": "Product Intern",
+            "period": "May 2025 - Mar 2026",
             "location": "Remote",
-            "description": "Working on the development and optimization of AI voice assistants for healthcare clinics.",
+            "description": "Worked on AI agents for healthcare practices, focusing on prompt engineering, conversation reliability, and faster communication between patients and their practice.",
             "achievements": [
                 "Improved natural language understanding and conversational flows for patient interactions",
-                "Assisted in refining ML models and prompt logic to improve call accuracy",
-                "Collaborated with product and engineering teams to test and iterate AI call workflows",
+                "Assisted in refining ML models and prompt logic to improve conversation accuracy",
+                "Collaborated with product and engineering teams to test and iterate AI agent workflows",
                 "Gained hands-on experience with AI systems, prompt engineering, and healthcare use cases"
             ],
             "technologies": [
-                "AI Voice Assistants",
+                "AI Agents",
                 "Prompt Engineering",
                 "Conversational AI",
                 "Python"
             ],
-            "current": true
+            "current": false
         },
         {
             "id": "crest",
@@ -240,7 +263,7 @@
                     "icon": "LineChart"
                 },
                 {
-                    "name": "Conversational AI & Voice",
+                    "name": "Conversational AI",
                     "icon": "Mic"
                 },
                 {
@@ -373,10 +396,6 @@
                 {
                     "name": "Retell AI",
                     "icon": "Phone"
-                },
-                {
-                    "name": "Vocera",
-                    "icon": "Headphones"
                 }
             ]
         }
@@ -385,9 +404,9 @@
         "name": "Nihar Shah",
         "title": "Applied AI Systems Builder",
         "email": "niharshah0405@gmail.com",
-        "location": "Ahmedabad, India",
+        "location": "Bengaluru, India",
         "university": "Charotar University of Science And Technology",
-        "degree": "Bachelor of Technology: Computer Science",
+        "degree": "Bachelor of Technology: Computer Science and Engineering",
         "graduationYear": "2027"
     },
     "socialLinks": [
@@ -410,9 +429,9 @@
     "education": [
         {
             "school": "Charotar University of Science And Technology",
-            "degree": "Bachelor of Technology: Computer Science",
+            "degree": "Bachelor of Technology: Computer Science and Engineering",
             "period": "2023 \u2014 2027",
-            "location": "Ahmedabad, India"
+            "location": "Anand, India"
         }
     ],
     "certifications": [
