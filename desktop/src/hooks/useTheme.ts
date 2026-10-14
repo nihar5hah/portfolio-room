@@ -5,7 +5,12 @@ const KEY = 'nihar-desktop-theme';
 
 /** The visitor's saved choice, else their system setting (macOS "Auto"). */
 export function initialTheme(): Theme {
-    const saved = localStorage.getItem(KEY);
+    let saved: string | null = null;
+    try {
+        saved = localStorage.getItem(KEY);
+    } catch {
+        // Storage blocked: follow the system setting.
+    }
     if (saved === 'light' || saved === 'dark') return saved;
     return window.matchMedia('(prefers-color-scheme: dark)').matches
         ? 'dark'
@@ -23,7 +28,11 @@ export default function useTheme(): [Theme, () => void] {
     const toggle = () =>
         setTheme((current) => {
             const next = current === 'dark' ? 'light' : 'dark';
-            localStorage.setItem(KEY, next);
+            try {
+                localStorage.setItem(KEY, next);
+            } catch {
+                // Storage blocked: the choice lasts for this visit only.
+            }
             return next;
         });
     return [theme, toggle];

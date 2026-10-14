@@ -278,10 +278,9 @@ const Desktop: React.FC<DesktopProps> = (props) => {
         const close = (event: KeyboardEvent) => {
             if (event.key !== 'Escape' || !topKey || desktopFocused) return;
             if (document.querySelector('#workspace-menu')) return; // menu closes first
-            const field = (event.target as HTMLElement)?.closest?.(
-                'input, textarea',
-            );
-            if (field && (field as HTMLInputElement).value) return;
+            // Escape while typing never closes the window (or Begu's chat).
+            if ((event.target as HTMLElement)?.closest?.('input, textarea'))
+                return;
             removeWindow(topKey);
         };
         window.addEventListener('keydown', close);

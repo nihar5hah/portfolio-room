@@ -221,4 +221,18 @@ test('room objects open their apps; hidden records count once and persist', () =
         'progress persists',
     );
     assert.deepEqual(events.at(-1), ['recordsFound', { found: 1, total: 11 }]);
+
+    // Strict privacy settings make storage throw; the hunt still works.
+    globalThis.localStorage = {
+        getItem() {
+            throw new DOMException('blocked', 'SecurityError');
+        },
+        setItem() {
+            throw new DOMException('blocked', 'SecurityError');
+        },
+    };
+    const blocked = new exports.default(room);
+    blocked.sleeves = 11;
+    blocked.find('yeezus');
+    assert.equal(blocked.found.size, 1, 'blocked storage still counts');
 });

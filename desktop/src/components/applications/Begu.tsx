@@ -207,7 +207,7 @@ function Begu(props: WindowAppProps) {
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Message Begu"
                         maxLength={2000}
-                        disabled={busy}
+                        readOnly={busy}
                         autoComplete="off"
                     />
                     <button

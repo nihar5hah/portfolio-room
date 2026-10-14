@@ -16,6 +16,16 @@ const ARMED_FOR = 5000;
 /** Camera travel (room units, ~1.5 m) that makes a tapped label stale. */
 const TRAVELLED = 1500;
 
+/** Records found on earlier visits; none if storage is blocked or corrupt. */
+function savedRecords(): string[] {
+    try {
+        const saved = JSON.parse(localStorage.getItem(FOUND_KEY) || '[]');
+        return Array.isArray(saved) ? saved : [];
+    } catch {
+        return [];
+    }
+}
+
 /**
  * Room objects that do something: hover shows a small label, click acts.
  * Matching is by object name (the room builder names each piece), so no
@@ -31,9 +41,7 @@ export default class Interactables {
         object: THREE.Object3D;
         action: (o: THREE.Object3D) => Action;
     }[] = [];
-    found = new Set<string>(
-        JSON.parse(localStorage.getItem(FOUND_KEY) || '[]') as string[],
-    );
+    found = new Set<string>(savedRecords());
     sleeves = 0;
     sleeveAlbums = new Set<string>();
     asleep = false;
@@ -276,10 +284,14 @@ export default class Interactables {
     find(album: string) {
         if (!this.found.has(album)) {
             this.found.add(album);
-            localStorage.setItem(
-                FOUND_KEY,
-                JSON.stringify(Array.from(this.found)),
-            );
+            try {
+                localStorage.setItem(
+                    FOUND_KEY,
+                    JSON.stringify(Array.from(this.found)),
+                );
+            } catch {
+                // Storage blocked: the hunt counts for this visit only.
+            }
             this.publish();
         }
         this.app.world.audioManager.album.playAlbum(album);
